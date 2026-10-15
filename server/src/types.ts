@@ -1,0 +1,130 @@
+export type GeoMode = 'puzzle' | 'reveal' | 'off';
+export type EvidenceGateMode = 'after_hack' | 'passcodes';
+export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation' | 'solved';
+export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
+
+export type SlotId = 'time' | 'suspect' | 'method' | 'asset' | 'motive' | 'prop';
+export const SLOT_IDS: SlotId[] = ['time', 'suspect', 'method', 'asset', 'motive', 'prop'];
+
+export interface SlotSpec {
+  id: SlotId;
+  label: string;
+  placeholder: string;
+  canonical: string;
+  accept: string[];
+  reject: string[];
+  guidance: string;
+}
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface GameConfig {
+  version: number;
+  title: string;
+  intro: { headline: string; body: string; buttonLabel: string };
+  geo: {
+    mode: GeoMode;
+    briefing: string;
+    target: LatLng | null;
+    radiusMeters: number;
+    mapCenter: LatLng;
+    mapZoom: number;
+    photos: string[];
+    revealTitle: string;
+    revealBody: string;
+  };
+  gate: { prompt: string; code: string; successText: string };
+  hack: { secret: string; maxAttempts: number; lockoutSeconds: number; intro: string };
+  reveal: { title: string; body: string; buttonLabel: string };
+  evidence: {
+    gateMode: EvidenceGateMode;
+    passcodes: { audio: string; toxicology: string };
+    audioUploadId: string | null;
+    audioNotes: string;
+  };
+  archive: { enabled: boolean; maxMessageChars: number; welcome: string };
+  deduction: {
+    prompt: string;
+    template: string;
+    slots: SlotSpec[];
+    successTitle: string;
+    successBody: string;
+    failText: string;
+    maxAttempts: number | null;
+  };
+  hints: { quick: Partial<Record<StageId, string[]>> };
+}
+
+export interface SlotGrade {
+  id: SlotId;
+  pass: boolean;
+  reason: string;
+}
+
+export interface GradeResult {
+  pass: boolean;
+  slots: SlotGrade[];
+  source: 'ai' | 'fallback';
+  note?: string;
+}
+
+export interface HintPush {
+  id: number;
+  ts: number;
+  text: string;
+}
+
+export interface GameState {
+  stage: StageId;
+  startedAt: number | null;
+  stageTimes: Partial<Record<StageId, number>>;
+  geo: { attempts: number; solved: boolean; lastDistanceM: number | null };
+  gate: { attempts: number; passed: boolean };
+  hack: { guesses: string[]; solved: boolean; lockedUntil: number | null; rounds: number };
+  evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
+  archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
+  deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
+  hints: HintPush[];
+  report: { markdown: string | null; generatedAt: number | null; published: boolean };
+}
+
+export type EventType =
+  | 'game_start'
+  | 'stage'
+  | 'geo_guess'
+  | 'gate_attempt'
+  | 'hack_guess'
+  | 'hack_lockout'
+  | 'hack_solved'
+  | 'evidence_unlock'
+  | 'archive_user'
+  | 'archive_assistant'
+  | 'archive_tool'
+  | 'deduction_submit'
+  | 'hint_pushed'
+  | 'gm_action'
+  | 'ai_error'
+  | 'report';
+
+export interface GameEvent {
+  id: number;
+  ts: number;
+  type: EventType;
+  payload: Record<string, unknown>;
+}
+
+export interface ArchiveMessage {
+  id: number;
+  ts: number;
+  role: 'user' | 'assistant' | 'system';
+  text: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface LetterScore {
+  letter: string;
+  state: 'hit' | 'near' | 'miss';
+}

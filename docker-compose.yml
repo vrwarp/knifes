@@ -1,0 +1,13 @@
+services:
+  section30:
+    build: .
+    image: section30:latest
+    container_name: section30
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    mem_limit: 2g
