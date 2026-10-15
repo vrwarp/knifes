@@ -178,7 +178,13 @@ export interface Overview {
   state: GameState;
   events: GameEvent[];
   archive: ArchiveMessage[];
-  ai: { mode: 'live' | 'mock'; model: string };
+  ai: {
+    mode: 'live' | 'mock';
+    model: string;
+    credential: 'auth_token' | 'api_key' | 'oauth_token' | 'login' | 'none';
+    credentialLabel: string;
+    auth: 'ok' | 'needs_login' | 'unknown';
+  };
   stages: StageId[];
 }
 

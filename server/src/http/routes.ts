@@ -94,7 +94,7 @@ export function gmRouter(service: GameService): Router {
 
   r.use(gmAuth);
   r.get('/me', (_req, res) => res.json({ ok: true }));
-  r.get('/overview', (_req, res) => res.json(service.overview()));
+  r.get('/overview', async (_req, res) => res.json(await service.overview()));
   r.put('/config', (req, res) => res.json({ config: service.updateConfig(req.body) }));
   r.post('/stage', (req, res) => {
     const stage = str(req.body?.stage, 30) as StageId;

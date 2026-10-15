@@ -9,5 +9,11 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data:/data
+      # SQLite, uploads, Agent SDK sessions and the Claude login all live here.
+      # A named volume keeps the ownership the image set for the non-root user.
+      # To use a host folder instead: `- ./data:/data` plus `chown -R 1001:1001 ./data`.
+      - section30-data:/data
     mem_limit: 2g
+
+volumes:
+  section30-data:

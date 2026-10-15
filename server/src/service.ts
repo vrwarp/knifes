@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentError, aiLive, runAgent } from './ai/agent.js';
+import { AgentError, aiLive, probeAuth, runAgent } from './ai/agent.js';
 import { ARCHIVE_ALLOWED_TOOLS, ARCHIVE_SYSTEM_PROMPT, createArchiveServer, mockArchiveReply } from './ai/archive.js';
 import { draftHint, type HintStrength } from './ai/copilot.js';
 import { gradeDeduction } from './ai/grader.js';
@@ -7,7 +7,7 @@ import { generateReport } from './ai/report.js';
 import { ACCESS_LOG, CAMERA_NOTES, MANIFEST, PENDELTON_NOTE, TOXICOLOGY_REPORT } from './content/evidence.js';
 import type { Db } from './db.js';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
-import { env } from './env.js';
+import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
 import { advanceTo, applyInvestigationUnlocks, forceStage, initialState, isAtLeast, nextStage, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
@@ -410,13 +410,20 @@ export class GameService {
 
   // -------------------------------------------------------------------- gm
 
-  overview() {
+  async overview() {
+    const credential = detectCredential();
     return {
       config: this.config,
       state: this.state,
       events: this.db.listEvents(400),
       archive: this.db.listArchive(),
-      ai: { mode: aiLive() ? 'live' : 'mock', model: env.claudeModel },
+      ai: {
+        mode: aiLive() ? 'live' : 'mock',
+        model: env.claudeModel,
+        credential,
+        credentialLabel: CREDENTIAL_LABEL[credential],
+        auth: aiLive() ? await probeAuth() : 'needs_login',
+      },
       stages: STAGE_ORDER,
     };
   }

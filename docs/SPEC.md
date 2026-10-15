@@ -23,6 +23,7 @@ and gives the GMs visibility and control the whole evening.
 | Deduction grid | Six free-text slots in the dossier's sentence. Pass or fail only. AI grader with keyword fallback. |
 | AI features | ARCHIVE terminal, GM hint copilot, grader, post-game case report, all on the Claude Agent SDK. |
 | Model | `claude-opus-5-5` for every feature. |
+| Credential | Personal Claude subscription through the bundled Claude Code binary: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`, or `claude auth login` inside the container. An API key still works and outranks both. |
 | GM console | Live progress and attempt log, jump/skip, push hints, reset stage or game, edit codes and text live, seal ARCHIVE, case report. |
 | Hosting | Docker container on the Synology NAS, already exposed through the existing reverse proxy. |
 | Evidence content | Written in code from the roster. GMs record the audio clip. |

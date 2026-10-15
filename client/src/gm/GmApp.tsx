@@ -5,6 +5,14 @@ import { useSocket } from '../ws';
 import { ConfigEditor } from './ConfigEditor';
 import { ArchivePanel, HintsPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel } from './panels';
 
+const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
+  auth_token: 'bearer token',
+  api_key: 'API key',
+  oauth_token: 'subscription token',
+  login: 'subscription login',
+  none: 'no credential',
+};
+
 export function GmApp() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pw, setPw] = useState('');
@@ -99,7 +107,12 @@ export function GmApp() {
           GM console · {config.title}
         </span>
         <span className="row">
-          <span className={data.ai.mode === 'live' ? 'green' : 'amber'}>AI {data.ai.mode === 'live' ? `live · ${data.ai.model}` : 'mock'}</span>
+          <span className={data.ai.mode !== 'live' ? 'amber' : data.ai.auth === 'ok' ? 'green' : 'red'} title={data.ai.credentialLabel}>
+            AI{' '}
+            {data.ai.mode === 'live'
+              ? `live · ${data.ai.model} · ${CRED_LABEL[data.ai.credential]}${data.ai.auth === 'ok' ? '' : data.ai.auth === 'needs_login' ? ' · NO LOGIN FOUND' : ' · unverified'}`
+              : 'mock'}
+          </span>
           <a href="/" target="_blank" rel="noreferrer">
             player view
           </a>

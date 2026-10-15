@@ -24,7 +24,8 @@ FROM node:22-bookworm-slim
 ENV NODE_ENV=production \
     PORT=8080 \
     DATA_DIR=/data \
-    CLIENT_DIST=/app/client/dist
+    CLIENT_DIST=/app/client/dist \
+    CLAUDE_CONFIG_DIR=/data/claude
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
@@ -35,6 +36,16 @@ COPY --from=server --chown=section30:section30 /app/server/package.json ./
 COPY --from=server --chown=section30:section30 /app/server/node_modules ./node_modules
 COPY --from=server --chown=section30:section30 /app/server/dist ./dist
 COPY --from=client --chown=section30:section30 /app/client/dist /app/client/dist
+# The Agent SDK ships the Claude Code binary in a per-platform package. Link it
+# onto the PATH so `docker compose exec section30 claude auth login` signs the
+# container in with your subscription, and prove it launches on this platform.
+RUN set -eu; \
+  binary="$(find /app/server/node_modules/@anthropic-ai -maxdepth 2 \
+    \( -type d -name '*-musl' -prune \) -o \( -type f -name claude -perm -u+x -print \) | head -n1)"; \
+  test -n "$binary"; \
+  "$binary" --version; \
+  ln -sf "$binary" /usr/local/bin/claude; \
+  mkdir -p /data/claude && chown -R section30:section30 /data
 USER section30
 EXPOSE 8080
 VOLUME ["/data"]
