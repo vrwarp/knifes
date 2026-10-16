@@ -1,17 +1,40 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, errorText } from '../api';
 import type { SlotId } from '../types';
 import type { StageProps } from './PlayerApp';
 
 type Submit = { pass: boolean; title: string | null; body: string | null; failText: string; verified: number | null; total: number };
 
+const DRAFT_KEY = 's30.deduction.draft';
+const VERIFY_LINES = ['CROSS-REFERENCING ACCESS LOG', 'MATCHING INTERCEPT SIGNATURES', 'CHECKING TOXICOLOGY WINDOW', 'ARCHIVE VERIFYING'];
+
 export function Deduction({ view, refresh }: StageProps) {
   const d = view.deduction;
   const [answers, setAnswers] = useState<Record<SlotId, string>>(() => {
     const base = { time: '', suspect: '', method: '', asset: '', motive: '', prop: '' };
-    return { ...base, ...(d.lastAnswers ?? {}) };
+    let saved: Partial<Record<SlotId, string>> = {};
+    try {
+      saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? '{}') as Partial<Record<SlotId, string>>;
+    } catch {
+      saved = {};
+    }
+    return { ...base, ...(d.lastAnswers ?? {}), ...saved };
   });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(answers));
+    } catch {
+      /* private mode */
+    }
+  }, [answers]);
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState(0);
+  const [failFlash, setFailFlash] = useState(false);
+  useEffect(() => {
+    if (!busy) return;
+    const t = window.setInterval(() => setPhase((p) => (p + 1) % VERIFY_LINES.length), 800);
+    return () => window.clearInterval(t);
+  }, [busy]);
   const [result, setResult] = useState<Submit | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const exhausted = d.maxAttempts !== null && d.attempts >= d.maxAttempts && !d.passed;
@@ -24,9 +47,22 @@ export function Deduction({ view, refresh }: StageProps) {
     setBusy(true);
     setErr(null);
     setResult(null);
+    const started = Date.now();
     try {
       const r = await api<Submit>('/api/player/deduction', { json: answers, timeoutMs: 150_000 });
+      // The verdict should feel weighed, not instant.
+      await new Promise((res) => window.setTimeout(res, Math.max(0, 2500 - (Date.now() - started))));
       setResult(r);
+      if (!r.pass) {
+        setFailFlash(true);
+        window.setTimeout(() => setFailFlash(false), 600);
+      } else {
+        try {
+          sessionStorage.removeItem(DRAFT_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
       await refresh();
     } catch (e2) {
       setErr(errorText(e2));
@@ -45,7 +81,7 @@ export function Deduction({ view, refresh }: StageProps) {
   }
 
   return (
-    <form className="frame accent" onSubmit={submit}>
+    <form className={`frame accent ${failFlash ? 'shake danger' : result && !result.pass ? 'danger' : ''}`} onSubmit={submit}>
       <h1>Master deduction</h1>
       <p className="muted small">{d.prompt}</p>
       <div className="sentence">
@@ -69,8 +105,8 @@ export function Deduction({ view, refresh }: StageProps) {
         })}
       </div>
       {busy ? (
-        <p className="amber cursor" style={{ marginTop: 12 }} role="status">
-          ARCHIVE VERIFYING
+        <p className="amber cursor verifying" style={{ marginTop: 12 }} role="status">
+          {VERIFY_LINES[phase]}
         </p>
       ) : (
         <button className="btn primary block" disabled={exhausted || Object.values(answers).some((v) => !v.trim())} style={{ marginTop: 12 }}>
@@ -78,7 +114,7 @@ export function Deduction({ view, refresh }: StageProps) {
         </button>
       )}
       {result && !result.pass ? (
-        <div className="error" role="alert">
+        <div className="error fail-text" role="alert">
           {result.failText}
           {result.verified !== null ? (
             <div className="amber" style={{ marginTop: 6 }}>

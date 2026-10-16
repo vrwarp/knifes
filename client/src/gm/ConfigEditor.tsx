@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
 import type { GameConfig, StageId } from '../types';
+import { STAGE_NAME } from './panels';
 
 type Path = (string | number)[];
 
@@ -36,6 +37,9 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
   const [draft, setDraft] = useState<GameConfig>(() => structuredClone(config));
   const [dirty, setDirty] = useState(false);
   const [baseVersion, setBaseVersion] = useState(config.version);
+  /** What the GM is typing into list and coordinate fields, before it parses. */
+  const [raw, setRaw] = useState<Record<string, string>>({});
+  const rawKey = (path: Path) => path.join('.');
   const conflict = dirty && config.version !== baseVersion;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -58,6 +62,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
     try {
       const r = await api<{ config: GameConfig }>('/api/gm/config', { method: 'PUT', json: draft });
       setDirty(false);
+      setRaw({});
       setBaseVersion(r.config.version);
       setMsg('Saved and pushed to the player');
       await onSaved();
@@ -70,6 +75,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
   const discard = () => {
     setDraft(structuredClone(config));
     setBaseVersion(config.version);
+    setRaw({});
     setDirty(false);
     setMsg(null);
   };
@@ -171,29 +177,48 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
       <span style={{ margin: 0 }}>{label}</span>
     </label>
   );
-  const CSV = (path: Path, label: string) => (
-    <label className="field">
-      <span>{label} (comma separated)</span>
-      <input
-        value={((getIn(draft, path) as string[] | undefined) ?? []).join(', ')}
-        onChange={(e) =>
-          up(
-            path,
-            e.target.value
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean),
-          )
-        }
-      />
-    </label>
-  );
-  const Lines = (path: Path, label: string) => (
-    <label className="field">
-      <span>{label} (one per line)</span>
-      <textarea rows={3} value={((getIn(draft, path) as string[] | undefined) ?? []).join('\n')} onChange={(e) => up(path, e.target.value.split('\n').filter((s) => s.trim()))} />
-    </label>
-  );
+  const CSV = (path: Path, label: string) => {
+    const k = rawKey(path);
+    const value = raw[k] ?? ((getIn(draft, path) as string[] | undefined) ?? []).join(', ');
+    return (
+      <label className="field">
+        <span>{label} (comma separated)</span>
+        <input
+          value={value}
+          onChange={(e) => {
+            setRaw((r) => ({ ...r, [k]: e.target.value }));
+            up(
+              path,
+              e.target.value
+                .split(',')
+                .map((x) => x.trim())
+                .filter(Boolean),
+            );
+          }}
+        />
+      </label>
+    );
+  };
+  const Lines = (path: Path, label: string) => {
+    const k = rawKey(path);
+    const value = raw[k] ?? ((getIn(draft, path) as string[] | undefined) ?? []).join('\n');
+    return (
+      <label className="field">
+        <span>{label} (one per line)</span>
+        <textarea
+          rows={3}
+          value={value}
+          onChange={(e) => {
+            setRaw((r) => ({ ...r, [k]: e.target.value }));
+            up(
+              path,
+              e.target.value.split('\n').map((x) => x.trim()).filter(Boolean),
+            );
+          }}
+        />
+      </label>
+    );
+  };
 
   const target = draft.geo.target;
   return (
@@ -216,15 +241,22 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         <label className="field">
           <span>Target coordinates as "lat, lng" (blank = any pin passes; copy from Google Maps)</span>
           <input
-            value={target ? `${target.lat}, ${target.lng}` : ''}
+            value={raw['geo.target'] ?? (target ? `${target.lat}, ${target.lng}` : '')}
             placeholder="34.0522, -118.2437"
             onChange={(e) => {
-              const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(e.target.value);
-              if (e.target.value.trim() === '') up(['geo', 'target'], null);
+              const v = e.target.value;
+              setRaw((r) => ({ ...r, 'geo.target': v }));
+              const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(v);
+              if (v.trim() === '') up(['geo', 'target'], null);
               else if (m) up(['geo', 'target'], { lat: Number(m[1]), lng: Number(m[2]) });
+              else setDirty(true);
             }}
           />
-          {!target ? <div className="small amber">No target: the puzzle accepts any pin until this is set.</div> : null}
+          {raw['geo.target'] !== undefined && raw['geo.target'].trim() !== '' && !/^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(raw['geo.target']) ? (
+            <div className="small red">Not a "lat, lng" pair yet.</div>
+          ) : !target ? (
+            <div className="small amber">No target: the puzzle accepts any pin until this is set.</div>
+          ) : null}
         </label>
         {N(['geo', 'radiusMeters'], 'Accept radius (metres)')}
         <div className="two">
@@ -328,7 +360,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
       </Section>
       <Section title="Quick hints per stage">
         {STAGES.map((s) => (
-          <div key={s}>{Lines(['hints', 'quick', s], s)}</div>
+          <div key={s}>{Lines(['hints', 'quick', s], STAGE_NAME[s])}</div>
         ))}
       </Section>
       <div className="sticky-actions row">

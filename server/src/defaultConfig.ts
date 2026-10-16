@@ -34,7 +34,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
   },
   gate: {
     prompt:
-      'SECURE LINE REQUIRED. The drop-point instructions carry a number. Call it. Whoever answers holds the recovery key. Enter it here.',
+      'The drop-point instructions carry a number. Call it. Whoever answers holds the recovery key. Enter it here.',
     code: 'MAGENTA30',
     successText: 'Recovery key accepted. Mirror partition 30-BETA located. Encryption active.',
   },
@@ -43,7 +43,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     maxAttempts: 6,
     lockoutSeconds: 45,
     intro:
-      'Five-character key. Green: right character, right place. Amber: right character, wrong place. Dark: not in the key. Six attempts, then the partition resets.',
+      'Five-character key. Placed letters light green, misplaced letters amber, absent letters go dark. Six attempts, then the partition resets.',
   },
   reveal: {
     title: 'PARTITION DECRYPTED // INCIDENT RECORD 30-0415',
@@ -53,7 +53,7 @@ TIME OF DEATH: 04:15.
 
 CAUSE: Synthetic neurotoxin, delayed onset. Preliminary toxicology indicates ingestion approximately thirty minutes prior.
 
-The office door logged three badge entries between 03:30 and 04:00. The full access log, the 03:45 ambient intercept and the operative manifest are held in the ARCHIVE, which this terminal can now reach.
+The office door logged three badge entries between 03:30 and 04:00. The full access log, the ambient intercept and the operative manifest are held in the ARCHIVE, which this terminal can now reach.
 
 DIRECTIVE: Return to base. Every operative with inner-circle clearance has been recalled to your location for debrief. They are gathering now. Among them is the one who sold us.
 
@@ -73,7 +73,7 @@ Recovery chain complete. The rest is detective work.`,
     enabled: true,
     maxMessageChars: 400,
     welcome:
-      'ARCHIVE ONLINE. Partition integrity 41%. I hold what survived the wipe: the access log, the manifest, the toxicology desk, the intercept notes, fragments of the Ledger index. Ask. I answer what the records support. I do not guess.',
+      'ARCHIVE ONLINE. Partition integrity degraded. I hold what survived the wipe: the access log, the manifest, the toxicology desk, the intercept notes, fragments of the Ledger index. Ask. I answer what the records support. I do not guess.',
   },
   deduction: {
     prompt: 'Complete the master deduction. Every field must verify against the ARCHIVE.',
@@ -149,15 +149,15 @@ Case 30-0415 closed. Happy thirtieth, Detective.`,
   },
   hints: {
     quick: {
-      geo: ['look at the signage in the second image. The street name is partially visible.'],
-      gate: ['the remote asset is expecting your call. Use the number on the drop-point card.'],
+      geo: ['Look at the signage in the second image. The street name is partially visible.'],
+      gate: ['The remote asset is expecting your call. Use the number on the drop-point card.'],
       hack: [
-        'the partition key is a five-letter designation. Drive names are worth a try.',
-        'the key starts with the first letter of the alphabet.',
+        'The partition key is a five-letter designation. Drive names are worth a try.',
+        'The key starts with the first letter of the alphabet.',
       ],
       investigation: [
-        'the toxin takes thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.',
-        "the intercept has a paper rustle right before the pour. Ask the ARCHIVE what the property check at the inner-wing door logged.",
+        'The toxin needs thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.',
+        "The intercept has a paper rustle right before the pour. Ask the ARCHIVE what the property check at the inner-wing door logged.",
       ],
       solved: [],
     },

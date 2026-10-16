@@ -212,6 +212,21 @@ try {
     await restored;
   });
 
+  await step('GM can type into the coordinate and list fields key by key', async () => {
+    await gm.locator('summary', { hasText: 'Location puzzle' }).click();
+    const coords = gm.getByPlaceholder('34.0522, -118.2437');
+    await coords.fill('');
+    await coords.pressSequentially('34.05, -118.24');
+    if ((await coords.inputValue()) !== '34.05, -118.24') throw new Error(`coordinates lost keystrokes: ${await coords.inputValue()}`);
+    await gm.locator('summary', { hasText: 'Deduction grid' }).click();
+    await gm.locator('summary', { hasText: 'time:' }).click();
+    const accept = gm.getByLabel('Accepted phrasings (comma separated)', { exact: true }).first();
+    await accept.fill('');
+    await accept.pressSequentially('03:45, 3:45,');
+    if ((await accept.inputValue()) !== '03:45, 3:45,') throw new Error(`list field lost keystrokes: ${await accept.inputValue()}`);
+    await gm.getByRole('button', { name: /discard/i }).click();
+  });
+
   await step('GM resets the game and the player returns to the intro', async () => {
     await gm.locator('summary', { hasText: 'Danger zone' }).click();
     gm.once('dialog', (d) => d.accept('RESET'));

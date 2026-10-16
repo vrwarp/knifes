@@ -3,7 +3,7 @@ import { api, errorText } from '../api';
 import type { ArchiveMessage, PlayerView } from '../types';
 import { Typewriter } from './common';
 
-export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveMessage[]; busy: boolean }) {
+export function Archive({ view, feed, busy, active = true }: { view: PlayerView; feed: ArchiveMessage[]; busy: boolean; active?: boolean }) {
   const [messages, setMessages] = useState<ArchiveMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -12,13 +12,17 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
   const loadedIds = useRef<Set<number> | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const load = () =>
     api<{ messages: ArchiveMessage[] }>('/api/player/archive')
       .then((r) => {
         setMessages(r.messages);
         loadedIds.current = new Set(r.messages.map((m) => m.id));
+        setLoadErr(null);
       })
-      .catch((e) => setErr(errorText(e)));
+      .catch((e) => setLoadErr(errorText(e)));
+  useEffect(() => {
+    void load();
   }, []);
   const absorb = (incoming: ArchiveMessage[]) => {
     setMessages((m) => {
@@ -33,9 +37,10 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
   useEffect(() => {
     absorb(feed);
   }, [feed]);
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: 'end' });
-  }, [messages.length, busy]);
+  const scrollDown = () => {
+    if (active) bottom.current?.scrollIntoView({ block: 'end' });
+  };
+  useEffect(scrollDown, [messages.length, busy, active]);
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,12 +59,22 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
     }
   };
 
+  // Integrity climbs as he opens files and asks questions, and reads 100 once the case is closed.
   const unlockedCount = Object.values(view.evidence.unlocked).filter(Boolean).length;
-  const integrity = Math.min(89, 41 + unlockedCount * 12);
+  const asked = messages.filter((m) => m.role === 'user').length;
+  const integrity = view.stage === 'solved' ? 100 : Math.min(89, 41 + unlockedCount * 8 + Math.min(asked, 6) * 4);
   const disabled = !view.archive.enabled || view.archive.locked || busy || sending;
   return (
     <div className="frame" style={{ padding: 12 }}>
-      <p className="tiny">ARCHIVE // records mainframe // integrity {integrity}%</p>
+      <p className="tiny">ARCHIVE · integrity {integrity}%</p>
+      {loadErr ? (
+        <div className="error" role="alert">
+          {loadErr}{' '}
+          <button className="btn small" onClick={() => void load()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
       <div className="chat" role="log" aria-live="polite">
         <div className="msg assistant">
           <span className="who">ARCHIVE</span>
@@ -69,7 +84,7 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
           <div key={m.id} className={`msg ${m.role}`}>
             <span className="who">{m.role === 'user' ? 'Detective' : m.role === 'assistant' ? 'ARCHIVE' : 'LINK'}</span>
             {m.role === 'assistant' && m.id === typingId ? (
-              <Typewriter text={m.text} speed={4} onDone={() => bottom.current?.scrollIntoView({ block: 'end' })} />
+              <Typewriter text={m.text} speed={4} onProgress={scrollDown} onDone={scrollDown} />
             ) : (
               <span className="text">{m.text}</span>
             )}

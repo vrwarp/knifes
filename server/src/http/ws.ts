@@ -37,9 +37,13 @@ export class Hub {
       }
       this.wss.handleUpgrade(req, socket, head, (ws) => {
         this.sockets.set(ws, role);
-        ws.on('close', () => this.sockets.delete(ws));
-        ws.on('error', () => this.sockets.delete(ws));
+        const gone = () => {
+          if (this.sockets.delete(ws) && role === 'player') this.route(this.service.snapshotMessage());
+        };
+        ws.on('close', gone);
+        ws.on('error', gone);
         this.send(ws, role, this.service.snapshotMessage());
+        if (role === 'player') this.route(this.service.snapshotMessage());
       });
     });
   }
@@ -63,7 +67,7 @@ export class Hub {
     let payload: unknown;
     switch (m.type) {
       case 'state':
-        payload = role === 'gm' ? { type: 'gm', state: m.state, config: m.config } : { type: 'state', player: m.player };
+        payload = role === 'gm' ? { type: 'gm', state: m.state, config: m.config, players: this.counts().players } : { type: 'state', player: m.player };
         break;
       case 'event':
         if (role !== 'gm') return;

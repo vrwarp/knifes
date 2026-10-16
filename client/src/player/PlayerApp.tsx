@@ -55,6 +55,7 @@ export function PlayerApp() {
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [pin, setPin] = useState<{ stage: StageId; until: number } | null>(null);
   const [everConnected, setEverConnected] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [seen, setSeen] = useState(readSeen);
 
   const shownStage = useRef<StageId>('intro');
@@ -110,6 +111,32 @@ export function PlayerApp() {
       void refresh();
     }
   }, [connected, refresh]);
+
+  // Without the socket, nothing from the GMs would arrive: poll instead, and say so after five seconds.
+  useEffect(() => {
+    if (connected) {
+      setOffline(false);
+      return;
+    }
+    const banner = window.setTimeout(() => setOffline(true), 5000);
+    const poll = window.setInterval(() => void refresh(), 10_000);
+    return () => {
+      window.clearTimeout(banner);
+      window.clearInterval(poll);
+    };
+  }, [connected, refresh]);
+
+  // A transmission takes over the screen: drop the keyboard and put focus on Acknowledge.
+  useEffect(() => {
+    if (!toast) return;
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') acknowledge();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -197,7 +224,7 @@ export function PlayerApp() {
 
   return (
     <div className="shell">
-      {everConnected && !connected ? <div className="link-down">Link lost · reconnecting</div> : null}
+      {(everConnected && !connected) || offline ? <div className="link-down">Link lost · reconnecting</div> : null}
       <div className="topbar">
         <span>
           <span className={`dot ${connected ? 'on' : ''}`} aria-hidden="true" />
@@ -205,18 +232,18 @@ export function PlayerApp() {
         </span>
         {view.hints.length ? (
           <button className={`btn small ${unread ? 'unread' : 'ghost'}`} onClick={openList}>
-            Transmissions ({view.hints.length}){unread ? ' · new' : ''}
+            Transmissions ({view.hints.length})
           </button>
         ) : null}
       </div>
       {screen}
       {toast ? (
         <div className="overlay" role="dialog" aria-modal="true" aria-label="Incoming transmission">
-          <div className="frame">
-            <Frame title="Incoming transmission // magenta channel" className="accent">
-              <Typewriter text={toast.text} speed={3} />
-            </Frame>
-            <button className="btn primary block" onClick={acknowledge}>
+          <div className="frame accent">
+            <div className="kicker">Incoming transmission</div>
+            <h1>Magenta channel</h1>
+            <Typewriter text={toast.text} speed={3} />
+            <button className="btn primary block" onClick={acknowledge} autoFocus>
               Acknowledge
             </button>
           </div>

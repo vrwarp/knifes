@@ -192,7 +192,7 @@ export interface Overview {
 
 export type WsMessage =
   | { type: 'state'; player: PlayerView }
-  | { type: 'gm'; state: GameState; config: GameConfig }
+  | { type: 'gm'; state: GameState; config: GameConfig; players?: number }
   | { type: 'event'; event: GameEvent }
   | { type: 'hint'; hint: HintPush }
   | { type: 'archive'; message: ArchiveMessage }

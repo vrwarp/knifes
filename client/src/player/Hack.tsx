@@ -62,7 +62,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
           ))}
         </div>,
       );
-    } else if (i === h.rows.length && !locked && !lockPassed) {
+    } else if (i === h.rows.length && !locked && !lockPassed && !h.solved) {
       const letters = input.toUpperCase().replace(/[^A-Z]/g, '').padEnd(h.length).split('');
       rows.push(
         <div className="trow" key={i} style={rowStyle} aria-hidden="true">

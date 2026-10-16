@@ -60,14 +60,19 @@ const RESET_CONSEQUENCE: Partial<Record<StageId, string>> = {
 };
 
 export function ProgressPanel({ state, config, stages }: { state: GameState; config: GameConfig; stages: StageId[] }) {
-  const now = useNow(30_000);
+  const now = useNow(1000);
   const visible = stages.filter((s) => s !== 'geo' || config.geo.mode !== 'off');
   const idx = stages.indexOf(state.stage);
   const nextStage = visible[visible.indexOf(state.stage) + 1] ?? state.stage;
   const [jump, setJump] = useState<StageId>(nextStage);
-  const [resetScope, setResetScope] = useState<StageId>('hack');
+  const resettable: StageId[] = (['geo', 'gate', 'hack', 'investigation'] as StageId[]).filter((s) => s !== 'geo' || config.geo.mode !== 'off');
+  const [resetScope, setResetScope] = useState<StageId>(resettable.includes(state.stage) ? state.stage : 'hack');
   const { busy, msg, run } = useAction();
   useEffect(() => setJump(nextStage), [nextStage]);
+  useEffect(() => {
+    if (resettable.includes(state.stage)) setResetScope(state.stage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.stage]);
 
   const durationOf = (s: StageId): string | null => {
     const start = state.stageTimes[s];
@@ -93,6 +98,7 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
         })}
       </div>
       <div className="row" style={{ marginTop: 12 }}>
+        <span className="tiny">Jump to</span>
         <select value={jump} onChange={(e) => setJump(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to jump to">
           {visible.map((s) => (
             <option key={s} value={s}>
@@ -113,8 +119,9 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
         </button>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
+        <span className="tiny">Reset</span>
         <select value={resetScope} onChange={(e) => setResetScope(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to reset">
-          {(['geo', 'gate', 'hack', 'investigation'] as StageId[]).filter((s) => s !== 'geo' || config.geo.mode !== 'off').map((s) => (
+          {resettable.map((s) => (
             <option key={s} value={s}>
               {STAGE_NAME[s]}
             </option>
@@ -221,7 +228,7 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
                   <dt className={g ? (g.pass ? 'green' : 'red') : ''}>{k}</dt>
                   <dd>
                     {v || <span className="muted">(empty)</span>}
-                    {g ? <div className="muted small">{g.reason}</div> : null}
+                    {g && !g.pass ? <div className="muted small">{g.reason}</div> : null}
                   </dd>
                 </div>
               );
@@ -240,11 +247,14 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
   const [rationale, setRationale] = useState<string | null>(null);
   const { busy, msg, run } = useAction();
   const quick = config.hints.quick[state.stage] ?? [];
+  const [drafting, setDrafting] = useState(false);
   const push = (t: string) =>
     run(async () => {
       await api('/api/gm/hint', { json: { text: t } });
-      setText('');
-      setRationale(null);
+      if (t === text) {
+        setText('');
+        setRationale(null);
+      }
     }, 'Pushed to his screen');
   return (
     <div className="panel hints">
@@ -281,17 +291,23 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
           disabled={busy}
           onClick={() =>
             run(async () => {
-              const r = await api<{ hint: string; rationale: string; source: string }>('/api/gm/hint/draft', { json: { strength }, timeoutMs: 120_000 });
-              setText(r.hint);
-              setRationale(`${r.rationale} [${r.source}]`);
+              setDrafting(true);
+              try {
+                const r = await api<{ hint: string; rationale: string; source: string }>('/api/gm/hint/draft', { json: { strength }, timeoutMs: 120_000 });
+                setText(r.hint);
+                setRationale(`${r.rationale} [${r.source}]`);
+              } finally {
+                setDrafting(false);
+              }
             })
           }
         >
           Draft
         </button>
+        {drafting ? <span className="small amber cursor">Drafting</span> : null}
       </div>
       {state.hints.length ? (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 10 }} className="pushed">
           <h3>Pushed</h3>
           {[...state.hints].reverse().map((h) => (
             <div key={h.id} className="small">
@@ -343,7 +359,7 @@ function describe(e: GameEvent): { text: string; cls: string } {
     case 'deduction_submit':
       return { text: `attempt ${s('attempt')} ${p.pass ? 'PASS' : 'FAIL'} · ${s('slots')} (${s('source') === 'ai' ? 'AI' : 'keywords'})`, cls: p.pass ? 'ok' : 'fail' };
     case 'hint_pushed':
-      return { text: `hint: ${s('text').slice(0, 100)}`, cls: '' };
+      return { text: `hint: ${s('text').slice(0, 100)}${s('text').length > 100 ? '…' : ''}`, cls: '' };
     case 'gm_action':
       return { text: `${s('action')}${p.stage ? ` ${s('stage')}` : ''}${p.kind ? ` ${s('kind')}` : ''}`, cls: '' };
     case 'ai_error':
@@ -386,7 +402,7 @@ export function LiveLog({ events }: { events: GameEvent[] }) {
           const d = describe(e);
           return (
             <div key={e.id} className={`ev ${d.cls} ${laneOf(e.type) === 'gm' ? 'gm' : ''}`}>
-              <span className="t">{fmt(e.ts).slice(0, 5)}</span>
+              <span className="t">{fmt(e.ts)}</span>
               <span className="k">{e.type.replace(/_/g, ' ')}</span>
               <span className="p">{d.text}</span>
             </div>
@@ -446,7 +462,14 @@ export function ReportPanel({ state }: { state: GameState }) {
         >
           {state.report.markdown ? 'Regenerate' : 'Generate'} with AI
         </button>
-        <button className="btn small" disabled={busy || !state.report.markdown} onClick={() => run(() => api('/api/gm/report/publish', { json: { published: !state.report.published } }))}>
+        <button
+          className={`btn small ${state.report.published ? 'ghost' : ''}`}
+          disabled={busy || !state.report.markdown}
+          onClick={() => {
+            if (state.report.published && !window.confirm('Take the case file off his screen?')) return;
+            void run(() => api('/api/gm/report/publish', { json: { published: !state.report.published } }));
+          }}
+        >
           {state.report.published ? 'Unpublish from player' : 'Publish to player'}
         </button>
         <button className="btn small ghost" disabled={!state.report.markdown} onClick={() => setOpen((o) => !o)}>

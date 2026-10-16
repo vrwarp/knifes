@@ -164,5 +164,6 @@ export const LEDGER_FRAGMENTS: Record<string, string> = {
   pendelton: 'Arthur Pendelton. Director since 1996. Deceased 04:15. Final credentials used at 04:09: lockdown, wipe, eject, courier dispatch.',
   nightshade: 'S30-TX "Nightshade-7": synthetic neurotoxin. Thirty minute onset. Section 30 custody record: one vial, signed out of the lab safe. Sign-out record lost in the wipe.',
   syndicate: 'Open file: an international syndicate has made three approaches to Section 30 personnel in the last year seeking the Ledger. Offer reportedly exceeds eight figures.',
+  jimmy: 'Detective Jimmy. Registry entry 1996. Thirty years on file. Recovery authority granted by the Director\'s final dispatch at 04:09. Clearance: everything that survived.',
   courier: 'Emergency courier dispatch: sealed envelope, black wax, hand delivery to Detective Jimmy. Dispatched by the Director at 04:09.',
 };

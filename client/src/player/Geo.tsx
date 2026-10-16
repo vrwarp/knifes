@@ -39,11 +39,11 @@ function MapPicker({ center, zoom, onPick }: { center: LatLng; zoom: number; onP
     setLocked(!on);
   };
   return (
-    <div className="map-wrap">
+    <div className={`map-wrap ${locked ? 'locked' : ''}`}>
       <div className="map" ref={ref} aria-label="Map" />
       {locked ? (
-        <button type="button" className="map-lock btn" onClick={() => setInteractive(true)}>
-          Tap to unlock map
+        <button type="button" className="map-lock" onClick={() => setInteractive(true)}>
+          <span className="map-lock-label">Tap to unlock map</span>
         </button>
       ) : (
         <button type="button" className="btn small map-unlock-btn" onClick={() => setInteractive(false)}>
@@ -93,7 +93,7 @@ export function Geo({ view, setView }: StageProps) {
     <Frame title="Field transmission" className={`accent ${confirmed && puzzle ? 'success' : ''}`}>
       <Typewriter text={g.briefing} speed={3} />
       {g.photos.length ? (
-        <div className="photos">
+        <div className="photos" aria-label="Field images, tap one to enlarge">
           {g.photos.map((p, i) => (
             <img key={p} src={`/uploads/${p}`} alt={`Field image ${i + 1}. Tap to enlarge.`} onClick={() => setZoomed(`/uploads/${p}`)} />
           ))}
@@ -101,6 +101,7 @@ export function Geo({ view, setView }: StageProps) {
       ) : puzzle ? (
         <p className="muted small">[IMAGE BURST NOT YET RECOVERED]</p>
       ) : null}
+      {g.photos.length ? <p className="tiny">Tap a photo to enlarge it.</p> : null}
       {!confirmed ? (
         <>
           <p className="small muted" style={{ marginBottom: 0 }}>

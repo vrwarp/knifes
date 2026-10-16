@@ -3,7 +3,7 @@ import { aiLive, runAgent } from './agent.js';
 
 const REPORT_SYSTEM_PROMPT = `You write the closing case file for a live murder-mystery party game, in the voice of Section 30, an off-the-books counter-cyberintelligence cell. The detective is Jimmy, who is celebrating his thirtieth birthday; the case is the death of Director Arthur Pendelton. You receive the full activity log of the evening.
 
-Write in Markdown, 350 to 600 words, with these headings: CASE FILE 30-0415, Recovery Chain, The ARCHIVE Interrogation, The Deduction, Commendation. Stay in-world: dry, affectionate, lightly wry about any lockouts or wrong turns, never mocking. Quote one or two of the detective's actual ARCHIVE questions if any were asked. Use the real timestamps and counts from the log. Do not mention AI, prompts, game masters or the app. End with the line "Case closed. Happy thirtieth, Detective."`;
+Write in Markdown, 350 to 600 words, with these headings: CASE FILE 30-0415, Recovery Chain, The ARCHIVE Interrogation, The Deduction, Commendation. Stay in-world: dry, affectionate, lightly wry about any lockouts or wrong turns, never mocking. Quote one or two of the detective's actual ARCHIVE questions if any were asked. Use the real timestamps and counts from the log. Do not mention AI, prompts, game masters or the app. The Detective has already seen the line "Happy thirtieth"; do not repeat it. End with the line "Filed by ARCHIVE. Integrity restored."`;
 
 function fmt(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-US', { hour12: false });
@@ -34,7 +34,7 @@ export function mockReport(config: GameConfig, state: GameState, events: GameEve
   return `# CASE FILE 30-0415
 
 ## Recovery Chain
-Detective Jimmy engaged recovery protocol 30-A${state.startedAt ? ` at ${fmt(state.startedAt)}` : ''}. The code gate fell on attempt ${state.gate.attempts || 1}. The mirror partition yielded after ${state.hack.guesses.length} key attempts${state.hack.rounds ? ` and ${state.hack.rounds} reset(s)` : ''}.
+Detective Jimmy engaged recovery protocol 30-A${state.startedAt ? ` at ${fmt(state.startedAt)}` : ''}. The code gate fell on attempt ${state.gate.attempts || 1}. The mirror partition yielded after ${state.hack.guesses.length} key attempt${state.hack.guesses.length === 1 ? '' : 's'}${state.hack.rounds ? ` and ${state.hack.rounds} reset${state.hack.rounds === 1 ? '' : 's'}` : ''}.
 
 ## The ARCHIVE Interrogation
 ${archive.length ? `The Detective put ${state.archive.messageCount} queries to the ARCHIVE.${asked.length ? ` Among them: "${asked.map((m) => m.text).join('" and "')}".` : ''}` : 'The Detective did not consult the ARCHIVE. The records note this with something like admiration.'}
@@ -45,7 +45,7 @@ ${state.deduction.passed ? `Verified on attempt ${state.deduction.attempts}.` : 
 ## Commendation
 ${config.title}: closed. Pendelton spent thirty years deciding whom to trust. His last decision held.
 
-Case closed. Happy thirtieth, Detective.`;
+Filed by ARCHIVE. Integrity restored.`;
 }
 
 export async function generateReport(

@@ -4,11 +4,32 @@ export const reduceMotion = (): boolean =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Reveals text a few characters at a time. Tap to show everything at once. Honors reduced motion. */
-export function Typewriter({ text, speed = 2, className = '', onDone }: { text: string; speed?: number; className?: string; onDone?: () => void }) {
+export function Typewriter({
+  text,
+  speed = 2,
+  className = '',
+  onDone,
+  onProgress,
+}: {
+  text: string;
+  speed?: number;
+  className?: string;
+  onDone?: () => void;
+  onProgress?: () => void;
+}) {
   const [n, setN] = useState(() => (reduceMotion() ? text.length : 0));
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const onProgressRef = useRef(onProgress);
+  onProgressRef.current = onProgress;
   const fired = useRef(false);
+  const timer = useRef<number | null>(null);
+  const stop = () => {
+    if (timer.current !== null) {
+      window.clearInterval(timer.current);
+      timer.current = null;
+    }
+  };
   useEffect(() => {
     fired.current = false;
     if (reduceMotion()) {
@@ -17,12 +38,14 @@ export function Typewriter({ text, speed = 2, className = '', onDone }: { text: 
     }
     setN(0);
     let i = 0;
-    const timer = window.setInterval(() => {
+    timer.current = window.setInterval(() => {
       i += speed;
-      setN(Math.min(i, text.length));
-      if (i >= text.length) window.clearInterval(timer);
+      const next = Math.min(i, text.length);
+      setN((c) => Math.max(c, next));
+      onProgressRef.current?.();
+      if (i >= text.length) stop();
     }, 24);
-    return () => window.clearInterval(timer);
+    return stop;
   }, [text, speed]);
   const done = n >= text.length;
   useEffect(() => {
@@ -31,8 +54,12 @@ export function Typewriter({ text, speed = 2, className = '', onDone }: { text: 
       onDoneRef.current?.();
     }
   }, [done]);
+  const skip = () => {
+    stop();
+    setN(text.length);
+  };
   return (
-    <pre className={`typed ${done ? '' : 'cursor'} ${className}`} onClick={() => setN(text.length)}>
+    <pre className={`typed ${done ? '' : 'cursor'} ${className}`} onClick={skip}>
       {text.slice(0, n)}
     </pre>
   );

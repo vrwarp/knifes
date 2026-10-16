@@ -4,7 +4,7 @@ import { Markdown } from '../md';
 import type { ArchiveMessage, GameConfig, GameEvent, GameState, Overview } from '../types';
 import { useSocket } from '../ws';
 import { ConfigEditor } from './ConfigEditor';
-import { ArchivePanel, HintsPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel, STAGE_NAME, elapsed, plural, useNow } from './panels';
+import { ArchivePanel, HintsPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel, STAGE_NAME, elapsed, fmt, plural, useNow } from './panels';
 
 const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
   auth_token: 'bearer token',
@@ -14,14 +14,20 @@ const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
   none: 'no credential',
 };
 
-/** The across-the-room strip: where he is, how long he has been there, what is happening. */
-function NowStrip({ state, config }: { state: GameState; config: GameConfig }) {
-  const now = useNow(15_000);
+const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'evidence_unlock', 'archive_user', 'deduction_submit']);
+const PUZZLE_STAGES = new Set(['geo', 'gate', 'hack', 'investigation']);
+
+/** The across-the-room strip: where he is, how long since he last did anything, what is happening. */
+function NowStrip({ state, config, events, players }: { state: GameState; config: GameConfig; events: GameEvent[]; players: number | null }) {
+  const now = useNow(1000);
   const since = state.stageTimes[state.stage] ?? state.startedAt;
-  const ms = since ? now - since : null;
-  const mins = ms === null ? null : Math.floor(ms / 60_000);
-  const stuck = mins !== null && state.stage !== 'solved' && state.stage !== 'intro' && mins >= 8;
-  const stuck2 = stuck && mins !== null && mins >= 15;
+  const inStage = since ? now - since : null;
+  const lastPlayer = [...events].reverse().find((e) => PLAYER_TYPES.has(e.type))?.ts ?? null;
+  const idleSince = Math.max(lastPlayer ?? 0, since ?? 0) || null;
+  const idle = idleSince ? now - idleSince : null;
+  const stuck = PUZZLE_STAGES.has(state.stage) && idle !== null && idle >= 5 * 60_000;
+  const stuck2 = stuck && idle !== null && idle >= 10 * 60_000;
+  const aiError = [...events].reverse().find((e) => e.type === 'ai_error' && now - e.ts < 3 * 60_000);
   const facts: string[] = [];
   switch (state.stage) {
     case 'intro':
@@ -52,13 +58,20 @@ function NowStrip({ state, config }: { state: GameState; config: GameConfig }) {
   return (
     <div className={`now ${stuck2 ? 'stuck2' : stuck ? 'stuck' : ''}`} aria-live="polite">
       <span className="stage">{STAGE_NAME[state.stage]}</span>
-      {ms !== null ? <span className="elapsed">{elapsed(ms)}</span> : null}
+      {inStage !== null ? <span className="elapsed" title="time in this stage">{elapsed(inStage)}</span> : null}
+      {idle !== null && idle >= 60_000 && state.stage !== 'solved' ? <span className="fact">idle <b>{elapsed(idle)}</b></span> : null}
       {facts.map((f, i) => (
         <span key={i} className="fact">
           {f}
         </span>
       ))}
-      {stuck ? <span className="fact"><b>{stuck2 ? 'stuck, consider a strong hint or a skip' : 'slowing down, a nudge may help'}</b></span> : null}
+      {players !== null ? <span className={`fact ${players ? '' : 'red'}`}>{players ? `phone linked${players > 1 ? ` (${players})` : ''}` : 'NO PHONE LINKED'}</span> : null}
+      {stuck ? (
+        <span className="fact">
+          <b>{stuck2 ? 'stuck, consider a strong hint or a skip' : 'quiet for a while, a nudge may help'}</b>
+        </span>
+      ) : null}
+      {aiError ? <span className="warn red">AI error {fmt(aiError.ts)} · {String(aiError.payload.where ?? '')}: {String(aiError.payload.error ?? '').slice(0, 120)}</span> : null}
       {geoWarn ? <span className="warn">Location puzzle has no target set: any pin will pass. Set it in Game configuration → Location puzzle.</span> : null}
     </div>
   );
@@ -73,6 +86,7 @@ export function GmApp() {
   const [archive, setArchive] = useState<ArchiveMessage[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [everConnected, setEverConnected] = useState(false);
+  const [players, setPlayers] = useState<number | null>(null);
 
   useEffect(() => {
     api('/api/gm/me')
@@ -99,7 +113,10 @@ export function GmApp() {
   const connected = useSocket(
     'gm',
     (m) => {
-      if (m.type === 'gm') setData((d) => (d ? { ...d, state: m.state, config: m.config } : d));
+      if (m.type === 'gm') {
+        setData((d) => (d ? { ...d, state: m.state, config: m.config } : d));
+        if (typeof m.players === 'number') setPlayers(m.players);
+      }
       else if (m.type === 'event') setEvents((ev) => (ev.some((x) => x.id === m.event.id) ? ev : [...ev.slice(-599), m.event]));
       else if (m.type === 'archive') setArchive((a) => (a.some((x) => x.id === m.message.id) ? a : [...a, m.message]));
     },
@@ -162,7 +179,7 @@ export function GmApp() {
         <div className="topbar">
           <span>
             <span className={`dot ${connected ? 'on' : ''}`} aria-hidden="true" />
-            GM console · {config.title}
+            GM console<span className="hide-narrow"> · {config.title}</span>
           </span>
           <span className="row">
             <span className={data.ai.mode !== 'live' ? 'amber' : data.ai.auth === 'ok' ? 'green' : 'red'} title={data.ai.credentialLabel}>
@@ -180,14 +197,20 @@ export function GmApp() {
           </span>
         </div>
         {err ? <div className="error">{err}</div> : null}
-        <NowStrip state={state} config={config} />
-        <div className="panels">
-          <ProgressPanel state={state} config={config} stages={data.stages} />
-          <HintsPanel state={state} config={config} />
-          <PlayerStatus state={state} config={config} events={events} />
-          <LiveLog events={events} />
-          <ArchivePanel archive={archive} state={state} />
-          <ReportPanel state={state} />
+        <NowStrip state={state} config={config} events={events} players={players} />
+        <div className="cols">
+          <div className="col">
+            <ProgressPanel state={state} config={config} stages={data.stages} />
+            <LiveLog events={events} />
+          </div>
+          <div className="col">
+            <HintsPanel state={state} config={config} />
+            <ArchivePanel archive={archive} state={state} />
+          </div>
+          <div className="col">
+            <PlayerStatus state={state} config={config} events={events} />
+            <ReportPanel state={state} />
+          </div>
         </div>
         {running ? (
           <details className="section" style={{ marginTop: 16 }}>

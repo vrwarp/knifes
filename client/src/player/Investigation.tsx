@@ -18,9 +18,16 @@ export function Investigation({ view, setView, refresh, hold, feed, busy }: Stag
           </button>
         ))}
       </div>
-      {tab === 'evidence' ? <Evidence view={view} /> : null}
-      {tab === 'archive' ? <Archive view={view} feed={feed} busy={busy} /> : null}
-      {tab === 'deduction' ? <Deduction view={view} setView={setView} refresh={refresh} hold={hold} /> : null}
+      {/* All three stay mounted so flipping tabs keeps his draft, his query and his open files. */}
+      <div hidden={tab !== 'evidence'}>
+        <Evidence view={view} />
+      </div>
+      <div hidden={tab !== 'archive'}>
+        <Archive view={view} feed={feed} busy={busy} active={tab === 'archive'} />
+      </div>
+      <div hidden={tab !== 'deduction'}>
+        <Deduction view={view} setView={setView} refresh={refresh} hold={hold} />
+      </div>
     </>
   );
 }

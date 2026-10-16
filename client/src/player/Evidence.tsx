@@ -82,29 +82,40 @@ export function Evidence({ view }: { view: PlayerView }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  if (err) return <div className="error">{err}</div>;
+  if (err)
+    return (
+      <div className="error" role="alert">
+        {err}{' '}
+        <button className="btn small" onClick={() => void load()}>
+          Retry
+        </button>
+      </div>
+    );
   if (!files) return <p className="muted cursor">Opening vault</p>;
   const highlight = files.toxicology !== null;
 
   return (
     <div>
-      <p className="tiny">Evidence vault // recovered from Drive 30-BETA</p>
+      <p className="tiny">Evidence vault · Drive 30\u2011BETA</p>
       <File name="00_Directors_Note.txt" locked={false} defaultOpen>
         <pre className="typed small">{files.note}</pre>
       </File>
       <File name="01_Vault_Access_Logs.csv" locked={files.locked.logs}>
         {files.logs ? (
           <>
-            {highlight ? <p className="tiny amber">Rows inside the thirty-minute window are marked.</p> : null}
+            {highlight ? <p className="tiny amber">Rows from 03:30 to 04:00 are marked.</p> : null}
             <table className="log">
               <tbody>
                 {files.logs.rows.map((r, i) => (
                   <tr key={i} className={highlight && inWindow(r.time) ? 'window' : ''}>
                     <td>{r.time}</td>
-                    <td>{r.badge}</td>
                     <td>
                       {r.name ? <b>{r.name}</b> : null}
-                      {r.door ? <span className="muted"> · {r.door}</span> : null}
+                      <span className="muted">
+                        {r.name ? ' · ' : ''}
+                        {r.badge}
+                        {r.door ? ` · ${r.door}` : ''}
+                      </span>
                       <div>{r.event}</div>
                     </td>
                   </tr>
