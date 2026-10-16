@@ -98,6 +98,24 @@ cd client && npm run build
   Nothing blocks the game.
 - Costs: the ARCHIVE and copilot calls are short. A full evening is expected to cost a few dollars at Opus 5.5 rates.
 
+### Continuous integration and Docker Hub
+
+Three GitHub Actions workflows live in `.github/workflows`:
+
+| Workflow | Runs on | What it does |
+| - | - | - |
+| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server, builds the client, then runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size). Reports are uploaded as artifacts. |
+| `docker-dry-run.yml` | pull requests only | Builds the image for `linux/amd64` without pushing, boots it, and checks `/healthz`, the player API and the bundled `claude` binary. |
+| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub. Can also be started by hand from the Actions tab. |
+
+Before the first merge, add these under Settings > Secrets and variables > Actions:
+
+- Secret `DOCKERHUB_USERNAME`: your Docker Hub user name.
+- Secret `DOCKERHUB_TOKEN`: a Docker Hub access token with Read & Write scope.
+- Variable `DOCKERHUB_REPO` (optional): the image name, for example `yourname/section30`. Defaults to `<username>/section30`.
+
+On the NAS, point Container Manager at that image and pull `latest` after each merge.
+
 ### End-to-end tests
 
 The Playwright suite in `e2e/tests` runs every test on four projects: Chromium and WebKit, each at

@@ -1,0 +1,57 @@
+name: Docker dry run
+
+# Pull requests only: build the image exactly as the publish workflow would, never push it,
+# then boot it and check that it answers its health check.
+on:
+  pull_request:
+
+concurrency:
+  group: docker-dry-run-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and boot the image (no push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: section30:dry-run
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Boot the container and wait for /healthz
+        run: |
+          docker run -d --name s30 -p 8080:8080 \
+            -e GM_PASSWORD=ci-dry-run -e AI_MODE=mock \
+            section30:dry-run
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz; then echo; echo "healthy after ${i}s"; break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/healthz > /dev/null
+          curl -fsS http://127.0.0.1:8080/ | grep -qi '<div id="root"'
+          curl -fsS http://127.0.0.1:8080/api/player/state | grep -q '"stage":"intro"'
+
+      - name: Check the bundled Claude binary runs as the app user
+        run: docker exec s30 claude --version
+
+      - name: Show the image size
+        run: docker image ls section30:dry-run
+
+      - name: Container logs
+        if: ${{ always() }}
+        run: docker logs s30 || true
