@@ -144,22 +144,24 @@ export const ARCHIVE_ALLOWED_TOOLS = ['mcp__archive__*'];
 export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   const q = text.toLowerCase();
   const u = ctx.state.evidence.unlocked;
-  const has = (...words: string[]) => words.some((w) => q.includes(w));
+  // Whole words for alphabetic terms so "toxicology" never matches "log"; plain substring for tokens with digits or punctuation.
+  const has = (...words: string[]) =>
+    words.some((w) => (/^[a-z ]+$/.test(w) ? new RegExp(`\\b${w.replace(/ /g, '\\s+')}\\b`).test(q) : q.includes(w)));
   if (has('who did', 'killer', 'murderer', 'who killed', 'guilty', 'who poisoned')) {
     return 'ARCHIVE holds records, not conclusions.\nThe access log, the intercept notes and the toxicology desk bear on your question.\nAsk for them by name.';
   }
   if (has('camera')) {
     return u.logs ? CAMERA_NOTES.join('\n') : LOCKED('Camera notes');
   }
-  if (has('log', 'badge', 'office', 'entered', 'door', '03:', '3:4', 'who was')) {
-    if (!u.logs) return LOCKED('Access log');
-    const rows = ACCESS_LOG.filter((r) => r.door.includes("Director's office") && r.time >= '03:30' && r.time <= '04:00');
-    return `Director's office door, 03:30 to 04:00:\n${rows.map((r) => `${r.time} ${r.badge} ${r.name} :: ${r.event}`).join('\n')}\n[SEGMENT INTACT] Full log available on request.`;
-  }
-  if (has('tox', 'poison', 'tea', 'cause', 'neuro', 'nightshade')) {
+  if (has('tox', 'toxicology', 'poison', 'tea', 'cause', 'neuro', 'nightshade')) {
     return u.toxicology
       ? 'Toxicology desk, preliminary:\nAgent S30-TX Nightshade-7. Ingested. Onset thirty minutes, plus or minus two.\nResidue in the desk cup, Earl Grey with honey. Residue in the gifted tin.\nBrass letter opener on the desk: no blood, no toxin. Not a weapon.\nTime of death 04:15.'
       : LOCKED('Toxicology report');
+  }
+  if (has('log', 'logs', 'badge', 'badges', 'office', 'entered', 'door', '03:', '3:4', 'who was')) {
+    if (!u.logs) return LOCKED('Access log');
+    const rows = ACCESS_LOG.filter((r) => r.door.includes("Director's office") && r.time >= '03:30' && r.time <= '04:00');
+    return `Director's office door, 03:30 to 04:00:\n${rows.map((r) => `${r.time} ${r.badge} ${r.name} :: ${r.event}`).join('\n')}\n[SEGMENT INTACT] Full log available on request.`;
   }
   if (has('intercept', 'audio', 'recording', 'sound', 'noise')) {
     return u.audio ? `Intercept notes:\n${ctx.config.evidence.audioNotes}` : LOCKED('Ambient intercept');
