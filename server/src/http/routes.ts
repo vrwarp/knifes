@@ -1,0 +1,184 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import express, { type NextFunction, type Request, type Response, Router } from 'express';
+import multer from 'multer';
+import { env } from '../env.js';
+import { HttpError, type GameService } from '../service.js';
+import { STAGE_ORDER, type StageId } from '../types.js';
+import { GM_COOKIE, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
+
+const AUDIO_TYPES: Record<string, string> = {
+  'audio/mpeg': 'mp3',
+  'audio/mp3': 'mp3',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/mp4': 'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/aac': 'aac',
+  'audio/ogg': 'ogg',
+  'audio/webm': 'webm',
+};
+const IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 40 * 1024 * 1024 } });
+
+function str(v: unknown, max = 500): string {
+  return typeof v === 'string' ? v.slice(0, max) : '';
+}
+
+function num(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(n)) throw new HttpError(400, 'Expected a number');
+  return n;
+}
+
+export function playerRouter(service: GameService): Router {
+  const r = Router();
+  r.use(playerAuth);
+
+  r.get('/state', (_req, res) => res.json(service.view()));
+  r.post('/start', (_req, res) => {
+    service.start();
+    res.json(service.view());
+  });
+  r.post('/geo/guess', (req, res) => res.json(service.geoGuess(num(req.body?.lat), num(req.body?.lng))));
+  r.post('/geo/proceed', (_req, res) => {
+    service.geoProceed();
+    res.json(service.view());
+  });
+  r.post('/gate', (req, res) => res.json({ ok: service.gateAttempt(str(req.body?.code, 80)) }));
+  r.post('/hack/guess', (req, res) => res.json(service.hackGuess(str(req.body?.word, 20))));
+  r.post('/hack/retry', (_req, res) => {
+    service.hackRetry();
+    res.json(service.view());
+  });
+  r.post('/reveal/continue', (_req, res) => {
+    service.revealContinue();
+    res.json(service.view());
+  });
+  r.get('/evidence', (_req, res) => res.json(service.evidenceFiles()));
+  r.post('/evidence/unlock', (req, res) => res.json(service.evidenceUnlock(str(req.body?.passcode, 80))));
+  r.get('/audio', (_req, res) => {
+    const id = service.audioPath();
+    if (!id) throw new HttpError(403, 'Intercept sealed');
+    res.sendFile(path.join(env.uploadsDir, path.basename(id)));
+  });
+  r.get('/archive', (_req, res) => res.json({ messages: service.archiveTranscript() }));
+  r.post('/archive', async (req, res) => res.json({ message: await service.archiveSend(str(req.body?.text, 4000)) }));
+  r.post('/deduction', async (req, res) => {
+    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
+    res.json(await service.deductionSubmit(body));
+  });
+  return r;
+}
+
+export function gmRouter(service: GameService): Router {
+  const r = Router();
+
+  r.post('/login', (req, res) => {
+    if (!env.gmPassword) throw new HttpError(503, 'GM_PASSWORD is not set on the server');
+    if (!checkGmPassword(str(req.body?.password, 200))) throw new HttpError(401, 'Wrong password');
+    res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), 60 * 60 * 24 * 3));
+    res.json({ ok: true });
+  });
+  r.post('/logout', (_req, res) => {
+    res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, '', 0));
+    res.json({ ok: true });
+  });
+
+  r.use(gmAuth);
+  r.get('/me', (_req, res) => res.json({ ok: true }));
+  r.get('/overview', async (_req, res) => res.json(await service.overview()));
+  r.put('/config', (req, res) => res.json({ config: service.updateConfig(req.body) }));
+  r.post('/stage', (req, res) => {
+    const stage = str(req.body?.stage, 30) as StageId;
+    if (!STAGE_ORDER.includes(stage)) throw new HttpError(400, 'Unknown stage');
+    service.setStage(stage);
+    res.json({ ok: true });
+  });
+  r.post('/reset', (req, res) => {
+    const scope = str(req.body?.scope, 30);
+    if (scope !== 'game' && !STAGE_ORDER.includes(scope as StageId)) throw new HttpError(400, 'Unknown scope');
+    service.reset(scope as 'game' | StageId);
+    res.json({ ok: true });
+  });
+  r.post('/hint', (req, res) => res.json({ hint: service.pushHint(str(req.body?.text, 1000)) }));
+  r.post('/hint/draft', async (req, res) => {
+    const strength = str(req.body?.strength, 10);
+    const s = strength === 'clear' || strength === 'strong' ? strength : 'nudge';
+    res.json(await service.draftHint(s));
+  });
+  r.post('/archive/lock', (req, res) => {
+    service.setArchiveLocked(Boolean(req.body?.locked));
+    res.json({ ok: true });
+  });
+  r.post('/archive/reset', (_req, res) => {
+    service.archiveNewSession();
+    res.json({ ok: true });
+  });
+  r.post('/report/generate', async (_req, res) => res.json(await service.generateReport()));
+  r.post('/report/publish', (req, res) => {
+    service.publishReport(Boolean(req.body?.published));
+    res.json({ ok: true });
+  });
+
+  r.post('/upload', upload.single('file'), (req, res) => {
+    const kind = req.query.kind === 'audio' ? 'audio' : req.query.kind === 'photo' ? 'photo' : null;
+    if (!kind) throw new HttpError(400, 'kind must be audio or photo');
+    const file = req.file;
+    if (!file) throw new HttpError(400, 'No file');
+    const ext = (kind === 'audio' ? AUDIO_TYPES : IMAGE_TYPES)[file.mimetype];
+    if (!ext) throw new HttpError(415, `Unsupported ${kind} type ${file.mimetype}`);
+    const id = `${kind}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+    fs.writeFileSync(path.join(env.uploadsDir, id), file.buffer);
+    service.attachUpload(kind, id);
+    res.json({ id, url: kind === 'photo' ? `/uploads/${id}` : '/api/player/audio' });
+  });
+  r.delete('/upload/:id', (req, res) => {
+    const id = path.basename(String(req.params.id));
+    const full = path.join(env.uploadsDir, id);
+    if (fs.existsSync(full)) fs.unlinkSync(full);
+    service.detachUpload(id);
+    res.json({ ok: true });
+  });
+
+  return r;
+}
+
+export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
+  if (err instanceof HttpError) {
+    res.status(err.status).json({ error: err.message });
+    return;
+  }
+  if (err instanceof multer.MulterError) {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+  const e = err as { status?: number; type?: string; message?: string };
+  if (e?.type === 'entity.parse.failed' || e?.status === 400) {
+    res.status(400).json({ error: 'Bad request' });
+    return;
+  }
+  console.error('unhandled error', err);
+  res.status(500).json({ error: 'Internal error' });
+}
+
+export function photosRouter(): Router {
+  const r = Router();
+  r.get('/:id', (req, res) => {
+    const id = path.basename(String(req.params.id));
+    if (!id.startsWith('photo-')) throw new HttpError(404, 'Not found');
+    res.sendFile(path.join(env.uploadsDir, id), (err) => {
+      if (err) res.status(404).end();
+    });
+  });
+  return r;
+}
+
+export const json = express.json;

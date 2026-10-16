@@ -1,0 +1,16 @@
+{
+  "name": "section30-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke.mjs",
+    "test": "playwright test",
+    "test:chromium": "playwright test --project=chromium-desktop --project=chromium-phone",
+    "test:webkit": "playwright test --project=webkit-desktop --project=webkit-phone"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "playwright": "^1.64.1"
+  }
+}
