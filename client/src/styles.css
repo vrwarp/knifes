@@ -233,3 +233,9 @@ details.section > summary.red { color: var(--red); }
   .cols .panel.hints { order: -1; }
   .hide-narrow { display: none; }
 }
+
+/* round 3 polish */
+.md > :first-child { margin-top: 0; }
+.chat, .log { mask-image: linear-gradient(to bottom, transparent, #000 14px); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14px); }
+input[type="file"] { min-height: 0; padding: 6px; }
+input[type="file"]::file-selector-button { background: transparent; color: var(--dim); border: 1px solid var(--line-strong); border-radius: 4px; padding: 6px 10px; font-family: inherit; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; margin-right: 10px; cursor: pointer; }

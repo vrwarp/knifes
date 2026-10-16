@@ -96,7 +96,7 @@ export function Evidence({ view }: { view: PlayerView }) {
 
   return (
     <div>
-      <p className="tiny">Evidence vault · Drive 30\u2011BETA</p>
+      <p className="tiny">{'Evidence vault · Drive 30\u2011BETA'}</p>
       <File name="00_Directors_Note.txt" locked={false} defaultOpen>
         <pre className="typed small">{files.note}</pre>
       </File>
