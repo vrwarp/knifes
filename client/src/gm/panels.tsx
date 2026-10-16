@@ -3,9 +3,36 @@ import { api, errorText } from '../api';
 import { Markdown } from '../md';
 import type { ArchiveMessage, GameConfig, GameEvent, GameState, StageId } from '../types';
 
-function fmt(ts: number | undefined | null): string {
-  return ts ? new Date(ts).toLocaleTimeString([], { hour12: false }) : '';
+export const STAGE_NAME: Record<StageId, string> = {
+  intro: 'Link 1 · intro',
+  geo: 'Field transmission',
+  gate: 'Secure line',
+  hack: 'Mirror partition',
+  reveal: 'Incident record',
+  investigation: 'Investigation',
+  solved: 'Case closed',
+};
+
+export function useNow(ms: number): number {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), ms);
+    return () => window.clearInterval(t);
+  }, [ms]);
+  return now;
 }
+
+export function fmt(ts: number | undefined | null): string {
+  return ts ? new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+}
+
+export function elapsed(ms: number): string {
+  const m = Math.floor(ms / 60_000);
+  const s = Math.floor((ms % 60_000) / 1000);
+  return m ? `${m}m${s ? ` ${s}s` : ''}` : `${s}s`;
+}
+
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function useAction() {
   const [busy, setBusy] = useState(false);
@@ -25,12 +52,30 @@ function useAction() {
   return { busy, msg, run };
 }
 
+const RESET_CONSEQUENCE: Partial<Record<StageId, string>> = {
+  geo: 'clears his map attempts and shows the field transmission again',
+  gate: 'clears his code attempts and shows the secure line again',
+  hack: 'clears his guesses and any lockout, and sends his phone back to the mirror partition',
+  investigation: 're-seals the evidence per the unlock mode and clears deduction attempts; the ARCHIVE transcript is kept',
+};
+
 export function ProgressPanel({ state, config, stages }: { state: GameState; config: GameConfig; stages: StageId[] }) {
-  const [jump, setJump] = useState<StageId>('investigation');
-  const [resetScope, setResetScope] = useState<'game' | StageId>('hack');
-  const { busy, msg, run } = useAction();
-  const idx = stages.indexOf(state.stage);
+  const now = useNow(30_000);
   const visible = stages.filter((s) => s !== 'geo' || config.geo.mode !== 'off');
+  const idx = stages.indexOf(state.stage);
+  const nextStage = visible[visible.indexOf(state.stage) + 1] ?? state.stage;
+  const [jump, setJump] = useState<StageId>(nextStage);
+  const [resetScope, setResetScope] = useState<StageId>('hack');
+  const { busy, msg, run } = useAction();
+  useEffect(() => setJump(nextStage), [nextStage]);
+
+  const durationOf = (s: StageId): string | null => {
+    const start = state.stageTimes[s];
+    if (!start) return null;
+    const after = visible.slice(visible.indexOf(s) + 1).map((x) => state.stageTimes[x]).find((t) => t);
+    return elapsed((after ?? now) - start);
+  };
+
   return (
     <div className="panel">
       <h2>Progress</h2>
@@ -38,44 +83,52 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
         {visible.map((s) => {
           const i = stages.indexOf(s);
           const cls = i < idx ? 'done' : i === idx ? 'now' : '';
+          const dur = durationOf(s);
           return (
-            <span key={s} className={`chip ${cls}`} title={fmt(state.stageTimes[s])}>
-              {s}
-              {state.stageTimes[s] ? ` ${fmt(state.stageTimes[s])}` : ''}
+            <span key={s} className={`chip ${cls}`} title={fmt(state.stageTimes[s]) || 'not reached'}>
+              {STAGE_NAME[s]}
+              {dur ? ` · ${dur}` : ''}
             </span>
           );
         })}
       </div>
       <div className="row" style={{ marginTop: 12 }}>
-        <select value={jump} onChange={(e) => setJump(e.target.value as StageId)} style={{ width: 'auto' }}>
+        <select value={jump} onChange={(e) => setJump(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to jump to">
           {visible.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {STAGE_NAME[s]}
             </option>
           ))}
         </select>
-        <button className="btn small" disabled={busy} onClick={() => run(() => api('/api/gm/stage', { json: { stage: jump } }), `Jumped to ${jump}`)}>
-          Jump / unlock
+        <button
+          className="btn small"
+          disabled={busy || jump === state.stage}
+          onClick={() => {
+            const back = stages.indexOf(jump) < idx;
+            if (back && !window.confirm(`Jump BACK to ${STAGE_NAME[jump]}? His phone will show that screen again.`)) return;
+            void run(() => api('/api/gm/stage', { json: { stage: jump } }), `${back ? 'Jumped back to' : 'Unlocked'} ${STAGE_NAME[jump]}`);
+          }}
+        >
+          {stages.indexOf(jump) < idx ? 'Jump back' : 'Unlock / skip to'}
         </button>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
-        <select value={resetScope} onChange={(e) => setResetScope(e.target.value as 'game' | StageId)} style={{ width: 'auto' }}>
-          {(['geo', 'gate', 'hack', 'investigation'] as StageId[]).map((s) => (
+        <select value={resetScope} onChange={(e) => setResetScope(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to reset">
+          {(['geo', 'gate', 'hack', 'investigation'] as StageId[]).filter((s) => s !== 'geo' || config.geo.mode !== 'off').map((s) => (
             <option key={s} value={s}>
-              reset {s}
+              {STAGE_NAME[s]}
             </option>
           ))}
-          <option value="game">reset WHOLE GAME</option>
         </select>
         <button
           className="btn small danger"
           disabled={busy}
           onClick={() => {
-            if (resetScope === 'game' && !window.confirm('Reset the whole game? Progress, log and ARCHIVE transcript are wiped. Config is kept.')) return;
-            void run(() => api('/api/gm/reset', { json: { scope: resetScope } }), `Reset ${resetScope}`);
+            if (!window.confirm(`Reset ${STAGE_NAME[resetScope]}? This ${RESET_CONSEQUENCE[resetScope] ?? 'rewinds that stage'}.`)) return;
+            void run(() => api('/api/gm/reset', { json: { scope: resetScope } }), `Reset ${STAGE_NAME[resetScope]}`);
           }}
         >
-          Reset
+          Reset stage
         </button>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
@@ -93,13 +146,30 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
           New ARCHIVE session
         </button>
       </div>
+      <details className="section" style={{ marginTop: 12, marginBottom: 0, borderColor: 'var(--red)' }}>
+        <summary className="red">Danger zone</summary>
+        <p className="small muted">Wipes progress, the log and the ARCHIVE transcript. Configuration is kept. Use after the dry run.</p>
+        <button
+          className="btn small danger"
+          disabled={busy}
+          onClick={() => {
+            if (window.prompt('Type RESET to wipe the whole game.') !== 'RESET') return;
+            void run(() => api('/api/gm/reset', { json: { scope: 'game' } }), 'Whole game reset');
+          }}
+        >
+          Reset whole game
+        </button>
+      </details>
       {msg ? <div className="small amber" style={{ marginTop: 8 }}>{msg}</div> : null}
     </div>
   );
 }
 
-export function PlayerStatus({ state, config }: { state: GameState; config: GameConfig }) {
+export function PlayerStatus({ state, config, events }: { state: GameState; config: GameConfig; events: GameEvent[] }) {
+  const now = useNow(1000);
   const r = state.deduction.lastResult;
+  const lockLeft = state.hack.lockedUntil && state.hack.lockedUntil > now ? Math.ceil((state.hack.lockedUntil - now) / 1000) : 0;
+  const lastBadCode = [...events].reverse().find((e) => e.type === 'gate_attempt' && e.payload.ok === false)?.payload.code;
   return (
     <div className="panel">
       <h2>Player status</h2>
@@ -108,17 +178,19 @@ export function PlayerStatus({ state, config }: { state: GameState; config: Game
         <dd>{fmt(state.startedAt) || 'not yet'}</dd>
         <dt>Geo</dt>
         <dd>
-          {state.geo.attempts} attempts{state.geo.lastDistanceM !== null ? `, last ${Math.round(state.geo.lastDistanceM)} m` : ''}
+          {plural(state.geo.attempts, 'attempt')}
+          {state.geo.lastDistanceM !== null ? `, last ${Math.round(state.geo.lastDistanceM)} m` : ''}
           {state.geo.solved ? ', confirmed' : ''}
         </dd>
         <dt>Gate</dt>
         <dd>
-          {state.gate.attempts} attempts, code <b>{config.gate.code}</b>
+          {plural(state.gate.attempts, 'attempt')}, code <b>{config.gate.code}</b>
+          {lastBadCode ? <span className="muted"> · last wrong: {String(lastBadCode)}</span> : null}
         </dd>
         <dt>Word puzzle</dt>
         <dd>
           secret <b>{config.hack.secret}</b> · guesses {state.hack.guesses.join(', ') || 'none'} · resets {state.hack.rounds}
-          {state.hack.lockedUntil && state.hack.lockedUntil > Date.now() ? ' · LOCKED' : ''}
+          {lockLeft ? <span className="red"> · LOCKED {lockLeft}s</span> : ''}
         </dd>
         <dt>Evidence</dt>
         <dd>
@@ -128,17 +200,19 @@ export function PlayerStatus({ state, config }: { state: GameState; config: Game
         </dd>
         <dt>ARCHIVE</dt>
         <dd>
-          {state.archive.messageCount} queries{state.archive.busy ? ', answering' : ''}
+          {plural(state.archive.messageCount, 'query').replace('querys', 'queries')}
+          {state.archive.busy ? ', answering' : ''}
           {state.archive.locked ? ', SEALED' : ''}
         </dd>
         <dt>Deduction</dt>
         <dd>
-          {state.deduction.attempts} submissions{state.deduction.passed ? ', VERIFIED' : ''}
+          {plural(state.deduction.attempts, 'submission')}
+          {state.deduction.passed ? ', VERIFIED' : ''}
         </dd>
       </dl>
       {state.deduction.lastAnswers ? (
         <div style={{ marginTop: 10 }}>
-          <h3>Last submission {r ? `(${r.source}${r.pass ? ', pass' : ', fail'})` : ''}</h3>
+          <h3>Last submission {r ? `(${r.source === 'ai' ? 'AI grader' : 'keyword grader'}, ${r.pass ? 'pass' : 'fail'})` : ''}</h3>
           <dl className="kv">
             {Object.entries(state.deduction.lastAnswers).map(([k, v]) => {
               const g = r?.slots.find((s) => s.id === k);
@@ -166,13 +240,38 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
   const [rationale, setRationale] = useState<string | null>(null);
   const { busy, msg, run } = useAction();
   const quick = config.hints.quick[state.stage] ?? [];
+  const push = (t: string) =>
+    run(async () => {
+      await api('/api/gm/hint', { json: { text: t } });
+      setText('');
+      setRationale(null);
+    }, 'Pushed to his screen');
   return (
-    <div className="panel">
-      <h2>Hints</h2>
-      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Incoming transmission text" />
+    <div className="panel hints">
+      <h2>Hints · {STAGE_NAME[state.stage]}</h2>
+      {quick.length ? (
+        <div style={{ marginBottom: 10 }}>
+          {quick.map((q, i) => (
+            <div key={i} className="quick-row">
+              <span className="text">{q}</span>
+              <button className="btn small ghost" disabled={busy} onClick={() => setText(q)} title="Load into the editor">
+                Edit
+              </button>
+              <button className="btn small primary" disabled={busy} onClick={() => void push(q)}>
+                Send
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a transmission, or draft one with AI" aria-label="Transmission text" rows={3} />
       {rationale ? <div className="small muted">Copilot: {rationale}</div> : null}
+      <button className="btn primary block" disabled={busy || !text.trim()} onClick={() => void push(text)} style={{ marginTop: 8 }}>
+        Push to his screen
+      </button>
       <div className="row" style={{ marginTop: 8 }}>
-        <select value={strength} onChange={(e) => setStrength(e.target.value as 'nudge' | 'clear' | 'strong')} style={{ width: 'auto' }}>
+        <span className="tiny">AI draft</span>
+        <select value={strength} onChange={(e) => setStrength(e.target.value as 'nudge' | 'clear' | 'strong')} style={{ width: 'auto', minHeight: 40 }} aria-label="Hint strength">
           <option value="nudge">nudge</option>
           <option value="clear">clear</option>
           <option value="strong">strong</option>
@@ -182,39 +281,15 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
           disabled={busy}
           onClick={() =>
             run(async () => {
-              const r = await api<{ hint: string; rationale: string; source: string }>('/api/gm/hint/draft', { json: { strength } });
+              const r = await api<{ hint: string; rationale: string; source: string }>('/api/gm/hint/draft', { json: { strength }, timeoutMs: 120_000 });
               setText(r.hint);
               setRationale(`${r.rationale} [${r.source}]`);
             })
           }
         >
-          Draft with AI
-        </button>
-        <button
-          className="btn small primary"
-          disabled={busy || !text.trim()}
-          onClick={() =>
-            run(async () => {
-              await api('/api/gm/hint', { json: { text } });
-              setText('');
-              setRationale(null);
-            }, 'Pushed to player')
-          }
-        >
-          Push to player
+          Draft
         </button>
       </div>
-      {quick.length ? (
-        <div style={{ marginTop: 10 }}>
-          <h3>Quick hints for {state.stage}</h3>
-          {quick.map((q, i) => (
-            <button key={i} className="btn small ghost" style={{ marginRight: 6, marginBottom: 6, textTransform: 'none', letterSpacing: 0 }} onClick={() => setText(q)}>
-              {q.slice(0, 70)}
-              {q.length > 70 ? '…' : ''}
-            </button>
-          ))}
-        </div>
-      ) : null}
       {state.hints.length ? (
         <div style={{ marginTop: 10 }}>
           <h3>Pushed</h3>
@@ -230,30 +305,93 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
   );
 }
 
-function payloadText(e: GameEvent): string {
-  const p = { ...e.payload };
-  return Object.entries(p)
-    .map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`)
-    .join('  ');
+type Lane = 'all' | 'player' | 'gm' | 'ai';
+const GM_TYPES = new Set(['gm_action', 'hint_pushed']);
+const AI_TYPES = new Set(['archive_assistant', 'archive_tool', 'ai_error', 'report']);
+const laneOf = (t: string): Lane => (GM_TYPES.has(t) ? 'gm' : AI_TYPES.has(t) ? 'ai' : 'player');
+
+function describe(e: GameEvent): { text: string; cls: string } {
+  const p = e.payload as Record<string, unknown>;
+  const s = (k: string) => String(p[k] ?? '');
+  switch (e.type) {
+    case 'game_start':
+      return { text: 'recovery protocol initiated', cls: 'ok' };
+    case 'stage':
+      return { text: `→ ${STAGE_NAME[s('stage') as StageId] ?? s('stage')}`, cls: 'ok' };
+    case 'geo_guess':
+      return { text: p.solved ? `pin CONFIRMED (${Math.round(Number(p.distanceM ?? 0))} m)` : `pin ${Math.round(Number(p.distanceM ?? 0))} m off`, cls: p.solved ? 'ok' : 'fail' };
+    case 'gate_attempt':
+      return { text: `"${s('code')}" ${p.ok ? 'ACCEPTED' : 'rejected'}`, cls: p.ok ? 'ok' : 'fail' };
+    case 'hack_guess': {
+      const scores = Array.isArray(p.scores) ? (p.scores as string[]).map((x) => (x === 'hit' ? '■' : x === 'near' ? '◪' : '□')).join('') : '';
+      return { text: `${s('guess')} ${scores}${p.solved ? ' SOLVED' : ''}`, cls: p.solved ? 'ok' : '' };
+    }
+    case 'hack_lockout':
+      return { text: `partition locked, round ${s('rounds')}`, cls: 'fail' };
+    case 'hack_solved':
+      return { text: `solved in ${s('attempts')}`, cls: 'ok' };
+    case 'evidence_unlock': {
+      const u = Array.isArray(p.unlocked) ? (p.unlocked as string[]) : [];
+      return { text: u.length ? `unlocked ${u.join(', ')}` : `passcode "${s('passcode')}" rejected`, cls: u.length ? 'ok' : 'fail' };
+    }
+    case 'archive_user':
+      return { text: `> ${s('text')}`, cls: '' };
+    case 'archive_assistant':
+      return { text: `${s('text').slice(0, 160)}${s('text').length > 160 ? '…' : ''}`, cls: '' };
+    case 'archive_tool':
+      return { text: `tool ${s('name')}`, cls: '' };
+    case 'deduction_submit':
+      return { text: `attempt ${s('attempt')} ${p.pass ? 'PASS' : 'FAIL'} · ${s('slots')} (${s('source') === 'ai' ? 'AI' : 'keywords'})`, cls: p.pass ? 'ok' : 'fail' };
+    case 'hint_pushed':
+      return { text: `hint: ${s('text').slice(0, 100)}`, cls: '' };
+    case 'gm_action':
+      return { text: `${s('action')}${p.stage ? ` ${s('stage')}` : ''}${p.kind ? ` ${s('kind')}` : ''}`, cls: '' };
+    case 'ai_error':
+      return { text: `${s('where')}: ${s('error').slice(0, 140)}`, cls: 'err' };
+    case 'report':
+      return { text: `case file generated (${s('source')}, ${s('chars')} chars)`, cls: 'ok' };
+    default:
+      return { text: JSON.stringify(p).slice(0, 160), cls: '' };
+  }
 }
 
 export function LiveLog({ events }: { events: GameEvent[] }) {
   const ref = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
+  const [lane, setLane] = useState<Lane>('all');
+  const shown = lane === 'all' ? events : events.filter((e) => laneOf(e.type) === lane);
   useEffect(() => {
     const el = ref.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [events.length]);
+    if (el && atBottom.current) el.scrollTop = el.scrollHeight;
+  }, [shown.length]);
   return (
     <div className="panel">
       <h2>Live log ({events.length})</h2>
-      <div className="log" ref={ref}>
-        {events.map((e) => (
-          <div key={e.id} className={`ev ${e.type === 'ai_error' ? 'err' : ''}`}>
-            <span className="t">{fmt(e.ts)}</span>
-            <span className="k">{e.type}</span>
-            <span className="p">{payloadText(e)}</span>
-          </div>
+      <div className="log-filters" role="tablist">
+        {(['all', 'player', 'gm', 'ai'] as Lane[]).map((l) => (
+          <button key={l} className={lane === l ? 'active' : ''} onClick={() => setLane(l)} role="tab" aria-selected={lane === l}>
+            {l}
+          </button>
         ))}
+      </div>
+      <div
+        className="log"
+        ref={ref}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          atBottom.current = el.scrollTop + el.clientHeight >= el.scrollHeight - 24;
+        }}
+      >
+        {shown.map((e) => {
+          const d = describe(e);
+          return (
+            <div key={e.id} className={`ev ${d.cls} ${laneOf(e.type) === 'gm' ? 'gm' : ''}`}>
+              <span className="t">{fmt(e.ts).slice(0, 5)}</span>
+              <span className="k">{e.type.replace(/_/g, ' ')}</span>
+              <span className="p">{d.text}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -271,7 +409,7 @@ export function ArchivePanel({ archive, state }: { archive: ArchiveMessage[]; st
         ARCHIVE transcript {state.archive.busy ? <span className="amber">· answering</span> : null}
         {state.archive.sessionId ? <span className="muted small"> · session {state.archive.sessionId.slice(0, 8)}</span> : null}
       </h2>
-      <div className="chat" ref={ref} style={{ maxHeight: 380 }}>
+      <div className="chat" ref={ref} style={{ maxHeight: 380, minHeight: 0 }}>
         {archive.length ? (
           archive.map((m) => (
             <div key={m.id} className={`msg ${m.role}`}>
@@ -280,7 +418,7 @@ export function ArchivePanel({ archive, state }: { archive: ArchiveMessage[]; st
                 {m.meta?.tools ? ` · tools: ${(m.meta.tools as string[]).join(', ')}` : ''}
                 {typeof m.meta?.costUsd === 'number' ? ` · $${(m.meta.costUsd as number).toFixed(3)}` : ''}
               </span>
-              {m.text}
+              <span className="text">{m.text}</span>
             </div>
           ))
         ) : (
@@ -298,7 +436,14 @@ export function ReportPanel({ state }: { state: GameState }) {
     <div className="panel">
       <h2>Case report</h2>
       <div className="row">
-        <button className="btn small" disabled={busy} onClick={() => run(() => api('/api/gm/report/generate', { method: 'POST' }), 'Report generated')}>
+        <button
+          className="btn small"
+          disabled={busy}
+          onClick={() => {
+            if (state.report.published && !window.confirm('The report is live on his screen. Regenerate and replace it?')) return;
+            void run(() => api('/api/gm/report/generate', { method: 'POST', timeoutMs: 240_000 }), 'Report generated');
+          }}
+        >
           {state.report.markdown ? 'Regenerate' : 'Generate'} with AI
         </button>
         <button className="btn small" disabled={busy || !state.report.markdown} onClick={() => run(() => api('/api/gm/report/publish', { json: { published: !state.report.published } }))}>

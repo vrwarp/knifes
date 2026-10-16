@@ -54,6 +54,7 @@ export interface GameConfig {
     successBody: string;
     failText: string;
     maxAttempts: number | null;
+    feedback: 'pass_fail' | 'count';
   };
   hints: { quick: Partial<Record<StageId, string[]>> };
 }

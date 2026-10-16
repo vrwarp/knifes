@@ -7,7 +7,7 @@ import type { StageProps } from './PlayerApp';
 
 type Tab = 'evidence' | 'archive' | 'deduction';
 
-export function Investigation({ view, setView, refresh, feed, busy }: StageProps & { feed: ArchiveMessage[]; busy: boolean }) {
+export function Investigation({ view, setView, refresh, hold, feed, busy }: StageProps & { feed: ArchiveMessage[]; busy: boolean }) {
   const [tab, setTab] = useState<Tab>('evidence');
   return (
     <>
@@ -20,7 +20,7 @@ export function Investigation({ view, setView, refresh, feed, busy }: StageProps
       </div>
       {tab === 'evidence' ? <Evidence view={view} /> : null}
       {tab === 'archive' ? <Archive view={view} feed={feed} busy={busy} /> : null}
-      {tab === 'deduction' ? <Deduction view={view} setView={setView} refresh={refresh} /> : null}
+      {tab === 'deduction' ? <Deduction view={view} setView={setView} refresh={refresh} hold={hold} /> : null}
     </>
   );
 }

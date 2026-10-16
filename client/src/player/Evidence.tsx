@@ -6,13 +6,10 @@ import type { EvidenceFiles, PlayerView } from '../types';
 function File({ name, locked, children, defaultOpen = false }: { name: string; locked: boolean; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className={`file ${locked ? 'locked' : ''}`}>
-      <header onClick={() => setOpen((o) => !o)}>
-        <span className="name">
-          {locked ? '🔒 ' : '📁 '}
-          {name}
-        </span>
-        <span className="tiny">{open ? 'close' : 'open'}</span>
+    <div className={`file ${locked ? 'locked' : ''} ${open ? 'open' : ''}`}>
+      <header onClick={() => setOpen((o) => !o)} role="button" aria-expanded={open} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setOpen((o) => !o)}>
+        <span className="name">{name}</span>
+        <span className="tiny">{open ? 'close' : locked ? 'sealed' : 'open'}</span>
       </header>
       {open ? <div className="body">{children}</div> : null}
     </div>
@@ -39,12 +36,32 @@ function Passcode({ label, onUnlocked }: { label: string; onUnlocked: () => void
   return (
     <form onSubmit={submit} className="stack">
       <p className="muted small">[PARTITION SEALED] {label} requires a recovery passcode. An out-of-town contact may be able to supply it.</p>
-      <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="PASSCODE" autoCapitalize="characters" autoComplete="off" />
+      <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="PASSCODE" aria-label="Passcode" autoCapitalize="characters" autoComplete="off" autoCorrect="off" />
       <button className="btn block" disabled={busy || !code.trim()}>
         Unlock
       </button>
-      {err ? <div className="error">{err}</div> : null}
+      {err ? (
+        <div className="error" role="alert">
+          {err}
+        </div>
+      ) : null}
     </form>
+  );
+}
+
+const inWindow = (t: string) => t >= '03:30' && t <= '04:00';
+
+function Manifest({ files }: { files: EvidenceFiles }) {
+  return (
+    <>
+      {(files.manifest ?? []).map((d) => (
+        <div className="dossier" key={d.badge}>
+          <b>{d.codename}</b> · {d.badge} · {d.role} · clearance {d.clearance}
+          <div className="muted">{d.relationship}</div>
+          <div>{d.publicNotes}</div>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -67,25 +84,27 @@ export function Evidence({ view }: { view: PlayerView }) {
 
   if (err) return <div className="error">{err}</div>;
   if (!files) return <p className="muted cursor">Opening vault</p>;
+  const highlight = files.toxicology !== null;
 
   return (
     <div>
       <p className="tiny">Evidence vault // recovered from Drive 30-BETA</p>
-      <File name="00_Directors_Note.txt" locked={false}>
+      <File name="00_Directors_Note.txt" locked={false} defaultOpen>
         <pre className="typed small">{files.note}</pre>
       </File>
-      <File name="01_Vault_Access_Logs.csv" locked={files.locked.logs} defaultOpen>
+      <File name="01_Vault_Access_Logs.csv" locked={files.locked.logs}>
         {files.logs ? (
           <>
+            {highlight ? <p className="tiny amber">Rows inside the thirty-minute window are marked.</p> : null}
             <table className="log">
               <tbody>
                 {files.logs.rows.map((r, i) => (
-                  <tr key={i}>
+                  <tr key={i} className={highlight && inWindow(r.time) ? 'window' : ''}>
                     <td>{r.time}</td>
                     <td>{r.badge}</td>
                     <td>
                       {r.name ? <b>{r.name}</b> : null}
-                      {r.door ? <div className="muted">{r.door}</div> : null}
+                      {r.door ? <span className="muted"> · {r.door}</span> : null}
                       <div>{r.event}</div>
                     </td>
                   </tr>
@@ -119,18 +138,12 @@ export function Evidence({ view }: { view: PlayerView }) {
           <Passcode label="The ambient intercept" onUnlocked={load} />
         )}
       </File>
-      <File name="03_Toxicology_&_Ledger_Manifest.pdf" locked={files.locked.toxicology}>
+      <File name="03_Toxicology_Manifest.pdf" locked={files.locked.toxicology}>
         {files.toxicology ? (
           <>
             <Markdown text={files.toxicology} />
             <h3 style={{ marginTop: 16 }}>Operative manifest</h3>
-            {(files.manifest ?? []).map((d) => (
-              <div className="dossier" key={d.badge}>
-                <b>{d.codename}</b> · {d.badge} · {d.role} · clearance {d.clearance}
-                <div className="muted">{d.relationship}</div>
-                <div>{d.publicNotes}</div>
-              </div>
-            ))}
+            <Manifest files={files} />
           </>
         ) : (
           <Passcode label="The toxicology report" onUnlocked={load} />
@@ -138,15 +151,12 @@ export function Evidence({ view }: { view: PlayerView }) {
       </File>
       {files.locked.toxicology && files.manifest ? (
         <File name="03b_Operative_Manifest.txt" locked={false}>
-          {files.manifest.map((d) => (
-            <div className="dossier" key={d.badge}>
-              <b>{d.codename}</b> · {d.badge} · {d.role} · clearance {d.clearance}
-              <div className="muted">{d.relationship}</div>
-              <div>{d.publicNotes}</div>
-            </div>
-          ))}
+          <Manifest files={files} />
         </File>
       ) : null}
+      <File name="04_Incident_Record.txt" locked={false}>
+        <pre className="typed small">{view.reveal.body}</pre>
+      </File>
     </div>
   );
 }

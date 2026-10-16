@@ -35,11 +35,16 @@ const STAGES: StageId[] = ['geo', 'gate', 'hack', 'reveal', 'investigation', 'so
 export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved: () => Promise<void> }) {
   const [draft, setDraft] = useState<GameConfig>(() => structuredClone(config));
   const [dirty, setDirty] = useState(false);
+  const [baseVersion, setBaseVersion] = useState(config.version);
+  const conflict = dirty && config.version !== baseVersion;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!dirty) setDraft(structuredClone(config));
+    if (!dirty) {
+      setDraft(structuredClone(config));
+      setBaseVersion(config.version);
+    }
   }, [config, dirty]);
 
   const up = (path: Path, value: unknown) => {
@@ -51,8 +56,9 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
     setBusy(true);
     setMsg(null);
     try {
-      await api('/api/gm/config', { method: 'PUT', json: draft });
+      const r = await api<{ config: GameConfig }>('/api/gm/config', { method: 'PUT', json: draft });
       setDirty(false);
+      setBaseVersion(r.config.version);
       setMsg('Saved and pushed to the player');
       await onSaved();
     } catch (e) {
@@ -63,12 +69,34 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
   };
   const discard = () => {
     setDraft(structuredClone(config));
+    setBaseVersion(config.version);
     setDirty(false);
     setMsg(null);
   };
+  /** Phones upload 4 MB photos; the player loads them on cellular. Downscale to 1600px JPEG first. */
+  const shrink = (file: File): Promise<Blob> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+        if (scale === 1 && file.size < 600_000) return resolve(file);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob((b) => resolve(b ?? file), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = url;
+    });
   const upload = async (kind: 'audio' | 'photo', file: File) => {
     const fd = new FormData();
-    fd.append('file', file);
+    if (kind === 'photo') {
+      const blob = await shrink(file);
+      fd.append('file', blob, blob === file ? file.name : file.name.replace(/\.[^.]+$/, '') + '.jpg');
+    } else fd.append('file', file);
     setBusy(true);
     setMsg(null);
     try {
@@ -86,6 +114,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
     }
   };
   const removeUpload = async (id: string) => {
+    if (!window.confirm('Delete this upload from the server? This cannot be undone.')) return;
     setBusy(true);
     try {
       await api(`/api/gm/upload/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -168,8 +197,9 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
 
   const target = draft.geo.target;
   return (
-    <div className="panel" style={{ marginTop: 16 }}>
+    <div className="panel config-wrap" style={{ marginTop: 16 }}>
       <h2>Game configuration {dirty ? <span className="amber">· unsaved changes</span> : null}</h2>
+      {conflict ? <div className="error">Another GM saved a newer configuration while you were editing. Discard to load it, or your save will overwrite theirs.</div> : null}
       {T(['title'], 'Title')}
       <Section title="Intro (QR landing)">
         {T(['intro', 'headline'], 'Headline')}
@@ -183,26 +213,19 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
           ['off', 'Off: skip straight to the code gate'],
         ])}
         {A(['geo', 'briefing'], 'Briefing', 4)}
-        <div className="two">
-          <label className="field">
-            <span>Target latitude (blank = any guess passes)</span>
-            <input
-              type="number"
-              step="any"
-              value={target ? target.lat : ''}
-              onChange={(e) => up(['geo', 'target'], e.target.value === '' ? null : { lat: Number(e.target.value), lng: target?.lng ?? 0 })}
-            />
-          </label>
-          <label className="field">
-            <span>Target longitude</span>
-            <input
-              type="number"
-              step="any"
-              value={target ? target.lng : ''}
-              onChange={(e) => up(['geo', 'target'], e.target.value === '' ? null : { lat: target?.lat ?? 0, lng: Number(e.target.value) })}
-            />
-          </label>
-        </div>
+        <label className="field">
+          <span>Target coordinates as "lat, lng" (blank = any pin passes; copy from Google Maps)</span>
+          <input
+            value={target ? `${target.lat}, ${target.lng}` : ''}
+            placeholder="34.0522, -118.2437"
+            onChange={(e) => {
+              const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(e.target.value);
+              if (e.target.value.trim() === '') up(['geo', 'target'], null);
+              else if (m) up(['geo', 'target'], { lat: Number(m[1]), lng: Number(m[2]) });
+            }}
+          />
+          {!target ? <div className="small amber">No target: the puzzle accepts any pin until this is set.</div> : null}
+        </label>
         {N(['geo', 'radiusMeters'], 'Accept radius (metres)')}
         <div className="two">
           {N(['geo', 'mapCenter', 'lat'], 'Map start latitude')}
@@ -214,7 +237,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
           <div className="row">
             {draft.geo.photos.map((p) => (
               <span key={p} className="row" style={{ gap: 4 }}>
-                <img src={`/uploads/${p}`} alt="" style={{ height: 48, border: '1px solid var(--line)' }} />
+                <img src={`/uploads/${p}`} alt="" className="thumb" />
                 <button className="btn small danger" onClick={() => void removeUpload(p)} disabled={busy}>
                   ×
                 </button>
@@ -297,6 +320,10 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         {T(['deduction', 'successTitle'], 'Success title')}
         {A(['deduction', 'successBody'], 'Success body (the big reveal)', 8)}
         {A(['deduction', 'failText'], 'Fail text', 2)}
+        {S(['deduction', 'feedback'], 'Feedback on a wrong submission', [
+          ['pass_fail', 'Pass or fail only'],
+          ['count', 'Pass or fail plus how many fields verified'],
+        ])}
         {N(['deduction', 'maxAttempts'], 'Max submissions', true)}
       </Section>
       <Section title="Quick hints per stage">
@@ -305,12 +332,13 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         ))}
       </Section>
       <div className="sticky-actions row">
-        <button className="btn primary" onClick={() => void save()} disabled={busy || !dirty}>
+        <button className="btn primary" onClick={() => void save()} disabled={busy || !dirty || conflict}>
           Save config
         </button>
         <button className="btn ghost" onClick={discard} disabled={busy || !dirty}>
           Discard
         </button>
+        {dirty ? <span className="small muted">Saving pushes the change to his phone immediately.</span> : null}
         {msg ? <span className="small amber">{msg}</span> : null}
       </div>
     </div>

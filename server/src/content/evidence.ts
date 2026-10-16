@@ -67,7 +67,7 @@ Case 30-0415. Subject: Arthur Pendelton, Director. Examiner: Section 30 forensic
 - Drive 30-ALPHA: dock empty. Drive ejected by the Director's lockdown at 04:09 and not recovered on site.
 
 ## Examiner's note
-Work backward from the time of death. Thirty minutes. Whoever handed the Director that cup did it at 03:45, give or take two minutes. The breakroom tin was the source, so the cup was dosed before it reached the office or at the desk itself.
+Work backward from the time of death. Thirty minutes, give or take two. Whoever handed the Director that cup did it inside that window. The breakroom tin was the source, so the cup was dosed before it reached the office or at the desk itself.
 `;
 
 export interface Dossier {

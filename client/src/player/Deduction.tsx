@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { api, errorText } from '../api';
-import type { PlayerView, SlotId } from '../types';
+import type { SlotId } from '../types';
 import type { StageProps } from './PlayerApp';
 
-type Submit = { pass: boolean; title: string | null; body: string | null; failText: string };
+type Submit = { pass: boolean; title: string | null; body: string | null; failText: string; verified: number | null; total: number };
 
 export function Deduction({ view, refresh }: StageProps) {
   const d = view.deduction;
@@ -23,8 +23,9 @@ export function Deduction({ view, refresh }: StageProps) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
+    setResult(null);
     try {
-      const r = await api<Submit>('/api/player/deduction', { json: answers });
+      const r = await api<Submit>('/api/player/deduction', { json: answers, timeoutMs: 150_000 });
       setResult(r);
       await refresh();
     } catch (e2) {
@@ -36,7 +37,7 @@ export function Deduction({ view, refresh }: StageProps) {
 
   if (d.passed) {
     return (
-      <div className="frame accent">
+      <div className="frame success">
         <h1 className="green">{d.successTitle}</h1>
         <pre className="typed">{d.successBody}</pre>
       </div>
@@ -58,16 +59,17 @@ export function Deduction({ view, refresh }: StageProps) {
               key={i}
               value={answers[slot.id]}
               onChange={(e) => setAnswers((a) => ({ ...a, [slot.id]: e.target.value }))}
-              placeholder={slot.label}
+              placeholder={slot.placeholder || slot.label}
               aria-label={slot.label}
               autoComplete="off"
-              size={Math.max(8, Math.min(28, answers[slot.id].length + 2))}
+              autoCorrect="off"
+              size={Math.max(10, Math.min(28, Math.max(answers[slot.id].length, (slot.placeholder || slot.label).length) + 2))}
             />
           );
         })}
       </div>
       {busy ? (
-        <p className="amber cursor" style={{ marginTop: 12 }}>
+        <p className="amber cursor" style={{ marginTop: 12 }} role="status">
           ARCHIVE VERIFYING
         </p>
       ) : (
@@ -75,7 +77,16 @@ export function Deduction({ view, refresh }: StageProps) {
           Submit deduction
         </button>
       )}
-      {result && !result.pass ? <div className="error">{result.failText}</div> : null}
+      {result && !result.pass ? (
+        <div className="error" role="alert">
+          {result.failText}
+          {result.verified !== null ? (
+            <div className="amber" style={{ marginTop: 6 }}>
+              FIELDS VERIFIED: {result.verified} / {result.total}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {exhausted ? <div className="error">No submissions remain. Await command authority.</div> : null}
       {d.attempts ? (
         <div className="tiny" style={{ marginTop: 8 }}>
@@ -83,7 +94,11 @@ export function Deduction({ view, refresh }: StageProps) {
           {d.maxAttempts !== null ? ` / ${d.maxAttempts}` : ''}
         </div>
       ) : null}
-      {err ? <div className="error">{err}</div> : null}
+      {err ? (
+        <div className="error" role="alert">
+          {err}
+        </div>
+      ) : null}
     </form>
   );
 }

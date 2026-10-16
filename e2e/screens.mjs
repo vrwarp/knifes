@@ -11,7 +11,6 @@ import { chromium } from 'playwright';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const out = path.join(here, 'output', 'screens');
-fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 's30-screens-'));
 const port = await new Promise((resolve) => {
@@ -46,13 +45,13 @@ try {
   // Two placeholder "field photos" drawn on a canvas, uploaded like a GM would.
   const art = await browser.newPage({ viewport: { width: 800, height: 600 } });
   for (const [name, hue] of [['a', 200], ['b', 30]]) {
-    await art.setContent(`<canvas id=c width=800 height=600></canvas><script>
+    await art.setContent(`<canvas id=c width=800 height=600></canvas><script>(() => {
       const x=document.getElementById('c').getContext('2d');
       x.fillStyle='hsl(${hue},30%,70%)';x.fillRect(0,0,800,600);
       x.fillStyle='hsl(${hue},20%,35%)';x.fillRect(0,380,800,220);
       for(let i=0;i<9;i++){x.fillStyle='hsl(${hue},25%,'+(45+i*3)+'%)';x.fillRect(40+i*85,160+(i%3)*30,70,220-(i%3)*30);}
       x.fillStyle='#eee';x.fillRect(300,300,200,60);x.fillStyle='#222';x.font='bold 28px sans-serif';x.fillText('DELI',365,342);
-    </script>`);
+    })();</script>`);
     await art.waitForFunction(() => { const c = document.getElementById('c'); return c && c.getContext('2d').getImageData(1, 1, 1, 1).data[3] === 255; });
     await settle(200);
     const buf = await art.screenshot({ type: 'png' });
@@ -77,13 +76,15 @@ try {
   await finishTyping();
   await settle(1500);
   await shot(player, 'p02-geo-map');
+  await player.getByRole('button', { name: /tap to unlock map/i }).click();
   await player.locator('.map').click({ position: { x: 150, y: 150 } });
+  await shot(player, 'p02b-geo-pinned');
   await player.getByRole('button', { name: /triangulate/i }).click();
   await player.getByText('LOCATION CONFIRMED').waitFor();
   await shot(player, 'p03-geo-confirmed');
   await player.getByRole('button', { name: /proceed/i }).click();
 
-  await player.locator('h1', { hasText: 'Remote asset' }).waitFor();
+  await player.locator('h1', { hasText: 'Secure line' }).waitFor();
   await finishTyping();
   await shot(player, 'p04-gate');
   await player.getByLabel('Recovery key').fill('WRONGKEY');
@@ -92,8 +93,10 @@ try {
   await shot(player, 'p05-gate-rejected');
   await player.getByLabel('Recovery key').fill('MAGENTA30');
   await player.getByRole('button', { name: /submit key/i }).click();
+  await player.getByText('Recovery key accepted').waitFor();
+  await shot(player, 'p05b-gate-accepted');
 
-  await player.locator('h1', { hasText: 'Mirror partition' }).waitFor({ timeout: 10_000 });
+  await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   await shot(player, 'p06-hack-empty');
   for (const w of ['APPLE', 'PLANT']) {
     await player.getByLabel('Key attempt').fill(w);
@@ -112,15 +115,22 @@ try {
   await player.getByLabel('Key attempt').waitFor({ timeout: 10_000 });
   await player.getByLabel('Key attempt').fill('ALPHA');
   await player.getByRole('button', { name: /attempt key/i }).click();
+  await player.getByText('KEY ACCEPTED').waitFor();
+  await settle(900);
+  await shot(player, 'p08b-hack-solved');
 
-  await player.locator('h1', { hasText: 'PARTITION DECRYPTED' }).waitFor({ timeout: 10_000 });
+  await player.locator('h1', { hasText: 'INCIDENT RECORD' }).waitFor({ timeout: 10_000 });
   await finishTyping();
   await shot(player, 'p09-reveal');
   await player.getByRole('button', { name: /return to base/i }).click();
 
   await player.getByRole('tab', { name: 'evidence' }).waitFor();
+  await player.locator('.file header', { hasText: '00_Directors' }).waitFor();
+  await shot(player, 'p10-evidence-vault');
+  await player.locator('.file header', { hasText: '00_Directors' }).click();
+  await player.locator('.file header', { hasText: '01_Vault' }).click();
   await player.getByText('03:42').first().waitFor();
-  await shot(player, 'p10-evidence-logs');
+  await shot(player, 'p10b-evidence-logs');
   await player.locator('.file header', { hasText: '01_Vault' }).click();
   await player.locator('.file header', { hasText: '03_Toxicology' }).click();
   await player.getByText('PRELIMINARY TOXICOLOGY').waitFor();
@@ -136,7 +146,7 @@ try {
   await shot(player, 'p12-archive');
 
   await gmApi('/api/gm/hint', { method: 'POST', json: { text: 'Transmission note: the toxin takes thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.' } });
-  await player.locator('h1', { hasText: 'Incoming transmission' }).waitFor({ timeout: 10_000 });
+  await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
   await shot(player, 'p13-hint-overlay');
   await player.getByRole('button', { name: /acknowledge/i }).click();
   await player.getByRole('button', { name: /transmissions/i }).click();
@@ -154,10 +164,18 @@ try {
   await player.getByRole('button', { name: /submit deduction/i }).click();
   await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
   await finishTyping();
-  await shot(player, 'p17-solved');
+  await shot(player, 'p17-solved-beat1');
+  for (let i = 0; i < 6; i++) {
+    await finishTyping();
+    const next = player.getByRole('button', { name: /^continue$/i });
+    if (!(await next.count())) break;
+    await next.click();
+  }
+  await finishTyping();
+  await shot(player, 'p17b-solved-final');
   await gmApi('/api/gm/report/generate', { method: 'POST' });
   await gmApi('/api/gm/report/publish', { method: 'POST', json: { published: true } });
-  await player.locator('h1', { hasText: 'Case file' }).waitFor({ timeout: 10_000 });
+  await player.getByText('CASE FILE 30-0415').first().waitFor({ timeout: 10_000 });
   await finishTyping();
   await shot(player, 'p18-solved-report');
 
@@ -167,7 +185,7 @@ try {
   await gm.getByLabel('Password').fill('test');
   await gm.getByRole('button', { name: /enter/i }).click();
   await gm.getByText('GM console').waitFor();
-  await gm.locator('.chip.now', { hasText: 'solved' }).waitFor({ timeout: 10_000 });
+  await gm.locator('.chip.now', { hasText: 'Case closed' }).waitFor({ timeout: 10_000 });
   await settle(800);
   await shot(gm, 'g01-console');
   await gm.locator('summary', { hasText: 'Location puzzle' }).click();

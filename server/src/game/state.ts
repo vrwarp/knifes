@@ -145,6 +145,7 @@ export function playerView(config: GameConfig, state: GameState) {
       attempts: state.deduction.attempts,
       passed: state.deduction.passed,
       maxAttempts: config.deduction.maxAttempts,
+      feedback: config.deduction.feedback,
       lastPass: state.deduction.lastResult?.pass ?? null,
       lastAnswers: state.deduction.lastAnswers,
       successTitle: state.deduction.passed ? config.deduction.successTitle : null,

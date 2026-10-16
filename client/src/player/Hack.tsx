@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type CSSProperties } from 'react';
 import { api, errorText } from '../api';
 import type { PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
+
+const STATE_WORD = { hit: 'placed', near: 'misplaced', miss: 'absent' } as const;
 
 export function Hack({ view, setView, refresh }: StageProps) {
   const h = view.hack;
@@ -13,6 +15,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
   const locked = h.lockedUntil !== null && h.lockedUntil > Date.now() && !expired;
   const lockPassed = h.lockedUntil !== null && (expired || h.lockedUntil <= Date.now());
   const onDone = useCallback(() => setExpired(true), []);
+  const rowStyle = { '--n': h.length } as CSSProperties;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +27,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
     setBusy(true);
     setErr(null);
     try {
-      await api('/api/player/hack/guess', { json: { word } });
+      await api<{ solved: boolean }>('/api/player/hack/guess', { json: { word } });
       setInput('');
       await refresh();
     } catch (e2) {
@@ -49,10 +52,11 @@ export function Hack({ view, setView, refresh }: StageProps) {
   for (let i = 0; i < h.maxAttempts; i++) {
     const scored = h.rows[i];
     if (scored) {
+      const win = h.solved && i === h.rows.length - 1;
       rows.push(
-        <div className="trow" key={i}>
+        <div className={`trow ${win ? 'win' : ''}`} key={i} style={rowStyle} role="img" aria-label={`Attempt ${i + 1}: ${scored.map((s) => `${s.letter} ${STATE_WORD[s.state]}`).join(', ')}`}>
           {scored.map((s, j) => (
-            <div key={j} className={`tile ${s.state}`}>
+            <div key={j} className={`tile ${s.state}`} style={{ '--i': j } as CSSProperties} aria-hidden="true">
               {s.letter}
             </div>
           ))}
@@ -61,9 +65,9 @@ export function Hack({ view, setView, refresh }: StageProps) {
     } else if (i === h.rows.length && !locked && !lockPassed) {
       const letters = input.toUpperCase().replace(/[^A-Z]/g, '').padEnd(h.length).split('');
       rows.push(
-        <div className="trow" key={i}>
+        <div className="trow" key={i} style={rowStyle} aria-hidden="true">
           {letters.map((l, j) => (
-            <div key={j} className={`tile pending`}>
+            <div key={j} className="tile pending">
               {l.trim()}
             </div>
           ))}
@@ -71,7 +75,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
       );
     } else {
       rows.push(
-        <div className="trow" key={i}>
+        <div className="trow" key={i} style={rowStyle} aria-hidden="true">
           {Array.from({ length: h.length }, (_, j) => (
             <div key={j} className="tile" />
           ))}
@@ -81,22 +85,26 @@ export function Hack({ view, setView, refresh }: StageProps) {
   }
 
   return (
-    <Frame title="Mirror partition // brute-force key" className="accent">
-      <pre className="typed small muted">{h.intro}</pre>
+    <Frame kicker="Partition 30-BETA" title="Brute-force key" className={`accent ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
+      <p className="small muted">{h.intro}</p>
       <div className="grid">{rows}</div>
-      <div className="legend">
+      <div className="legend" aria-hidden="true">
         <span>
-          <i style={{ background: '#19a85a' }} /> placed
+          <i className="hit" /> placed
         </span>
         <span>
-          <i style={{ background: '#c98400' }} /> misplaced
+          <i className="near" /> misplaced
         </span>
         <span>
-          <i style={{ background: '#2a2d38' }} /> absent
+          <i className="miss" /> absent
         </span>
       </div>
-      {locked && h.lockedUntil ? (
-        <div className="center" style={{ marginTop: 16 }}>
+      {h.solved ? (
+        <div className="ok center" role="status" style={{ marginTop: 16 }}>
+          KEY ACCEPTED. DECRYPTING PARTITION
+        </div>
+      ) : locked && h.lockedUntil ? (
+        <div className="center" style={{ marginTop: 16 }} role="status">
           <div className="red">PARTITION LOCKED</div>
           <div className="tiny">
             Reset available in <Countdown until={h.lockedUntil} onDone={onDone} />
@@ -114,6 +122,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
             placeholder={`${h.length}-CHARACTER KEY`}
             autoCapitalize="characters"
             autoComplete="off"
+            autoCorrect="off"
             spellCheck={false}
             maxLength={h.length}
             aria-label="Key attempt"

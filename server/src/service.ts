@@ -82,6 +82,7 @@ export const ConfigSchema = z.object({
     successBody: z.string(),
     failText: z.string(),
     maxAttempts: z.number().int().positive().nullable(),
+    feedback: z.enum(['pass_fail', 'count']),
   }),
   hints: z.object({ quick: z.record(z.string(), z.array(z.string())) }),
 });
@@ -375,10 +376,13 @@ export class GameService {
     }
   }
 
-  async deductionSubmit(raw: Record<string, unknown>): Promise<{ pass: boolean; title: string | null; body: string | null; failText: string }> {
+  async deductionSubmit(
+    raw: Record<string, unknown>,
+  ): Promise<{ pass: boolean; title: string | null; body: string | null; failText: string; verified: number | null; total: number }> {
     this.requireStage('investigation', 'deduction grid');
     const d = this.state.deduction;
-    if (d.passed) return { pass: true, title: this.config.deduction.successTitle, body: this.config.deduction.successBody, failText: '' };
+    const total = this.config.deduction.slots.length;
+    if (d.passed) return { pass: true, title: this.config.deduction.successTitle, body: this.config.deduction.successBody, failText: '', verified: total, total };
     if (this.config.deduction.maxAttempts !== null && d.attempts >= this.config.deduction.maxAttempts) {
       throw new HttpError(429, 'No submissions remain');
     }
@@ -405,6 +409,8 @@ export class GameService {
       title: result.pass ? this.config.deduction.successTitle : null,
       body: result.pass ? this.config.deduction.successBody : null,
       failText: this.config.deduction.failText,
+      verified: this.config.deduction.feedback === 'count' ? result.slots.filter((g) => g.pass).length : null,
+      total,
     };
   }
 

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { api, errorText } from '../api';
 import type { PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
-import { Frame, Typewriter } from './common';
+import { Frame, SkipHint, Typewriter, useTyped } from './common';
 
 export function Reveal({ view, setView }: StageProps) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [done, onDone] = useTyped();
   const go = async () => {
     setBusy(true);
     try {
@@ -19,8 +20,9 @@ export function Reveal({ view, setView }: StageProps) {
   };
   return (
     <Frame title={view.reveal.title} className="accent">
-      <Typewriter text={view.reveal.body} speed={3} />
-      <button className="btn primary block" onClick={go} disabled={busy} style={{ marginTop: 16 }}>
+      <Typewriter text={view.reveal.body} speed={3} onDone={onDone} />
+      <SkipHint done={done} />
+      <button className="btn primary block" onClick={go} disabled={busy || !done} style={{ marginTop: 12 }}>
         {view.reveal.buttonLabel}
       </button>
       {err ? <div className="error">{err}</div> : null}

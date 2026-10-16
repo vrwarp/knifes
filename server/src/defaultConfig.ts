@@ -34,7 +34,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
   },
   gate: {
     prompt:
-      'The drop point instructions name a remote asset. Make the call. When the asset gives you the recovery key, enter it here.',
+      'SECURE LINE REQUIRED. The drop-point instructions carry a number. Call it. Whoever answers holds the recovery key. Enter it here.',
     code: 'MAGENTA30',
     successText: 'Recovery key accepted. Mirror partition 30-BETA located. Encryption active.',
   },
@@ -43,7 +43,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     maxAttempts: 6,
     lockoutSeconds: 45,
     intro:
-      'MIRROR PARTITION LOCKED. Five-character key. The partition answers every attempt: a character in the right place lights green, a character that belongs in the key but sits in the wrong place lights amber, anything else goes dark. Six attempts, then the partition resets.',
+      'Five-character key. Green: right character, right place. Amber: right character, wrong place. Dark: not in the key. Six attempts, then the partition resets.',
   },
   reveal: {
     title: 'PARTITION DECRYPTED // INCIDENT RECORD 30-0415',
@@ -51,7 +51,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
 
 TIME OF DEATH: 04:15.
 
-CAUSE: Synthetic neurotoxin, delayed onset. Preliminary toxicology indicates ingestion approximately thirty minutes prior. The window is 03:45.
+CAUSE: Synthetic neurotoxin, delayed onset. Preliminary toxicology indicates ingestion approximately thirty minutes prior.
 
 The office door logged three badge entries between 03:30 and 04:00. The full access log, the 03:45 ambient intercept and the operative manifest are held in the ARCHIVE, which this terminal can now reach.
 
@@ -100,7 +100,7 @@ Recovery chain complete. The rest is detective work.`,
       {
         id: 'method',
         label: 'METHOD',
-        placeholder: 'How was it done?',
+        placeholder: 'how it was done',
         canonical: 'a neurotoxin in his Earl Grey tea',
         accept: ['poison', 'tea', 'neurotoxin', 'toxin', 'earl grey', 'nightshade', 'poisoned cup', 'poisoned drink', 'spiked'],
         reject: ['letter opener', 'stab', 'knife', 'shot', 'gun', 'strangle', 'choke'],
@@ -109,7 +109,7 @@ Recovery chain complete. The rest is detective work.`,
       {
         id: 'asset',
         label: 'ASSET',
-        placeholder: 'What were they after?',
+        placeholder: 'what they were after',
         canonical: 'the Section 30 Ledger on Drive 30-ALPHA',
         accept: ['ledger', 'drive 30-alpha', '30-alpha', 'alpha', 'the drive', 'flash drive', 'usb', 'master index', 'dossiers'],
         reject: [],
@@ -118,7 +118,7 @@ Recovery chain complete. The rest is detective work.`,
       {
         id: 'motive',
         label: 'MOTIVE',
-        placeholder: 'Why?',
+        placeholder: 'they wanted to…',
         canonical: 'to sell it to an international syndicate',
         accept: ['sell', 'sale', 'syndicate', 'money', 'buyer', 'profit', 'cash', 'paid', 'rich', 'payout', 'payday'],
         reject: ['revenge', 'love', 'accident'],
@@ -127,7 +127,7 @@ Recovery chain complete. The rest is detective work.`,
       {
         id: 'prop',
         label: 'PHYSICAL PROP',
-        placeholder: 'Where is the drive hidden?',
+        placeholder: 'where the drive is now',
         canonical: 'the birthday card envelope on the gift table',
         accept: ['birthday card', 'card', 'envelope', 'gift table', 'lining'],
         reject: ['book', 'water bottle', 'bottle', 'tea tin', 'tumbler', 'notebook', 'planner', 'folder', 'lanyard', 'flashlight', 'headphones', 'cassette'],
@@ -139,24 +139,25 @@ Recovery chain complete. The rest is detective work.`,
 
 Drive 30-ALPHA is concealed in the lining of the birthday card envelope on the gift table. Recover it now.
 
-Detective Jimmy: the Ledger survived because of you. Pendelton spent thirty years deciding whom to trust. His last decision was right.
+Pendelton wrote: you are the last decision. He was right. Section 30 opened its first file in 1996. So did you.
 
 Case 30-0415 closed. Happy thirtieth, Detective.`,
     failText:
-      'DEDUCTION REJECTED. One or more fields do not verify against the ARCHIVE. Re-examine the evidence and resubmit.',
+      'DEDUCTION REJECTED. Somewhere in this room, someone just breathed out. Re-examine the evidence and resubmit.',
     maxAttempts: null,
+    feedback: 'pass_fail',
   },
   hints: {
     quick: {
-      geo: ['Transmission note: look at the signage in the second image. The street name is partially visible.'],
-      gate: ['Transmission note: the remote asset is expecting your call. Use the number on the drop-point card.'],
+      geo: ['look at the signage in the second image. The street name is partially visible.'],
+      gate: ['the remote asset is expecting your call. Use the number on the drop-point card.'],
       hack: [
-        'Transmission note: the partition key is a five-letter designation. Drive names are worth a try.',
-        'Transmission note: the key starts with the first letter of the alphabet.',
+        'the partition key is a five-letter designation. Drive names are worth a try.',
+        'the key starts with the first letter of the alphabet.',
       ],
       investigation: [
-        'Transmission note: the toxin takes thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.',
-        "Transmission note: the intercept has a paper rustle right before the pour. Ask the ARCHIVE what the property check at the inner-wing door logged.",
+        'the toxin takes thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.',
+        "the intercept has a paper rustle right before the pour. Ask the ARCHIVE what the property check at the inner-wing door logged.",
       ],
       solved: [],
     },

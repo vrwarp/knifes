@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api, errorText } from '../api';
-import type { ArchiveMessage, HintPush, PlayerView } from '../types';
+import type { ArchiveMessage, HintPush, PlayerView, StageId } from '../types';
 import { useSocket } from '../ws';
-import { Frame } from './common';
+import { Frame, Typewriter, clock } from './common';
 import { Gate } from './Gate';
 import { Geo } from './Geo';
 import { Hack } from './Hack';
@@ -15,17 +15,35 @@ export interface StageProps {
   view: PlayerView;
   setView: (v: PlayerView) => void;
   refresh: () => Promise<void>;
+  /** Keep showing `stage` for `ms` even if the server already moved on, so a win can be seen. */
+  hold: (stage: StageId, ms: number) => void;
 }
 
-const STAGE_LABEL: Record<PlayerView['stage'], string> = {
+const STAGE_LABEL: Record<StageId, string> = {
   intro: 'Recovery chain // link 1',
   geo: 'Recovery chain // field transmission',
-  gate: 'Recovery chain // remote asset',
+  gate: 'Recovery chain // secure line',
   hack: 'Recovery chain // mirror partition',
   reveal: 'Incident record',
   investigation: 'Investigation',
   solved: 'Case closed',
 };
+
+const SEEN_KEY = 's30.lastHintId';
+function readSeen(): number {
+  try {
+    return Number(localStorage.getItem(SEEN_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+function writeSeen(id: number): void {
+  try {
+    localStorage.setItem(SEEN_KEY, String(id));
+  } catch {
+    /* private mode */
+  }
+}
 
 export function PlayerApp() {
   const [view, setView] = useState<PlayerView | null>(null);
@@ -35,18 +53,41 @@ export function PlayerApp() {
   const [showHints, setShowHints] = useState(false);
   const [archiveFeed, setArchiveFeed] = useState<ArchiveMessage[]>([]);
   const [archiveBusy, setArchiveBusy] = useState(false);
+  const [pin, setPin] = useState<{ stage: StageId; until: number } | null>(null);
+  const [everConnected, setEverConnected] = useState(false);
+  const [seen, setSeen] = useState(readSeen);
+
+  const shownStage = useRef<StageId>('intro');
+
+  const hold = useCallback((stage: StageId, ms: number) => {
+    const until = Date.now() + ms;
+    setPin({ stage, until });
+    window.setTimeout(() => setPin((p) => (p && p.until === until ? null : p)), ms);
+  }, []);
+
+  /** Accept a new view; when it moves past a puzzle he just solved, keep the solved screen up for a beat. */
+  const applyView = useCallback(
+    (v: PlayerView) => {
+      const cur = shownStage.current;
+      if (cur === 'gate' && v.stage === 'hack') hold('gate', 1700);
+      else if (cur === 'hack' && v.stage === 'reveal') hold('hack', 2000);
+      setView(v);
+      setArchiveBusy(v.archive.busy);
+    },
+    [hold],
+  );
 
   const refresh = useCallback(async () => {
     try {
       const v = await api<PlayerView>('/api/player/state');
-      setView(v);
+      applyView(v);
       setDenied(false);
       setError(null);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setDenied(true);
       else setError(errorText(e));
     }
-  }, []);
+  }, [applyView]);
 
   useEffect(() => {
     void refresh();
@@ -55,7 +96,7 @@ export function PlayerApp() {
   const connected = useSocket(
     'player',
     (m) => {
-      if (m.type === 'state') setView(m.player);
+      if (m.type === 'state') applyView(m.player);
       else if (m.type === 'hint') setToast(m.hint);
       else if (m.type === 'archive') setArchiveFeed((f) => (f.some((x) => x.id === m.message.id) ? f : [...f, m.message]));
       else if (m.type === 'archive_status') setArchiveBusy(m.busy);
@@ -64,13 +105,47 @@ export function PlayerApp() {
   );
 
   useEffect(() => {
-    if (connected) void refresh();
+    if (connected) {
+      setEverConnected(true);
+      void refresh();
+    }
   }, [connected, refresh]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+
+  // A transmission that arrived while he was on the phone pops up when he comes back.
+  const hintCount = view?.hints.length ?? 0;
+  useEffect(() => {
+    if (!view || toast) return;
+    const unseen = view.hints.filter((h) => h.id > seen);
+    if (unseen.length) setToast(unseen[unseen.length - 1]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hintCount]);
+
+  const markSeen = (id: number) => {
+    const next = Math.max(seen, id);
+    setSeen(next);
+    writeSeen(next);
+  };
+  const acknowledge = () => {
+    if (toast) markSeen(toast.id);
+    setToast(null);
+  };
+  const openList = () => {
+    if (view?.hints.length) markSeen(Math.max(...view.hints.map((h) => h.id)));
+    setShowHints(true);
+  };
 
   if (denied) {
     return (
       <div className="shell">
-        <Frame title="ACCESS DENIED" className="danger">
+        <Frame title="Access denied" className="danger">
           <p>This terminal only answers to the recovery link. Scan the code again, or open the link exactly as it was given to you.</p>
         </Frame>
       </div>
@@ -79,7 +154,7 @@ export function PlayerApp() {
   if (!view) {
     return (
       <div className="shell">
-        <Frame title="SECTION 30">
+        <Frame title="Section 30">
           <p className="muted cursor">{error ?? 'Establishing link'}</p>
           {error ? (
             <button className="btn" onClick={() => void refresh()}>
@@ -91,9 +166,12 @@ export function PlayerApp() {
     );
   }
 
-  const props: StageProps = { view, setView, refresh };
+  const props: StageProps = { view, setView: applyView, refresh, hold };
+  const stage: StageId = pin && Date.now() < pin.until ? pin.stage : view.stage;
+  shownStage.current = stage;
+  const unread = view.hints.filter((h) => h.id > seen).length;
   let screen;
-  switch (view.stage) {
+  switch (stage) {
     case 'intro':
       screen = <Intro {...props} />;
       break;
@@ -119,37 +197,39 @@ export function PlayerApp() {
 
   return (
     <div className="shell">
+      {everConnected && !connected ? <div className="link-down">Link lost · reconnecting</div> : null}
       <div className="topbar">
         <span>
-          <span className={`dot ${connected ? 'on' : ''}`} />
-          {STAGE_LABEL[view.stage]}
+          <span className={`dot ${connected ? 'on' : ''}`} aria-hidden="true" />
+          {STAGE_LABEL[stage]}
         </span>
         {view.hints.length ? (
-          <button className="btn small ghost" onClick={() => setShowHints(true)}>
-            Transmissions ({view.hints.length})
+          <button className={`btn small ${unread ? 'unread' : 'ghost'}`} onClick={openList}>
+            Transmissions ({view.hints.length}){unread ? ' · new' : ''}
           </button>
         ) : null}
       </div>
       {screen}
       {toast ? (
-        <div className="overlay" role="dialog">
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Incoming transmission">
           <div className="frame">
-            <h1>Incoming transmission // magenta channel</h1>
-            <pre className="typed">{toast.text}</pre>
-            <button className="btn primary block" onClick={() => setToast(null)}>
+            <Frame title="Incoming transmission // magenta channel" className="accent">
+              <Typewriter text={toast.text} speed={3} />
+            </Frame>
+            <button className="btn primary block" onClick={acknowledge}>
               Acknowledge
             </button>
           </div>
         </div>
       ) : null}
       {showHints ? (
-        <div className="overlay" role="dialog" onClick={() => setShowHints(false)}>
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Transmissions received" onClick={() => setShowHints(false)}>
           <div className="frame" onClick={(e) => e.stopPropagation()}>
             <h1>Transmissions received</h1>
             <div className="stack">
               {[...view.hints].reverse().map((h) => (
                 <div key={h.id}>
-                  <div className="tiny">{new Date(h.ts).toLocaleTimeString()}</div>
+                  <div className="tiny">{clock(h.ts)}</div>
                   <pre className="typed">{h.text}</pre>
                 </div>
               ))}

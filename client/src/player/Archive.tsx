@@ -1,25 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, errorText } from '../api';
 import type { ArchiveMessage, PlayerView } from '../types';
+import { Typewriter } from './common';
 
 export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveMessage[]; busy: boolean }) {
   const [messages, setMessages] = useState<ArchiveMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [typingId, setTypingId] = useState<number | null>(null);
+  const loadedIds = useRef<Set<number> | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api<{ messages: ArchiveMessage[] }>('/api/player/archive')
-      .then((r) => setMessages(r.messages))
+      .then((r) => {
+        setMessages(r.messages);
+        loadedIds.current = new Set(r.messages.map((m) => m.id));
+      })
       .catch((e) => setErr(errorText(e)));
   }, []);
-  useEffect(() => {
+  const absorb = (incoming: ArchiveMessage[]) => {
     setMessages((m) => {
       const ids = new Set(m.map((x) => x.id));
-      const add = feed.filter((f) => !ids.has(f.id));
-      return add.length ? [...m, ...add].sort((a, b) => a.id - b.id) : m;
+      const add = incoming.filter((f) => !ids.has(f.id));
+      if (!add.length) return m;
+      const fresh = add.filter((a) => a.role === 'assistant' && !(loadedIds.current?.has(a.id) ?? false));
+      if (fresh.length) setTypingId(fresh[fresh.length - 1].id);
+      return [...m, ...add].sort((a, b) => a.id - b.id);
     });
+  };
+  useEffect(() => {
+    absorb(feed);
   }, [feed]);
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' });
@@ -32,8 +44,8 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
     setSending(true);
     setErr(null);
     try {
-      const r = await api<{ message: ArchiveMessage }>('/api/player/archive', { json: { text: t } });
-      setMessages((m) => (m.some((x) => x.id === r.message.id) ? m : [...m, r.message]));
+      const r = await api<{ message: ArchiveMessage }>('/api/player/archive', { json: { text: t }, timeoutMs: 150_000 });
+      absorb([r.message]);
       setText('');
     } catch (e2) {
       setErr(errorText(e2));
@@ -42,11 +54,13 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
     }
   };
 
+  const unlockedCount = Object.values(view.evidence.unlocked).filter(Boolean).length;
+  const integrity = Math.min(89, 41 + unlockedCount * 12);
   const disabled = !view.archive.enabled || view.archive.locked || busy || sending;
   return (
     <div className="frame" style={{ padding: 12 }}>
-      <p className="tiny">ARCHIVE // records mainframe // integrity 41%</p>
-      <div className="chat">
+      <p className="tiny">ARCHIVE // records mainframe // integrity {integrity}%</p>
+      <div className="chat" role="log" aria-live="polite">
         <div className="msg assistant">
           <span className="who">ARCHIVE</span>
           {view.archive.welcome}
@@ -54,28 +68,39 @@ export function Archive({ view, feed, busy }: { view: PlayerView; feed: ArchiveM
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.role}`}>
             <span className="who">{m.role === 'user' ? 'Detective' : m.role === 'assistant' ? 'ARCHIVE' : 'LINK'}</span>
-            {m.text}
+            {m.role === 'assistant' && m.id === typingId ? (
+              <Typewriter text={m.text} speed={4} onDone={() => bottom.current?.scrollIntoView({ block: 'end' })} />
+            ) : (
+              <span className="text">{m.text}</span>
+            )}
           </div>
         ))}
-        {busy ? <div className="msg system cursor">ARCHIVE PROCESSING</div> : null}
+        {busy || sending ? <div className="msg system cursor">ARCHIVE PROCESSING</div> : null}
         <div ref={bottom} />
       </div>
       {view.archive.locked ? <div className="error">ARCHIVE SEALED BY COMMAND AUTHORITY</div> : null}
       {!view.archive.enabled ? <div className="error">ARCHIVE OFFLINE</div> : null}
-      <form onSubmit={send} className="row" style={{ marginTop: 10 }}>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, view.archive.maxMessageChars))}
-          placeholder="Query the ARCHIVE"
-          disabled={!view.archive.enabled || view.archive.locked}
-          aria-label="Query"
-          style={{ flex: 1 }}
-        />
-        <button className="btn primary" disabled={disabled || !text.trim()}>
-          Send
-        </button>
-      </form>
-      {err ? <div className="error">{err}</div> : null}
+      <div className="chat-input">
+        <form onSubmit={send} className="row">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value.slice(0, view.archive.maxMessageChars))}
+            placeholder="Query the ARCHIVE"
+            disabled={!view.archive.enabled || view.archive.locked}
+            aria-label="Query"
+            autoComplete="off"
+            style={{ flex: 1 }}
+          />
+          <button className="btn primary" disabled={disabled || !text.trim()}>
+            Send
+          </button>
+        </form>
+      </div>
+      {err ? (
+        <div className="error" role="alert">
+          {err}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { api, errorText } from '../api';
 import type { PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
-import { Frame, Typewriter } from './common';
+import { Frame, SkipHint, Typewriter, useTyped } from './common';
 
 export function Intro({ view, setView }: StageProps) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [done, onDone] = useTyped();
   const start = async () => {
     setBusy(true);
     try {
@@ -19,8 +20,9 @@ export function Intro({ view, setView }: StageProps) {
   };
   return (
     <Frame title={view.intro.headline} className="accent">
-      <Typewriter text={view.intro.body} />
-      <button className="btn primary block" onClick={start} disabled={busy} style={{ marginTop: 16 }}>
+      <Typewriter text={view.intro.body} onDone={onDone} />
+      <SkipHint done={done} />
+      <button className="btn primary block" onClick={start} disabled={busy || !done} style={{ marginTop: 12 }}>
         {view.intro.buttonLabel}
       </button>
       {err ? <div className="error">{err}</div> : null}

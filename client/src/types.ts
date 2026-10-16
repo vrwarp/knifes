@@ -56,6 +56,7 @@ export interface PlayerView {
     attempts: number;
     passed: boolean;
     maxAttempts: number | null;
+    feedback: 'pass_fail' | 'count';
     lastPass: boolean | null;
     lastAnswers: Record<SlotId, string> | null;
     successTitle: string | null;
@@ -170,6 +171,7 @@ export interface GameConfig {
     successBody: string;
     failText: string;
     maxAttempts: number | null;
+    feedback: 'pass_fail' | 'count';
   };
   hints: { quick: Partial<Record<StageId, string[]>> };
 }

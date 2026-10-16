@@ -76,10 +76,26 @@ try {
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const gm = await desk.newPage();
   const shot = (page, name) => page.screenshot({ path: path.join(out, `${name}.png`), fullPage: true });
+  // Typewriter text gates the next button; tapping the text finishes it.
+  const finishTyping = async (page) => {
+    for (const el of await page.locator('.typed').all()) { try { await el.click({ timeout: 500 }); } catch {} }
+    await new Promise((r) => setTimeout(r, 150));
+  };
+  // The verdict lands in beats separated by CONTINUE buttons.
+  const finishBeats = async (page) => {
+    for (let i = 0; i < 6; i++) {
+      await finishTyping(page);
+      const next = page.getByRole('button', { name: /^continue$/i });
+      if (!(await next.count())) break;
+      await next.click();
+    }
+    await finishTyping(page);
+  };
 
   await step('player sees the intro', async () => {
     await player.goto(base);
-    await player.getByText('SECTION 30 // MAGENTA CHANNEL').waitFor();
+    await player.locator('h1', { hasText: 'MAGENTA CHANNEL' }).waitFor();
+    await finishTyping(player);
     await shot(player, '01-intro');
     await player.getByRole('button', { name: /initiate recovery protocol/i }).click();
   });
@@ -88,6 +104,7 @@ try {
     await player.locator('h1', { hasText: 'Field transmission' }).waitFor();
     const map = player.locator('.map');
     await map.waitFor();
+    await player.getByRole('button', { name: /tap to unlock map/i }).click();
     await map.click({ position: { x: 150, y: 150 } });
     await player.getByRole('button', { name: /triangulate/i }).click();
     await player.getByText('LOCATION CONFIRMED').waitFor();
@@ -96,14 +113,14 @@ try {
   });
 
   await step('gate rejects a wrong code and accepts MAGENTA30', async () => {
-    await player.locator('h1', { hasText: 'Remote asset' }).waitFor();
+    await player.locator('h1', { hasText: 'Secure line' }).waitFor();
     const box = player.getByLabel('Recovery key');
     await box.fill('WRONG');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.getByText('KEY REJECTED').waitFor();
     await box.fill('magenta-30');
     await player.getByRole('button', { name: /submit key/i }).click();
-    await player.locator('h1', { hasText: 'Mirror partition' }).waitFor({ timeout: 10_000 });
+    await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   });
 
   await step('word puzzle scores APPLE then solves with ALPHA', async () => {
@@ -114,13 +131,15 @@ try {
     await shot(player, '03-hack');
     await box.fill('alpha');
     await player.getByRole('button', { name: /attempt key/i }).click();
-    await player.locator('h1', { hasText: 'PARTITION DECRYPTED' }).waitFor({ timeout: 10_000 });
+    await player.locator('h1', { hasText: 'INCIDENT RECORD' }).waitFor({ timeout: 10_000 });
+    await finishTyping(player);
     await shot(player, '04-reveal');
     await player.getByRole('button', { name: /return to base/i }).click();
   });
 
   await step('evidence vault lists the access log', async () => {
     await player.getByRole('tab', { name: 'evidence' }).waitFor();
+    await player.locator('.file header', { hasText: '01_Vault' }).click();
     await player.getByText('03:42').first().waitFor();
     await shot(player, '05-evidence');
   });
@@ -139,14 +158,14 @@ try {
     await gm.getByRole('button', { name: /enter/i }).click();
     await gm.getByText('GM console').waitFor();
     await gm.locator('.chip.now', { hasText: 'investigation' }).waitFor({ timeout: 10_000 });
-    await gm.locator('.log .ev', { hasText: 'archive_user' }).first().waitFor();
+    await gm.locator('.log .ev', { hasText: 'archive user' }).first().waitFor();
     await shot(gm, '07-gm');
   });
 
   await step('GM pushes a hint and the player sees the transmission', async () => {
-    await gm.getByPlaceholder('Incoming transmission text').fill('Transmission note: count back thirty minutes.');
-    await gm.getByRole('button', { name: /push to player/i }).click();
-    await player.locator('h1', { hasText: 'Incoming transmission' }).waitFor({ timeout: 10_000 });
+    await gm.getByLabel('Transmission text').fill('Count back thirty minutes from the time of death.');
+    await gm.getByRole('button', { name: /push to his screen/i }).click();
+    await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
     await shot(player, '08-hint');
     await player.getByRole('button', { name: /acknowledge/i }).click();
   });
@@ -161,7 +180,8 @@ try {
     await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
     await fill({ SUSPECT: 'Agent Vector' });
     await player.getByRole('button', { name: /submit deduction/i }).click();
-    await player.getByText('DEDUCTION VERIFIED').first().waitFor({ timeout: 15_000 });
+    await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
+    await finishBeats(player);
     await shot(player, '09-solved');
   });
 
@@ -169,7 +189,7 @@ try {
     await gm.getByRole('button', { name: /generate with ai/i }).click();
     await gm.getByText('Report generated').waitFor({ timeout: 15_000 });
     await gm.getByRole('button', { name: /publish to player/i }).click();
-    await player.locator('h1', { hasText: 'Case file' }).waitFor({ timeout: 10_000 });
+    await player.getByText('CASE FILE 30-0415').first().waitFor({ timeout: 10_000 });
     await shot(player, '10-report');
   });
 
@@ -193,9 +213,9 @@ try {
   });
 
   await step('GM resets the game and the player returns to the intro', async () => {
-    gm.once('dialog', (d) => d.accept());
-    await gm.locator('select').nth(1).selectOption('game');
-    await gm.getByRole('button', { name: /^reset$/i }).click();
+    await gm.locator('summary', { hasText: 'Danger zone' }).click();
+    gm.once('dialog', (d) => d.accept('RESET'));
+    await gm.getByRole('button', { name: /reset whole game/i }).click();
     await player.getByRole('button', { name: /initiate recovery protocol/i }).waitFor({ timeout: 10_000 });
   });
 
