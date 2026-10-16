@@ -16,7 +16,7 @@ party conditions, and the GM console, averaged across the five critics.
 | - | - | - | - | - | - | - |
 | 1 | 5.0 | 6.4 | 7.0 | 4.6 | 6.4 | 26 across critics, 6 unanimous |
 | 2 | 7.8 | 7.3 | 8.0 | 6.7 | 7.3 | 1 (tabs unmounting lost the deduction draft) |
-| 3 | see below | | | | | |
+| 3 | 8.0 | 7.1 | 8.5 | 7.5 | 7.8 | 0 new; 2 regressions from round 2 (both fixed) |
 
 ## Round 1: what the critics agreed on
 
@@ -54,4 +54,35 @@ Implemented in commit "Design round 2".
 
 ## Round 3: convergence check
 
-(filled in below once the round-three verdicts are in)
+Verdicts: immersion and GM operations converged outright. Mobile UX, art direction and
+accessibility each withheld convergence on exactly one item, and all three items were regressions
+introduced by round-two fixes rather than new design findings:
+
+- The evidence vault eyebrow printed a literal `\u2011` (a JavaScript escape written inside JSX
+  text). Fixed before the verdicts landed; the critics were reading captures that predated the fix.
+- The merged name, badge, door and event cell in the vault access log inherited a `nowrap` rule
+  from the old badge column, so the table ran to 662 CSS pixels on a 390 pixel phone and the 03:48
+  "one card envelope" clue sat off screen. The cell wraps now and the file body scrolls as a backstop.
+
+Also fixed from the round-three lists: the GM jump-to select was clipped to about 100 pixels by the
+no-wrap control row (it keeps a 160 pixel floor and the button wraps instead); the top fade meant for
+the scrolling GM log also faded the first row of the vault table; the stage-back scroll fired at
+mount under reduced motion; the deduction verdict floor applied only to wrong answers (a pass
+swapped the screen the instant the socket pushed it, so the floor now lives in the server); the
+rejection text, the reveal button and the intro button scroll into view when they appear below the
+fold; deduction inputs meet the 44 pixel target; the hint overlay no longer grows from the middle
+while it types (the typewriter reserves its final height); ARCHIVE cycles processing lines while a
+live reply takes its time; the GM console polls and shows a link banner when it never had a socket;
+the stuck strip shows idle time as its big number; forward stage skips confirm like backward jumps;
+hint drafting has its own flag and a cancel; two GM contrast pairs were raised above 4.5:1.
+
+Stop decision: converged. No critic has a blocking finding against the current build, every blocking
+item of the round was a regression that is fixed and verified on recaptured screens, and the
+scores moved by 0.2 or less on three of five dimensions (party usability rose 0.8 with the overflow
+and target fixes). The three-round cap is reached.
+
+Left open on purpose, all non-blocking: a count of verified fields on a miss (the organizers chose
+pass or fail; the GM option stays); changing the puzzle secret ALPHA (it is part of the fiction);
+a Fallout-style glyph scramble on the hacking screen; a GM-released finale beat. The remaining
+critic ideas that were not taken are listed in the round-three notes under the scratchpad critique
+folder and in the per-critic reports.

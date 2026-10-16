@@ -133,6 +133,21 @@ export function GmApp() {
     }
   }, [connected, authed, load]);
 
+  // Without the socket nothing live arrives: poll instead, and say so after five seconds.
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    if (connected || authed !== true) {
+      setOffline(false);
+      return;
+    }
+    const banner = window.setTimeout(() => setOffline(true), 5000);
+    const poll = window.setInterval(() => void load(), 10_000);
+    return () => {
+      window.clearTimeout(banner);
+      window.clearInterval(poll);
+    };
+  }, [connected, authed, load]);
+
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginErr(null);
@@ -179,7 +194,7 @@ export function GmApp() {
   return (
     <div className="shell wide">
       <div className="no-print">
-        {everConnected && !connected ? <div className="link-down">Link down · reconnecting · the player keeps playing, you are not seeing it</div> : null}
+        {(everConnected && !connected) || offline ? <div className="link-down">Link down · reconnecting · the player keeps playing, you are not seeing it</div> : null}
         <div className="topbar">
           <span>
             <span className={`dot ${connected ? 'on' : ''}`} aria-hidden="true" />

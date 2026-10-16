@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, errorText } from '../api';
 import type { SlotId } from '../types';
 import type { StageProps } from './PlayerApp';
+import { reduceMotion } from './common';
 
 type Submit = { pass: boolean; title: string | null; body: string | null; failText: string; verified: number | null; total: number };
 
@@ -36,6 +37,10 @@ export function Deduction({ view, refresh }: StageProps) {
     return () => window.clearInterval(t);
   }, [busy]);
   const [result, setResult] = useState<Submit | null>(null);
+  const verdictRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (result && !result.pass) verdictRef.current?.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  }, [result]);
   const [err, setErr] = useState<string | null>(null);
   const exhausted = d.maxAttempts !== null && d.attempts >= d.maxAttempts && !d.passed;
 
@@ -114,7 +119,7 @@ export function Deduction({ view, refresh }: StageProps) {
         </button>
       )}
       {result && !result.pass ? (
-        <div className="error fail-text" role="alert">
+        <div className="error fail-text" role="alert" ref={verdictRef}>
           {result.failText}
           {result.verified !== null ? (
             <div className="amber" style={{ marginTop: 6 }}>

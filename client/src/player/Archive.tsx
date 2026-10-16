@@ -3,12 +3,24 @@ import { api, errorText } from '../api';
 import type { ArchiveMessage, PlayerView } from '../types';
 import { Typewriter } from './common';
 
+const PROCESSING_LINES = ['ARCHIVE PROCESSING', 'SEARCHING SURVIVING SEGMENTS', 'CROSS-CHECKING THE INDEX', 'SEGMENT 7 CORRUPT. REROUTING', 'ASSEMBLING RECORD'];
+
 export function Archive({ view, feed, busy, active = true }: { view: PlayerView; feed: ArchiveMessage[]; busy: boolean; active?: boolean }) {
   const [messages, setMessages] = useState<ArchiveMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [typingId, setTypingId] = useState<number | null>(null);
+  const working = busy || sending;
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    if (!working) {
+      setPhase(0);
+      return;
+    }
+    const t = window.setInterval(() => setPhase((p) => (p + 1) % PROCESSING_LINES.length), 2500);
+    return () => window.clearInterval(t);
+  }, [working]);
   const loadedIds = useRef<Set<number> | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -90,7 +102,7 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
             )}
           </div>
         ))}
-        {busy || sending ? <div className="msg system cursor">ARCHIVE PROCESSING</div> : null}
+        {working ? <div className="msg system cursor" role="status">{PROCESSING_LINES[phase]}</div> : null}
         <div ref={bottom} />
       </div>
       {view.archive.locked ? <div className="error">ARCHIVE SEALED BY COMMAND AUTHORITY</div> : null}

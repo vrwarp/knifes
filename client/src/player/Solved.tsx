@@ -21,7 +21,7 @@ export function Solved(props: StageProps & { feed: ArchiveMessage[]; busy: boole
 
   return (
     <>
-      <Frame title={d.successTitle ?? 'Deduction verified'} titleClassName="display green" className={`success ${beat === 0 ? 'pulse' : ''}`}>
+      <Frame title={d.successTitle ?? 'Deduction verified'} titleClassName="display green" className={`success ${beat === 0 || beat === last ? 'pulse' : ''}`}>
         {beats.slice(0, beat).map((p, i) => (
           <pre key={i} className={`typed ${i === last ? 'display green' : ''}`} style={{ marginBottom: 14 }}>
             {p}

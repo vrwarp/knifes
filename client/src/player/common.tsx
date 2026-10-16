@@ -71,10 +71,12 @@ export function Typewriter({
 /** Once the typewriter finishes, bring the element (usually the CTA) into view below the fold. */
 export function useScrollWhenDone<T extends HTMLElement>(done: boolean) {
   const ref = useRef<T | null>(null);
+  // Already done on first render means nothing was typed (reduced motion): leave the page at the top.
+  const skip = useRef(done);
   useEffect(() => {
-    if (!done) return;
+    if (!done || skip.current) return;
     const id = window.setTimeout(() => {
-      ref.current?.scrollIntoView({ block: 'end', behavior: reduceMotion() ? 'auto' : 'smooth' });
+      ref.current?.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
     }, 50);
     return () => window.clearTimeout(id);
   }, [done]);

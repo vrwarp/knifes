@@ -13,6 +13,9 @@ import { advanceTo, applyInvestigationUnlocks, forceStage, initialState, isAtLea
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { SLOT_IDS, STAGE_ORDER, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
 
+/** Minimum time a deduction verdict takes to come back, so it reads as weighed rather than instant. */
+const VERDICT_FLOOR_MS = 2500;
+
 export class HttpError extends Error {
   constructor(
     readonly status: number,
@@ -388,7 +391,16 @@ export class GameService {
     }
     const answers = Object.fromEntries(SLOT_IDS.map((id) => [id, String(raw[id] ?? '').trim().slice(0, 300)])) as Record<SlotId, string>;
     d.attempts++;
+    const started = Date.now();
     const result = await gradeDeduction(this.config.deduction.slots, answers);
+    // The verdict should feel weighed, not instant: the socket push that follows a pass swaps the screen,
+    // so the floor has to be enforced here, not only on the client.
+    const remaining = VERDICT_FLOOR_MS - (Date.now() - started);
+    if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+    // A GM reset or jump while the verdict was pending: do not write into a stage that no longer exists.
+    if (this.state.deduction !== d || this.state.stage !== 'investigation') {
+      throw new HttpError(409, 'The game changed while the deduction was being verified. Try again.');
+    }
     d.lastResult = result;
     d.lastAnswers = answers;
     this.event('deduction_submit', {
