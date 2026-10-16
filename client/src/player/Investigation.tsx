@@ -23,7 +23,7 @@ export function Investigation({ view, setView, refresh, hold, feed, busy }: Stag
         <Evidence view={view} />
       </div>
       <div hidden={tab !== 'archive'}>
-        <Archive view={view} feed={feed} busy={busy} active={tab === 'archive'} />
+        <Archive key={view.archive.epoch} view={view} feed={feed} busy={busy} active={tab === 'archive'} />
       </div>
       <div hidden={tab !== 'deduction'}>
         <Deduction view={view} setView={setView} refresh={refresh} hold={hold} />

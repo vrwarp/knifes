@@ -59,6 +59,9 @@ export function PlayerApp() {
   const [seen, setSeen] = useState(readSeen);
 
   const shownStage = useRef<StageId>('intro');
+  const archiveEpoch = useRef<number | null>(null);
+  const lastRev = useRef(0);
+  const ackRef = useRef<HTMLButtonElement | null>(null);
 
   const hold = useCallback((stage: StageId, ms: number) => {
     const until = Date.now() + ms;
@@ -69,11 +72,18 @@ export function PlayerApp() {
   /** Accept a new view; when it moves past a puzzle he just solved, keep the solved screen up for a beat. */
   const applyView = useCallback(
     (v: PlayerView) => {
+      // An HTTP reply can land after a newer socket push; never step back to an older view.
+      if (v.rev < lastRev.current) return;
+      lastRev.current = v.rev;
       const cur = shownStage.current;
       if (cur === 'gate' && v.stage === 'hack') hold('gate', 1700);
       else if (cur === 'hack' && v.stage === 'reveal') hold('hack', 2000);
       setView(v);
       setArchiveBusy(v.archive.busy);
+      if (archiveEpoch.current !== v.archive.epoch) {
+        if (archiveEpoch.current !== null) setArchiveFeed([]);
+        archiveEpoch.current = v.archive.epoch;
+      }
     },
     [hold],
   );
@@ -129,7 +139,9 @@ export function PlayerApp() {
   // A transmission takes over the screen: drop the keyboard and put focus on Acknowledge.
   useEffect(() => {
     if (!toast) return;
-    (document.activeElement as HTMLElement | null)?.blur?.();
+    const active = document.activeElement as HTMLElement | null;
+    if (active && active !== ackRef.current) active.blur?.();
+    ackRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') acknowledge();
     };
@@ -243,7 +255,7 @@ export function PlayerApp() {
             <div className="kicker">Incoming transmission</div>
             <h1>Magenta channel</h1>
             <Typewriter text={toast.text} speed={3} />
-            <button className="btn primary block" onClick={acknowledge} autoFocus>
+            <button ref={ackRef} className="btn primary block" onClick={acknowledge} autoFocus>
               Acknowledge
             </button>
           </div>

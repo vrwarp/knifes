@@ -145,6 +145,7 @@ export class GameService {
 
   /** Persist and push the new state to every connected client. */
   private touch(): void {
+    this.rev = Math.max(Date.now(), this.rev + 1);
     this.save();
     this.emit(this.snapshotMessage());
   }
@@ -159,8 +160,11 @@ export class GameService {
     return e;
   }
 
-  view(): PlayerView {
-    return playerView(this.config, this.state);
+  /** Monotonic revision (time-based so it keeps rising across restarts); lets the phone drop stale views. */
+  private rev = Date.now();
+
+  view(): PlayerView & { rev: number } {
+    return { ...playerView(this.config, this.state), rev: this.rev };
   }
 
   // ---------------------------------------------------------------- player
@@ -512,6 +516,7 @@ export class GameService {
     this.db.clearArchive();
     this.state.archive.sessionId = null;
     this.state.archive.messageCount = 0;
+    this.state.archive.epoch = (this.state.archive.epoch ?? 0) + 1;
     this.event('gm_action', { action: 'archive_reset' });
     this.touch();
   }

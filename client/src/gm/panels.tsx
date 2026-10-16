@@ -65,10 +65,14 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
   const idx = stages.indexOf(state.stage);
   const nextStage = visible[visible.indexOf(state.stage) + 1] ?? state.stage;
   const [jump, setJump] = useState<StageId>(nextStage);
+  // Once a GM picks a target, the player advancing must not silently change it under them.
+  const picked = useRef(false);
   const resettable: StageId[] = (['geo', 'gate', 'hack', 'investigation'] as StageId[]).filter((s) => s !== 'geo' || config.geo.mode !== 'off');
   const [resetScope, setResetScope] = useState<StageId>(resettable.includes(state.stage) ? state.stage : 'hack');
   const { busy, msg, run } = useAction();
-  useEffect(() => setJump(nextStage), [nextStage]);
+  useEffect(() => {
+    if (!picked.current) setJump(nextStage);
+  }, [nextStage]);
   useEffect(() => {
     if (resettable.includes(state.stage)) setResetScope(state.stage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,7 +103,12 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
       </div>
       <div className="row ctl-row" style={{ marginTop: 12 }}>
         <span className="tiny">Jump to</span>
-        <select value={jump} onChange={(e) => setJump(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to jump to">
+        <select
+          value={jump}
+          onChange={(e) => {
+            picked.current = true;
+            setJump(e.target.value as StageId);
+          }} style={{ width: 'auto' }} aria-label="Stage to jump to">
           {visible.map((s) => (
             <option key={s} value={s}>
               {STAGE_NAME[s]}
@@ -113,6 +122,7 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
             const back = stages.indexOf(jump) < idx;
             if (back && !window.confirm(`Jump BACK to ${STAGE_NAME[jump]}? His phone will show that screen again.`)) return;
             if (!back && !window.confirm(`Unlock ${STAGE_NAME[jump]} now? His phone moves to that screen and this cannot be undone from here.`)) return;
+            picked.current = false;
             void run(() => api('/api/gm/stage', { json: { stage: jump } }), `${back ? 'Jumped back to' : 'Unlocked'} ${STAGE_NAME[jump]}`);
           }}
         >

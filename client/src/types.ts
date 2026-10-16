@@ -17,6 +17,8 @@ export interface HintPush {
 }
 
 export interface PlayerView {
+  /** Server revision; a view older than one already shown is ignored. */
+  rev: number;
   title: string;
   stage: StageId;
   geoMode: 'puzzle' | 'reveal' | 'off';
@@ -48,7 +50,7 @@ export interface PlayerView {
   };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean }; hasAudio: boolean; audioNotes: string };
-  archive: { enabled: boolean; locked: boolean; busy: boolean; welcome: string; maxMessageChars: number };
+  archive: { enabled: boolean; locked: boolean; busy: boolean; welcome: string; maxMessageChars: number; epoch: number };
   deduction: {
     prompt: string;
     template: string;

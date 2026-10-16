@@ -86,7 +86,7 @@ export interface GameState {
   gate: { attempts: number; passed: boolean };
   hack: { guesses: string[]; solved: boolean; lockedUntil: number | null; rounds: number };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
-  archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
+  archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean; /** Bumped when the GM starts a new ARCHIVE session. */ epoch?: number };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
   report: { markdown: string | null; generatedAt: number | null; published: boolean };
