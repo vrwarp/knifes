@@ -98,6 +98,33 @@ cd client && npm run build
   Nothing blocks the game.
 - Costs: the ARCHIVE and copilot calls are short. A full evening is expected to cost a few dollars at Opus 5.5 rates.
 
+### End-to-end tests
+
+The Playwright suite in `e2e/tests` runs every test on four projects: Chromium and WebKit, each at
+phone and desktop size. Each worker starts its own server with a private data directory and mock AI,
+and map tiles are stubbed, so the suite needs no network or Claude login.
+
+```
+cd server && npm run build && cd ../client && npm run build
+cd ../e2e && npm install && npx playwright install chromium webkit
+npm test                  # all four projects
+npm run test:chromium     # Chromium phone and desktop only
+npm run test:webkit       # WebKit phone and desktop only
+npx playwright show-report output/report
+```
+
+On Linux, WebKit also needs its system libraries once: `npx playwright install-deps webkit`.
+Set `PW_CHROMIUM` or `PW_WEBKIT` to a browser executable to use one Playwright did not install.
+
+Coverage: the full player journey; the three location modes and target radius; the code gate; the
+word puzzle scoring, lockout and reset; every evidence file; passcode vault mode; ARCHIVE answers,
+persistence and sealing; deduction drafts, the verdict delay, pass/fail and count feedback; hints
+(overlay focus, Escape, transmissions list, quick hints, AI drafts); the GM console (login, stuck
+alarms with a mocked clock, skips and jumps with confirmations, stage and whole-game resets, log
+filters, case report publishing, config editing, validation, concurrent-edit warning); the player
+key; API authorization; secret leakage; connection-loss banners and polling; and layout checks for
+sideways scroll, 16px inputs and 44px touch targets.
+
 ### Visual walkthrough
 
 `node e2e/walkthrough.mjs` drives the real app through every player and GM journey (default run,
