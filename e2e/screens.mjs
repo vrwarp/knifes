@@ -64,7 +64,7 @@ try {
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const player = await phone.newPage();
   const shot = async (page, name) => { await settle(); await page.screenshot({ path: path.join(out, `${name}.png`), fullPage: true }); console.log('captured', name); };
-  const finishTyping = async () => { for (const el of await player.locator('.typed').all()) { try { await el.click({ timeout: 500 }); } catch {} } await settle(150); };
+  const finishTyping = async () => { for (const el of await player.locator('.typed-stack').all()) { try { await el.click({ timeout: 500 }); } catch {} } await settle(150); };
 
   await player.goto(base);
   await player.getByRole('button', { name: /initiate recovery protocol/i }).waitFor();

@@ -97,7 +97,7 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
           );
         })}
       </div>
-      <div className="row" style={{ marginTop: 12 }}>
+      <div className="row ctl-row" style={{ marginTop: 12 }}>
         <span className="tiny">Jump to</span>
         <select value={jump} onChange={(e) => setJump(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to jump to">
           {visible.map((s) => (
@@ -112,13 +112,14 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
           onClick={() => {
             const back = stages.indexOf(jump) < idx;
             if (back && !window.confirm(`Jump BACK to ${STAGE_NAME[jump]}? His phone will show that screen again.`)) return;
+            if (!back && !window.confirm(`Unlock ${STAGE_NAME[jump]} now? His phone moves to that screen and this cannot be undone from here.`)) return;
             void run(() => api('/api/gm/stage', { json: { stage: jump } }), `${back ? 'Jumped back to' : 'Unlocked'} ${STAGE_NAME[jump]}`);
           }}
         >
           {stages.indexOf(jump) < idx ? 'Jump back' : 'Unlock / skip to'}
         </button>
       </div>
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row ctl-row" style={{ marginTop: 8 }}>
         <span className="tiny">Reset</span>
         <select value={resetScope} onChange={(e) => setResetScope(e.target.value as StageId)} style={{ width: 'auto' }} aria-label="Stage to reset">
           {resettable.map((s) => (
@@ -248,6 +249,7 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
   const { busy, msg, run } = useAction();
   const quick = config.hints.quick[state.stage] ?? [];
   const [drafting, setDrafting] = useState(false);
+  const draftToken = useRef(0);
   const push = (t: string) =>
     run(async () => {
       await api('/api/gm/hint', { json: { text: t } });
@@ -288,23 +290,41 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
         </select>
         <button
           className="btn small"
-          disabled={busy}
-          onClick={() =>
-            run(async () => {
-              setDrafting(true);
-              try {
-                const r = await api<{ hint: string; rationale: string; source: string }>('/api/gm/hint/draft', { json: { strength }, timeoutMs: 120_000 });
+          disabled={drafting}
+          onClick={() => {
+            // Drafting runs on its own flag so quick hints and pushes keep working while the model thinks.
+            const token = ++draftToken.current;
+            setDrafting(true);
+            void api<{ hint: string; rationale: string; source: string }>('/api/gm/hint/draft', { json: { strength }, timeoutMs: 120_000 })
+              .then((r) => {
+                if (token !== draftToken.current) return;
                 setText(r.hint);
                 setRationale(`${r.rationale} [${r.source}]`);
-              } finally {
-                setDrafting(false);
-              }
-            })
-          }
+              })
+              .catch((e) => {
+                if (token === draftToken.current) setRationale(`Draft failed: ${errorText(e)}`);
+              })
+              .finally(() => {
+                if (token === draftToken.current) setDrafting(false);
+              });
+          }}
         >
           Draft
         </button>
-        {drafting ? <span className="small amber cursor">Drafting</span> : null}
+        {drafting ? (
+          <>
+            <span className="small amber cursor">Drafting</span>
+            <button
+              className="btn small ghost"
+              onClick={() => {
+                draftToken.current++;
+                setDrafting(false);
+              }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : null}
       </div>
       {state.hints.length ? (
         <div style={{ marginTop: 10 }} className="pushed">

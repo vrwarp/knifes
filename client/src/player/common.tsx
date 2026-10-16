@@ -59,10 +59,26 @@ export function Typewriter({
     setN(text.length);
   };
   return (
-    <pre className={`typed ${done ? '' : 'cursor'} ${className}`} onClick={skip}>
-      {text.slice(0, n)}
-    </pre>
+    <div className="typed-stack" onClick={skip}>
+      <pre className={`typed ghost ${className}`} aria-hidden="true">
+        {text}
+      </pre>
+      <pre className={`typed ${done ? '' : 'cursor'} ${className}`}>{text.slice(0, n)}</pre>
+    </div>
   );
+}
+
+/** Once the typewriter finishes, bring the element (usually the CTA) into view below the fold. */
+export function useScrollWhenDone<T extends HTMLElement>(done: boolean) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    if (!done) return;
+    const id = window.setTimeout(() => {
+      ref.current?.scrollIntoView({ block: 'end', behavior: reduceMotion() ? 'auto' : 'smooth' });
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [done]);
+  return ref;
 }
 
 /** [done, onDone] for gating a button behind a Typewriter. */

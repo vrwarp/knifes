@@ -58,8 +58,12 @@ function NowStrip({ state, config, events, players }: { state: GameState; config
   return (
     <div className={`now ${stuck2 ? 'stuck2' : stuck ? 'stuck' : ''}`} aria-live="polite">
       <span className="stage">{STAGE_NAME[state.stage]}</span>
-      {inStage !== null ? <span className="elapsed" title="time in this stage">{elapsed(inStage)}</span> : null}
-      {idle !== null && idle >= 60_000 && state.stage !== 'solved' ? <span className="fact">idle <b>{elapsed(idle)}</b></span> : null}
+      {stuck && idle !== null ? (
+        <span className="elapsed" title="idle since his last action">idle {elapsed(idle)}</span>
+      ) : inStage !== null ? (
+        <span className="elapsed" title="time in this stage">{elapsed(inStage)}</span>
+      ) : null}
+      {!stuck && idle !== null && idle >= 60_000 && state.stage !== 'solved' ? <span className="fact">idle <b>{elapsed(idle)}</b></span> : null}
       {facts.map((f, i) => (
         <span key={i} className="fact">
           {f}

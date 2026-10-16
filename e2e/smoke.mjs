@@ -78,7 +78,7 @@ try {
   const shot = (page, name) => page.screenshot({ path: path.join(out, `${name}.png`), fullPage: true });
   // Typewriter text gates the next button; tapping the text finishes it.
   const finishTyping = async (page) => {
-    for (const el of await page.locator('.typed').all()) { try { await el.click({ timeout: 500 }); } catch {} }
+    for (const el of await page.locator('.typed-stack').all()) { try { await el.click({ timeout: 500 }); } catch {} }
     await new Promise((r) => setTimeout(r, 150));
   };
   // The verdict lands in beats separated by CONTINUE buttons.
