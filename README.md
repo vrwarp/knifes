@@ -97,3 +97,10 @@ cd client && npm run build
 - If the AI is unreachable, the ARCHIVE says the link is degraded and grading falls back to keyword matching.
   Nothing blocks the game.
 - Costs: the ARCHIVE and copilot calls are short. A full evening is expected to cost a few dollars at Opus 5.5 rates.
+
+### Visual walkthrough
+
+`node e2e/walkthrough.mjs` drives the real app through every player and GM journey (default run,
+location modes, word-puzzle lockout, passcode vault, GM console, link and access problems) and
+writes screenshots, two screencast videos and a `manifest.json` to `e2e/output/walkthrough/`.
+Videos are encoded with the system `ffmpeg`.
