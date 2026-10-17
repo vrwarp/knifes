@@ -52,6 +52,8 @@ export interface GameConfig {
     aiJitterSeconds: number;
     /** Whether the phone shows the opponent's letters or only its colour feedback. */
     aiShowLetters: boolean;
+    /** Extended thinking for the opponent. Off keeps it quick and beatable. */
+    aiThinking: boolean;
   };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: {

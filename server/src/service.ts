@@ -77,6 +77,7 @@ export const ConfigSchema = z.object({
       aiIntervalSeconds: z.number().min(1).max(600),
       aiJitterSeconds: z.number().min(0).max(600),
       aiShowLetters: z.boolean(),
+      aiThinking: z.boolean(),
     })
     .superRefine((h, ctx) => {
       if (h.mode !== 'race') return;
@@ -372,6 +373,7 @@ export class GameService {
           length: secret.length,
           history,
           timeoutMs: Math.max(20_000, this.config.hack.aiIntervalSeconds * 4000),
+          thinking: this.config.hack.aiThinking,
         });
         guess = r.guess;
         costUsd = r.costUsd;

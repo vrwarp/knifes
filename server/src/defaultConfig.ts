@@ -51,6 +51,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     aiIntervalSeconds: 5,
     aiJitterSeconds: 1,
     aiShowLetters: false,
+    aiThinking: false,
   },
   reveal: {
     title: 'PARTITION DECRYPTED // INCIDENT RECORD 30-0415',

@@ -306,6 +306,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
             </div>
             {T(['hack', 'aiModel'], 'Opponent model')}
             {B(['hack', 'aiShowLetters'], "Show the opponent's letters on the phone (off: colours only)")}
+            {B(['hack', 'aiThinking'], 'Let the opponent think before each guess (off: quick and fallible)')}
             <label className="field">
               <span>
                 Word bank, one per line ({draft.hack.wordBank.length} words, all the same length). Each round draws a word that has not been used this game.

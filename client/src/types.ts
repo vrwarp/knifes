@@ -194,6 +194,7 @@ export interface GameConfig {
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
     aiShowLetters: boolean;
+    aiThinking: boolean;
   };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: {

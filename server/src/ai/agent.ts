@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { query, type Options } from '@anthropic-ai/claude-agent-sdk';
+import { query, type Options, type ThinkingConfig } from '@anthropic-ai/claude-agent-sdk';
 import { detectCredential, env } from '../env.js';
 
 export const CLIENT_APP = 'section30/0.1.0';
@@ -100,6 +100,8 @@ export interface RunOpts {
   persist?: boolean;
   maxTurns?: number;
   effort?: 'low' | 'medium' | 'high';
+  /** Extended-thinking setting; omitted means the model's default (adaptive on current models). */
+  thinking?: ThinkingConfig;
   outputFormat?: Options['outputFormat'];
   timeoutMs?: number;
   onAssistantText?: (text: string) => void;
@@ -151,6 +153,7 @@ export async function runAgent(o: RunOpts): Promise<RunResult> {
   if (binary) options.pathToClaudeCodeExecutable = binary;
   if (o.resume) options.resume = o.resume;
   if (o.outputFormat) options.outputFormat = o.outputFormat;
+  if (o.thinking) options.thinking = o.thinking;
 
   const result: RunResult = { text: '', structured: undefined, sessionId: null, costUsd: null, toolCalls: [] };
   try {

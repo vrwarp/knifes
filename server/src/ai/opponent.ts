@@ -16,6 +16,8 @@ export interface OpponentRequest {
   length: number;
   history: OpponentHistoryRow[];
   timeoutMs: number;
+  /** Let the model think before guessing. Off by default: a quick, fallible opponent is the point. */
+  thinking: boolean;
 }
 
 export function opponentLive(): boolean {
@@ -36,6 +38,8 @@ export async function aiOpponentGuess(req: OpponentRequest): Promise<{ guess: st
     outputFormat: { type: 'json_schema', schema: GUESS_SCHEMA },
     maxTurns: 2,
     effort: 'low',
+    // Haiku 5.5 only accepts `disabled` at effort high or below; low is used above.
+    thinking: req.thinking ? { type: 'adaptive' } : { type: 'disabled' },
     persist: false,
     timeoutMs: req.timeoutMs,
   });
