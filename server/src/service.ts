@@ -362,6 +362,8 @@ export class GameService {
     const fallback = () => solverGuess(this.config.hack.wordBank, secret.length, history);
     h.ai.thinking = true;
     h.ai.nextAt = null;
+    // Pace from when the guess is requested, so model latency (2 to 4 s) does not add to the interval.
+    h.ai.lastAt = Date.now();
     this.touch();
     let guess: string | null = null;
     let source: 'ai' | 'solver' = 'solver';
@@ -391,7 +393,6 @@ export class GameService {
       return;
     }
     h.ai.guesses.push(guess);
-    h.ai.lastAt = Date.now();
     const scores = scoreGuess(guess, secret);
     const solved = isSolved(scores);
     this.event('hack_ai_guess', { guess, scores: scores.map((s) => s.state), attempt: h.ai.guesses.length, solved, source, costUsd });
