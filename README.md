@@ -18,13 +18,15 @@ Full requirements and design: [docs/SPEC.md](docs/SPEC.md).
 ## Run it on the Synology NAS
 
 1. Copy this repo to a shared folder on the NAS, for example `docker/section30`.
-2. Copy `.env.example` to `.env` and set `GM_PASSWORD`, one Claude credential (see below), and optionally `PLAYER_KEY`.
+2. Copy `.env.example` to `.env` and set `GM_PASSWORD`, one Claude credential (see below), and optionally `PLAYER_KEY`
+   and `GOOGLE_MAPS_API_KEY` (a Maps JavaScript API browser key; with it the location puzzle embeds Street View).
 3. Container Manager → Project → Create → pick the folder. It reads `docker-compose.yml` and builds the image.
    The first build downloads the Agent SDK binary (about 270 MB) and takes a few minutes.
 4. Point your existing reverse proxy at the container's port 8080 with WebSocket support enabled
    (Synology reverse proxy: add the `Upgrade` and `Connection` custom headers, or use the WebSocket preset).
 5. Open `https://your-host/gm`, log in, and walk through the configuration panel.
-   Set the deli coordinates, upload the field photos and the audio clip, and check the codes.
+   Set the deli coordinates (Street View starts there unless you give it its own spot), upload the
+   audio clip, and check the codes. Without a Maps key, upload field photos instead.
 6. The QR code in the fake book points at `https://your-host/` (or `https://your-host/?k=PLAYER_KEY` when a key is set).
 
 ## Use your Claude subscription instead of an API key

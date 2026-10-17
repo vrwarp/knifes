@@ -167,6 +167,9 @@ test.describe('GM configuration', () => {
     await coords.fill('');
     await coords.pressSequentially('34.05, -118.24');
     await expect(coords).toHaveValue('34.05, -118.24');
+    const start = gm.getByPlaceholder('leave blank to use the target');
+    await start.pressSequentially('34.06, -118.25');
+    await expect(start).toHaveValue('34.06, -118.25');
     const grid = await configSection(gm, 'Deduction grid');
     await grid.locator('summary', { hasText: 'time:' }).click();
     const accept = grid.getByLabel('Accepted phrasings (comma separated)', { exact: true }).first();

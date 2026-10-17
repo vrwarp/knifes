@@ -14,7 +14,7 @@ and gives the GMs visibility and control the whole evening.
 | Topic | Decision |
 | - | - |
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style hacking puzzle, incident reveal, evidence vault, ARCHIVE terminal, deduction grid, final reveal. |
-| Geo puzzle | Photos plus a map pin on OpenStreetMap, accepted within a configurable radius. Switchable to reveal-only or off. |
+| Geo puzzle | GeoGuessr-style: an embedded Google Street View panorama (address and road labels hidden, walking optional) plus a map pin on OpenStreetMap, accepted within a configurable radius. Uploaded photos stand in when no Maps key is set. Switchable to reveal-only or off. |
 | Phil call | One-way: Phil gives Jimmy the unlock code. Default `MAGENTA30`, editable. |
 | Hacking puzzle | Wordle-like, 5-letter secret `ALPHA`, 6 attempts per round, then a short lockout and reset. |
 | Reveal after puzzle | In-world incident record (03:45 window, three office entries) plus the order to return to base. |
@@ -39,7 +39,7 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 ```
 
 1. **Intro.** QR code opens the site. Section 30 briefing, one button.
-2. **Geo.** Field photos and a map. Tap to place a marker, "Triangulate". Within the radius the deli briefing appears.
+2. **Geo.** A Street View panorama to look around in (or field photos without a Maps key) and a map. Tap to place a marker, "Triangulate". Within the radius the deli briefing appears.
    Reveal mode skips the map. Off mode skips the stage.
 3. **Gate.** Enter the code Phil gives over the phone. Case, spaces and dashes are ignored.
 4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. After 6 misses the partition locks for
@@ -100,7 +100,7 @@ WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIV
 
 ## 8. What the GMs still supply
 
-- Deli coordinates and two to four field photos, in the config panel.
+- Deli coordinates in the config panel, plus `GOOGLE_MAPS_API_KEY` in `.env` for Street View (or two to four field photos instead).
 - The audio clip (thud, rustle, pour, alarm, doors) recorded by the GMs, uploaded in the config panel.
 - Final values for Phil's code and, if used, the two passcodes.
 - `ANTHROPIC_API_KEY`, `GM_PASSWORD`, optional `PLAYER_KEY` in `.env`.

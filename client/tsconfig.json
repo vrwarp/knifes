@@ -12,7 +12,7 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "google.maps"]
   },
   "include": ["src", "vite.config.ts"]
 }

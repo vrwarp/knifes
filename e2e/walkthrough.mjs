@@ -477,7 +477,7 @@ try {
   await sleep(600);
   const sections = [
     ['Intro (QR landing)', 'Headline, briefing and button label for the QR landing.'],
-    ['Location puzzle (geo)', 'Mode, target pin on a map, radius, photos with upload and delete, and the confirmation text.'],
+    ['Location puzzle (geo)', 'Mode, target pin on a map, radius, Street View start, heading, pitch and walking, photos with upload and delete, and the confirmation text.'],
     ['Code gate (Phil', 'The code Phil reads out, the prompt, and the success line.'],
     ['Word puzzle (mirror partition)', 'The secret word, attempts and lockout length.'],
     ['Incident reveal', 'The incident record shown after the puzzle.'],

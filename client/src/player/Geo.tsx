@@ -5,6 +5,7 @@ import { api, errorText } from '../api';
 import type { LatLng, PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Frame, Typewriter, formatDistance } from './common';
+import { StreetView } from './StreetView';
 
 function MapPicker({ center, zoom, onPick }: { center: LatLng; zoom: number; onPick: (p: LatLng) => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -92,20 +93,22 @@ export function Geo({ view, setView }: StageProps) {
   return (
     <Frame title="Field transmission" className={`accent ${confirmed && puzzle ? 'success' : ''}`}>
       <Typewriter text={g.briefing} speed={3} />
+      {g.streetView ? <StreetView {...g.streetView} /> : null}
+      {g.streetView && !confirmed ? <p className="tiny">Unlock the feed, drag to look around{g.streetView.allowMoving ? ', tap the arrows to move' : ''}.</p> : null}
       {g.photos.length ? (
         <div className="photos" aria-label="Field images, tap one to enlarge">
           {g.photos.map((p, i) => (
             <img key={p} src={`/uploads/${p}`} alt={`Field image ${i + 1}. Tap to enlarge.`} onClick={() => setZoomed(`/uploads/${p}`)} />
           ))}
         </div>
-      ) : puzzle ? (
+      ) : puzzle && !g.streetView && !confirmed ? (
         <p className="muted small">[IMAGE BURST NOT YET RECOVERED]</p>
       ) : null}
       {g.photos.length ? <p className="tiny">Tap a photo to enlarge it.</p> : null}
       {!confirmed ? (
         <>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            Unlock the map, find the spot, tap to drop the marker, then triangulate.
+            {g.streetView ? 'Then unlock the map, find the spot, tap to drop the marker, and triangulate.' : 'Unlock the map, find the spot, tap to drop the marker, then triangulate.'}
           </p>
           <MapPicker center={g.mapCenter} zoom={g.mapZoom} onPick={setPin} />
           <button className="btn primary block" onClick={guess} disabled={!pin || busy}>

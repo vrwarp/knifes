@@ -29,6 +29,8 @@ export interface PlayerView {
     mapCenter: LatLng;
     mapZoom: number;
     photos: string[];
+    /** Null when no Maps key is configured, no location is set, or the puzzle is over. */
+    streetView: { apiKey: string; location: LatLng; heading: number; pitch: number; allowMoving: boolean } | null;
     revealTitle: string;
     revealBody: string;
     attempts: number;
@@ -152,6 +154,7 @@ export interface GameConfig {
     mapCenter: LatLng;
     mapZoom: number;
     photos: string[];
+    streetView: { location: LatLng | null; heading: number; pitch: number; allowMoving: boolean };
     revealTitle: string;
     revealBody: string;
   };
@@ -189,6 +192,8 @@ export interface Overview {
     credentialLabel: string;
     auth: 'ok' | 'needs_login' | 'unknown';
   };
+  /** GOOGLE_MAPS_API_KEY is set, so the location puzzle can embed Street View. */
+  streetViewKeySet: boolean;
   stages: StageId[];
 }
 
