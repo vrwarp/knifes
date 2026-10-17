@@ -43,7 +43,7 @@ export interface PlayerView {
     mode: HackMode;
     intro: string;
     length: number;
-    maxAttempts: number;
+    maxAttempts: number | null;
     lockoutSeconds: number;
     guesses: string[];
     rows: LetterScore[][];
@@ -186,7 +186,7 @@ export interface GameConfig {
   hack: {
     mode: HackMode;
     secret: string;
-    maxAttempts: number;
+    maxAttempts: number | null;
     lockoutSeconds: number;
     intro: string;
     wordBank: string[];

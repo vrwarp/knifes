@@ -75,7 +75,7 @@ test.describe('player journey', () => {
     await player.reload();
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
     await expect(player.getByRole('img', { name: /Attempt 1: P/ })).toBeVisible();
-    await expect(player.getByRole('button', { name: /attempt key \(2\/6\)/i })).toBeVisible();
+    await expect(player.getByRole('button', { name: /attempt key \(2\)/i })).toBeVisible();
   });
 
   test('the player API never leaks answers', async ({ app, request }) => {

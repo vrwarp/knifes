@@ -102,6 +102,7 @@ try {
   {
     const c = (await (await gmApi('/api/gm/overview')).json()).config;
     c.hack.mode = 'solo';
+    c.hack.maxAttempts = 6;
     await gmApi('/api/gm/config', { method: 'PUT', json: c });
   }
   await settle(400);

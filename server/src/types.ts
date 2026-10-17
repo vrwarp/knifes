@@ -42,7 +42,8 @@ export interface GameConfig {
     /** Solo: the fixed secret below. Race: a fresh word from the bank each round, against an AI opponent. */
     mode: HackMode;
     secret: string;
-    maxAttempts: number;
+    /** Attempts per round for each side; null means unlimited, so a race ends only when someone finds the word. */
+    maxAttempts: number | null;
     lockoutSeconds: number;
     intro: string;
     wordBank: string[];

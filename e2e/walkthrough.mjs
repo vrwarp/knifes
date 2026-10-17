@@ -335,7 +335,7 @@ try {
   // ============================================================================================
   begin('hack', 'Word puzzle lockout and retry', 'Six wrong keys lock the partition for a countdown, then Jimmy can reset it and try again. The GM can also reset it at once. The lockout here is shortened to 8 seconds for the recording.');
   await app.resetGame();
-  await app.patch((c) => { c.hack.lockoutSeconds = 8; c.hack.mode = 'solo'; });
+  await app.patch((c) => { c.hack.lockoutSeconds = 8; c.hack.mode = 'solo'; c.hack.maxAttempts = 6; });
   await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'hack' } });
   ctx = await browser.newContext(phoneOpts);
   p = await ctx.newPage();
@@ -354,7 +354,7 @@ try {
   await p.getByLabel('Key attempt').waitFor();
   await shot(p, 'Fresh board', 'A clean board with six attempts. The secret does not change.');
   await ctx.close();
-  await app.patch((c) => { c.hack.lockoutSeconds = 45; c.hack.mode = 'race'; });
+  await app.patch((c) => { c.hack.lockoutSeconds = 45; c.hack.mode = 'race'; c.hack.maxAttempts = null; });
 
   // ============================================================================================
   begin('race', 'Key race against the AI', 'Race mode: each round draws a fresh word from the bank and an AI opponent (Haiku live, a deterministic solver here) guesses on a timer, one attempt every few seconds. Jimmy watches its colour feedback and must find the key first. If the opponent wins, the key rotates after a short lockout.');
@@ -371,7 +371,7 @@ try {
   await p.getByText(/ADVERSARY RECOVERED THE KEY/).first().waitFor({ timeout: 20_000 });
   await shot(p, 'The adversary won the round', 'The retired key is shown, the partition locks briefly, then a new key is issued and the next race starts.');
   await ctx.close();
-  await app.patch((c) => { c.hack.aiIntervalSeconds = 5; c.hack.aiJitterSeconds = 1; c.hack.lockoutSeconds = 45; });
+  await app.patch((c) => { c.hack.aiIntervalSeconds = 10; c.hack.aiJitterSeconds = 5; c.hack.lockoutSeconds = 45; });
 
   // ============================================================================================
   begin('vault', 'Evidence vault with passcodes', 'The alternative vault mode: the audio and toxicology files stay sealed until Jimmy gets passcodes from out-of-town contacts (CANIS30 and 1996 by default).');

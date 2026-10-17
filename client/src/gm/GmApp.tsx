@@ -40,15 +40,17 @@ function NowStrip({ state, config, events, players }: { state: GameState; config
     case 'gate':
       facts.push(`${plural(state.gate.attempts, 'code attempt')} · code ${config.gate.code}`);
       break;
-    case 'hack':
+    case 'hack': {
+      const cap = config.hack.maxAttempts === null ? '' : `/${config.hack.maxAttempts}`;
       if (config.hack.mode === 'race') {
         facts.push(
-          `${state.hack.guesses.length}/${config.hack.maxAttempts} guesses vs adversary ${state.hack.ai.guesses.length}/${config.hack.maxAttempts}${state.hack.ai.thinking ? ' (computing)' : ''} · ${plural(state.hack.rounds, 'race')} lost${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · key ${state.hack.secret ?? '?'}`,
+          `${state.hack.guesses.length}${cap} guesses vs adversary ${state.hack.ai.guesses.length}${cap}${state.hack.ai.thinking ? ' (computing)' : ''} · ${plural(state.hack.rounds, 'race')} lost${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · key ${state.hack.secret ?? '?'}`,
         );
       } else {
-        facts.push(`${state.hack.guesses.length}/${config.hack.maxAttempts} guesses · ${plural(state.hack.rounds, 'reset')}${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · secret ${config.hack.secret}`);
+        facts.push(`${state.hack.guesses.length}${cap} guesses · ${plural(state.hack.rounds, 'reset')}${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · secret ${config.hack.secret}`);
       }
       break;
+    }
     case 'reveal':
       facts.push('reading the incident record');
       break;

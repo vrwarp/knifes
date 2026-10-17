@@ -69,7 +69,7 @@ export const ConfigSchema = z.object({
     .object({
       mode: z.enum(['solo', 'race']),
       secret: z.string().regex(/^[A-Za-z]{3,8}$/, 'secret must be 3 to 8 letters'),
-      maxAttempts: z.number().int().min(1).max(20),
+      maxAttempts: z.number().int().min(1).max(50).nullable(),
       lockoutSeconds: z.number().int().min(0).max(3600),
       intro: z.string(),
       wordBank: z.array(z.string().regex(/^[A-Za-z]{3,8}$/, 'bank words must be 3 to 8 letters')).max(10_000),
@@ -271,7 +271,7 @@ export class GameService {
       h.lastWord = secret;
       this.event('hack_solved', { attempts: h.guesses.length, rounds: h.rounds, aiAttempts: h.ai.guesses.length });
       if (advanceTo(this.state, 'reveal')) this.event('stage', { stage: 'reveal' });
-    } else if (h.guesses.length >= this.config.hack.maxAttempts) {
+    } else if (this.config.hack.maxAttempts !== null && h.guesses.length >= this.config.hack.maxAttempts) {
       this.endRound('exhausted', now);
     }
     this.touch();
@@ -302,7 +302,7 @@ export class GameService {
       !h.roundResult &&
       !(h.lockedUntil && h.lockedUntil > Date.now()) &&
       !h.ai.solved &&
-      h.ai.guesses.length < this.config.hack.maxAttempts
+      (this.config.hack.maxAttempts === null || h.ai.guesses.length < this.config.hack.maxAttempts)
     );
   }
 

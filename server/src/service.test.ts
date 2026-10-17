@@ -74,6 +74,7 @@ describe('word race', () => {
   });
 
   it('running out of attempts ends the round and reveals the word', async () => {
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, maxAttempts: 6 } });
     svc.setStage('hack');
     const word = svc.state.hack.secret!;
     const wrong = word === 'CRANE' ? 'SLATE' : 'CRANE';
@@ -104,5 +105,19 @@ describe('word race', () => {
 
   it('rejects a mixed-length bank in race mode', () => {
     expect(() => svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, wordBank: ['CRANE', 'SLATES'] } })).toThrow(/same length/);
+  });
+});
+
+describe('unlimited attempts', () => {
+  it('neither side is ever locked out; the round ends only on a solve', async () => {
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, maxAttempts: null, wordBank: ['CRANE', 'SLATE', 'PLANT', 'BRICK', 'STORM', 'QUEST', 'ZEBRA', 'MOUND'] } });
+    svc.setStage('hack');
+    const word = svc.state.hack.secret!;
+    const wrong = word === 'CRANE' ? 'SLATE' : 'CRANE';
+    for (let i = 0; i < 9; i++) svc.hackGuess(wrong);
+    expect(svc.state.hack.guesses.length).toBe(9);
+    expect(svc.state.hack.lockedUntil).toBeNull();
+    expect(svc.view().hack.maxAttempts).toBeNull();
+    expect(svc.view().hack.ai?.exhausted).toBe(false);
   });
 });

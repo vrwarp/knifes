@@ -22,6 +22,7 @@ test.describe('word puzzle', () => {
     await app.patch((c) => {
       c.hack.lockoutSeconds = 3;
       c.hack.mode = 'solo';
+      c.hack.maxAttempts = 6;
     });
     await app.setStage('hack');
     await player.goto(app.base);
@@ -69,7 +70,7 @@ test.describe('key race', () => {
 
   test('shows the adversary guessing on the clock, colours only, and the player can still win', async ({ player, app }) => {
     await player.goto(app.base);
-    await expect(player.getByText(/Adversary · 0\/6/)).toBeVisible();
+    await expect(player.getByText(/Adversary · 0/)).toBeVisible();
     const { state } = await (await app.gmApi('/api/gm/overview')).json();
     const key = state.hack.secret as string;
     expect(['CRANE', 'SLATE']).toContain(key);

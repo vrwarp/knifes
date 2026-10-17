@@ -292,7 +292,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
           ['solo', 'Solo: one fixed key, classic Wordle'],
         ])}
         <div className="two">
-          {N(['hack', 'maxAttempts'], 'Attempts per round (each side)')}
+          {N(['hack', 'maxAttempts'], 'Attempts per round, each side (blank = unlimited)', true)}
           {N(['hack', 'lockoutSeconds'], 'Lockout seconds after a lost round')}
         </div>
         {A(['hack', 'intro'], 'Intro text', 4)}

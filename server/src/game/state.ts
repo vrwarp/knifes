@@ -151,7 +151,7 @@ function hackView(config: GameConfig, state: GameState) {
           thinking: h.ai.thinking,
           nextAt: h.ai.nextAt,
           sinceAt: h.ai.lastAt,
-          exhausted: !h.ai.solved && h.ai.guesses.length >= config.hack.maxAttempts,
+          exhausted: !h.ai.solved && config.hack.maxAttempts !== null && h.ai.guesses.length >= config.hack.maxAttempts,
         }
       : null,
   };

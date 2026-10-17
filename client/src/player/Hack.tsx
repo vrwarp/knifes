@@ -70,8 +70,11 @@ export function Hack({ view, setView, refresh }: StageProps) {
     }
   };
 
+  const cap = h.maxAttempts === null ? '' : `/${h.maxAttempts}`;
+  // With no cap the board grows: at least six rows, always one empty row beyond the last guess.
+  const playerRows = h.maxAttempts ?? Math.max(6, h.rows.length + (roundOpen ? 1 : 0));
   const rows = [];
-  for (let i = 0; i < h.maxAttempts; i++) {
+  for (let i = 0; i < playerRows; i++) {
     const scored = h.rows[i];
     if (scored) {
       const win = h.solved && i === h.rows.length - 1;
@@ -109,7 +112,8 @@ export function Hack({ view, setView, refresh }: StageProps) {
   // The opponent's board: one small row per attempt, colours only unless the GM shows letters.
   const aiRows = [];
   if (ai) {
-    for (let i = 0; i < h.maxAttempts; i++) {
+    const n = h.maxAttempts ?? Math.max(6, ai.rows.length + (roundOpen && !ai.solved ? 1 : 0));
+    for (let i = 0; i < n; i++) {
       const scored = ai.rows[i];
       if (scored) {
         const win = ai.solved && i === ai.rows.length - 1;
@@ -137,7 +141,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
   let aiStatus: { text: string; cls: string } | null = null;
   let aiProgress: number | null = null;
   if (ai) {
-    if (h.solved) aiStatus = { text: `ADVERSARY BEATEN · ${ai.attempts}/${h.maxAttempts} ATTEMPTS USED`, cls: 'green' };
+    if (h.solved) aiStatus = { text: `ADVERSARY BEATEN · IT HAD USED ${ai.attempts}${cap} ATTEMPTS`, cls: 'green' };
     else if (ai.solved) aiStatus = { text: 'ADVERSARY RECOVERED THE KEY', cls: 'red' };
     else if (h.roundResult === 'exhausted') aiStatus = { text: 'ROUND LOST · KEY ROTATED', cls: 'red' };
     else if (ai.exhausted) aiStatus = { text: 'ADVERSARY EXHAUSTED · THE KEY IS YOURS TO FIND', cls: 'green' };
@@ -164,7 +168,10 @@ export function Hack({ view, setView, refresh }: StageProps) {
       {ai ? (
         <div className={`adversary ${ai.solved ? 'won' : ''}`} aria-label="Adversary attempts">
           <div className="adv-head">
-            <span className="tiny">Adversary · {ai.attempts}/{h.maxAttempts}</span>
+            <span className="tiny">
+              Adversary · {ai.attempts}
+              {cap}
+            </span>
             {aiStatus ? (
               <span className={`tiny ${aiStatus.cls}`} role="status" aria-live="polite">
                 {aiStatus.text}
@@ -225,7 +232,8 @@ export function Hack({ view, setView, refresh }: StageProps) {
             aria-label="Key attempt"
           />
           <button className="btn primary block" disabled={busy || input.length !== h.length}>
-            Attempt key ({h.rows.length + 1}/{h.maxAttempts})
+            Attempt key ({h.rows.length + 1}
+            {cap})
           </button>
         </form>
       )}
