@@ -9,7 +9,7 @@ import type { Db } from './db.js';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
 import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
-import { drawWord, opponentDelayMs, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
+import { drawWord, opponentDelayMs, opponentPace, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
 import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { aiOpponentGuess, opponentLive } from './ai/opponent.js';
@@ -76,6 +76,7 @@ export const ConfigSchema = z.object({
       aiModel: z.string().trim().min(1).max(80),
       aiIntervalSeconds: z.number().min(1).max(600),
       aiJitterSeconds: z.number().min(0).max(600),
+      aiSlowdownPerRound: z.number().min(1).max(5),
       aiShowLetters: z.boolean(),
       aiThinking: z.boolean(),
     })
@@ -312,8 +313,9 @@ export class GameService {
    * timer, and every exit stops it.
    */
   private syncOpponent(): void {
+    if (this.config.hack.mode === 'race' && this.state.stage === 'hack' && !this.state.hack.solved && !this.state.hack.secret) this.startRound();
+    // Read after startRound(): it replaces the hack object.
     const h = this.state.hack;
-    if (this.config.hack.mode === 'race' && this.state.stage === 'hack' && !h.solved && !h.secret) this.startRound();
     if (!this.raceOpen()) {
       if (this.opponentTimer) clearTimeout(this.opponentTimer);
       this.opponentTimer = null;
@@ -321,8 +323,8 @@ export class GameService {
       return;
     }
     if (this.opponentTimer || h.ai.thinking) return;
-    const c = this.config.hack;
-    const due = (h.ai.lastAt ?? Date.now()) + opponentDelayMs(c.aiIntervalSeconds, c.aiJitterSeconds);
+    const pace = opponentPace(this.config.hack, h.rounds);
+    const due = (h.ai.lastAt ?? Date.now()) + opponentDelayMs(pace.intervalSeconds, pace.jitterSeconds);
     const delay = Math.max(500, due - Date.now());
     h.ai.nextAt = Date.now() + delay;
     this.opponentTimer = setTimeout(() => {
@@ -340,7 +342,8 @@ export class GameService {
     h.round++;
     h.ai.lastAt = Date.now();
     this.state.hack = h;
-    this.event('hack_round', { round: h.round, word, used: h.used.length, bank: this.config.hack.wordBank.length });
+    const pace = opponentPace(this.config.hack, h.rounds);
+    this.event('hack_round', { round: h.round, word, used: h.used.length, bank: this.config.hack.wordBank.length, paceSeconds: pace.intervalSeconds, jitterSeconds: pace.jitterSeconds });
   }
 
   private endRound(result: 'ai' | 'exhausted', now = Date.now()): void {
@@ -374,7 +377,7 @@ export class GameService {
           model: this.config.hack.aiModel,
           length: secret.length,
           history,
-          timeoutMs: Math.max(20_000, this.config.hack.aiIntervalSeconds * 4000),
+          timeoutMs: Math.max(20_000, opponentPace(this.config.hack, h.rounds).intervalSeconds * 4000),
           thinking: this.config.hack.aiThinking,
         });
         guess = r.guess;

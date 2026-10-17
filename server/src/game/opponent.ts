@@ -35,6 +35,14 @@ export function drawWord(bank: string[], used: string[], random: () => number = 
   return pool[Math.floor(random() * pool.length)] ?? null;
 }
 
+/** The pace for round `rounds + 1`: base interval and jitter scaled by the slowdown factor once per finished round, interval capped at 10 minutes. */
+export function opponentPace(base: { aiIntervalSeconds: number; aiJitterSeconds: number; aiSlowdownPerRound: number }, rounds: number): { intervalSeconds: number; jitterSeconds: number } {
+  const factor = Math.pow(Math.max(1, base.aiSlowdownPerRound), Math.max(0, rounds));
+  const intervalSeconds = Math.min(600, base.aiIntervalSeconds * factor);
+  const jitterSeconds = Math.min(intervalSeconds, base.aiJitterSeconds * factor);
+  return { intervalSeconds, jitterSeconds };
+}
+
 /** Interval ± jitter, in milliseconds, never below half a second. */
 export function opponentDelayMs(intervalSeconds: number, jitterSeconds: number, random: () => number = Math.random): number {
   const jitter = Math.min(jitterSeconds, intervalSeconds) * (random() * 2 - 1);

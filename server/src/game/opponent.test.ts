@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consistentWithHistory, drawWord, opponentDelayMs, solverGuess } from './opponent.js';
+import { consistentWithHistory, drawWord, opponentDelayMs, opponentPace, solverGuess } from './opponent.js';
 
 const BANK = ['CRANE', 'SLATE', 'ALPHA', 'PLANT', 'BRICK'];
 
@@ -46,5 +46,21 @@ describe('opponentDelayMs', () => {
   });
   it('never drops below half a second', () => {
     expect(opponentDelayMs(0.1, 5, () => 0)).toBe(500);
+  });
+});
+
+describe('opponentPace', () => {
+  const base = { aiIntervalSeconds: 10, aiJitterSeconds: 5, aiSlowdownPerRound: 1.5 };
+  it('slows by the factor after every lost round', () => {
+    expect(opponentPace(base, 0)).toEqual({ intervalSeconds: 10, jitterSeconds: 5 });
+    expect(opponentPace(base, 1)).toEqual({ intervalSeconds: 15, jitterSeconds: 7.5 });
+    expect(opponentPace(base, 2)).toEqual({ intervalSeconds: 22.5, jitterSeconds: 11.25 });
+  });
+  it('stays constant at factor 1 and never speeds up below it', () => {
+    expect(opponentPace({ ...base, aiSlowdownPerRound: 1 }, 5)).toEqual({ intervalSeconds: 10, jitterSeconds: 5 });
+    expect(opponentPace({ ...base, aiSlowdownPerRound: 0.5 }, 5)).toEqual({ intervalSeconds: 10, jitterSeconds: 5 });
+  });
+  it('caps the interval at ten minutes', () => {
+    expect(opponentPace(base, 20).intervalSeconds).toBe(600);
   });
 });

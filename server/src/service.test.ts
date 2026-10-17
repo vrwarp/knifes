@@ -121,3 +121,20 @@ describe('unlimited attempts', () => {
     expect(svc.view().hack.ai?.exhausted).toBe(false);
   });
 });
+
+describe('slowdown per round', () => {
+  it('waits longer for the first guess after each lost round', async () => {
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, aiIntervalSeconds: 2, aiJitterSeconds: 0, aiSlowdownPerRound: 2, lockoutSeconds: 1, wordBank: ['CRANE', 'SLATE', 'PLANT'] } });
+    svc.setStage('hack');
+    const h0 = svc.state.hack;
+    expect(h0.ai.nextAt! - h0.ai.lastAt!).toBe(2000);
+    // Lose the round by letting the opponent solve: at most three guesses with this bank.
+    await settle(3 * 2100 + 500);
+    expect(svc.state.hack.roundResult).toBe('ai');
+    await settle(1100);
+    svc.hackRetry();
+    const h1 = svc.state.hack;
+    expect(h1.rounds).toBe(1);
+    expect(h1.ai.nextAt! - h1.ai.lastAt!).toBe(4000);
+  });
+});

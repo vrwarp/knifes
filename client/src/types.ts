@@ -193,6 +193,7 @@ export interface GameConfig {
     aiModel: string;
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
+    aiSlowdownPerRound: number;
     aiShowLetters: boolean;
     aiThinking: boolean;
   };

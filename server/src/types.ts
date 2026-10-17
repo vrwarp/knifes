@@ -51,6 +51,8 @@ export interface GameConfig {
     /** Mean seconds between opponent guesses, and the uniform jitter around it. */
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
+    /** Interval and jitter are multiplied by this after every round the opponent wins (1 = constant pace). */
+    aiSlowdownPerRound: number;
     /** Whether the phone shows the opponent's letters or only its colour feedback. */
     aiShowLetters: boolean;
     /** Extended thinking for the opponent. Off keeps it quick and beatable. */

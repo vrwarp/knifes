@@ -388,7 +388,7 @@ function describe(e: GameEvent): { text: string; cls: string } {
     case 'hack_solved':
       return { text: `solved in ${s('attempts')}${p.aiAttempts !== undefined ? `, adversary at ${s('aiAttempts')}` : ''}`, cls: 'ok' };
     case 'hack_round':
-      return { text: `race ${s('round')}: key is ${s('word')} (${s('used')}/${s('bank')} words used)`, cls: '' };
+      return { text: `race ${s('round')}: key is ${s('word')} (${s('used')}/${s('bank')} words used${p.paceSeconds !== undefined ? `, opponent every ${Number(p.paceSeconds)}s ± ${Number(p.jitterSeconds)}s` : ''})`, cls: '' };
     case 'hack_ai_guess': {
       const scores = Array.isArray(p.scores) ? (p.scores as string[]).map((x) => (x === 'hit' ? '■' : x === 'near' ? '◪' : '□')).join('') : '';
       return { text: `adversary ${s('guess')} ${scores}${p.solved ? ' SOLVED' : ''}${p.source === 'solver' ? ' (solver)' : ''}`, cls: p.solved ? 'fail' : '' };

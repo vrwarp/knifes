@@ -301,9 +301,10 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         ) : (
           <>
             <div className="two">
-              {N(['hack', 'aiIntervalSeconds'], 'Seconds between opponent guesses')}
+              {N(['hack', 'aiIntervalSeconds'], 'Seconds between opponent guesses, first round')}
               {N(['hack', 'aiJitterSeconds'], 'Jitter, plus or minus seconds')}
             </div>
+            {N(['hack', 'aiSlowdownPerRound'], 'Slowdown multiplier after each round the opponent wins (1 = constant; 1.5 gives 10, 15, 22.5 s…)')}
             {T(['hack', 'aiModel'], 'Opponent model')}
             {B(['hack', 'aiShowLetters'], "Show the opponent's letters on the phone (off: colours only)")}
             {B(['hack', 'aiThinking'], 'Let the opponent think before each guess (off: quick and fallible)')}

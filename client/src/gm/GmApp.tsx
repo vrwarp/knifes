@@ -44,7 +44,7 @@ function NowStrip({ state, config, events, players }: { state: GameState; config
       const cap = config.hack.maxAttempts === null ? '' : `/${config.hack.maxAttempts}`;
       if (config.hack.mode === 'race') {
         facts.push(
-          `${state.hack.guesses.length}${cap} guesses vs adversary ${state.hack.ai.guesses.length}${cap}${state.hack.ai.thinking ? ' (computing)' : ''} · ${plural(state.hack.rounds, 'race')} lost${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · key ${state.hack.secret ?? '?'}`,
+          `${state.hack.guesses.length}${cap} guesses vs adversary ${state.hack.ai.guesses.length}${cap}${state.hack.ai.thinking ? ' (computing)' : ''} · ${plural(state.hack.rounds, 'race')} lost · pace ${Math.round(Math.min(600, config.hack.aiIntervalSeconds * Math.pow(Math.max(1, config.hack.aiSlowdownPerRound), state.hack.rounds)))}s${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · key ${state.hack.secret ?? '?'}`,
         );
       } else {
         facts.push(`${state.hack.guesses.length}${cap} guesses · ${plural(state.hack.rounds, 'reset')}${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · secret ${config.hack.secret}`);
