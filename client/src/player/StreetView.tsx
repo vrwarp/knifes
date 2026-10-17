@@ -22,7 +22,7 @@ function loadMaps(apiKey: string): Promise<void> {
       s.onload = () => resolve();
       s.onerror = () => {
         mapsScript = null;
-        reject(new Error('Street View script failed to load'));
+        reject(new Error('script blocked: maps.googleapis.com did not load (content blocker or DNS filter?)'));
       };
       document.head.appendChild(s);
     });
@@ -48,13 +48,20 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
   const startRef = useRef<string | null>(null);
   const [locked, setLocked] = useState(true);
   const [status, setStatus] = useState<'loading' | 'ready' | 'none' | 'error'>('loading');
+  const [reason, setReason] = useState<string>('');
+
+  const fail = (why: string) => {
+    console.error('[section30] Street View unavailable:', why);
+    setReason(why);
+    setStatus('error');
+  };
 
   useEffect(() => {
     let cancelled = false;
     const el = ref.current;
     if (!el) return;
     window.gm_authFailure = () => {
-      if (!cancelled) setStatus('error');
+      if (!cancelled) fail('Google rejected the key (check the browser console for the Maps error name: referrer, API enablement or billing)');
     };
     (async () => {
       try {
@@ -62,8 +69,11 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
         const lib = (await google.maps.importLibrary('streetView')) as google.maps.StreetViewLibrary;
         // Snap to the nearest outdoor panorama so a target that is "inside the deli" still works.
         const found = await new lib.StreetViewService()
-          .getPanorama({ location, radius: 100, source: google.maps.StreetViewSource.OUTDOOR })
-          .catch(() => null);
+          .getPanorama({ location, radius: 100, source: lib.StreetViewSource.OUTDOOR })
+          .catch((e: unknown) => {
+            console.warn('[section30] no panorama near', location, e);
+            return null;
+          });
         if (cancelled) return;
         const panoId = found?.data.location?.pano;
         if (!panoId) {
@@ -88,8 +98,8 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
           disableDefaultUI: false,
         });
         setStatus('ready');
-      } catch {
-        if (!cancelled) setStatus('error');
+      } catch (e) {
+        if (!cancelled) fail(e instanceof Error ? e.message : String(e));
       }
     })();
     return () => {
@@ -113,6 +123,7 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
     return (
       <p className="muted small" role="status">
         {status === 'none' ? '[FEED OFFLINE: NO STREET-LEVEL IMAGERY AT THE SOURCE]' : '[FEED OFFLINE: STREET VIEW FAILED TO LOAD]'}
+        {reason ? <span className="tiny" style={{ display: 'block' }}>{reason}</span> : null}
       </p>
     );
   }
