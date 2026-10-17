@@ -87,6 +87,10 @@ async function startServer(extraEnv: Record<string, string>): Promise<{ server: 
     },
     resetGame: async () => {
       await gmApi('/api/gm/reset', { json: { scope: 'game' } });
+      // Fresh assistant chat, and no proposals left pending from an earlier test.
+      await gmApi('/api/gm/assistant/reset', { method: 'POST' });
+      const view = (await (await gmApi('/api/gm/assistant')).json()) as { proposals?: { id: number; status: string }[] };
+      for (const p of view.proposals ?? []) if (p.status === 'pending') await gmApi(`/api/gm/assistant/proposals/${p.id}/dismiss`, { method: 'POST' });
     },
     restoreDefaults: async () => put(structuredClone(defaults)),
   };

@@ -67,6 +67,25 @@ GM log shows an `ai_error` naming the limit. An API key in `.env` is the fallbac
 Without a credential the app runs in **mock mode**: every screen works, the ARCHIVE answers from canned
 lookups, grading is keyword based, hints come from the quick-hint lists. Good for rehearsals.
 
+## Setup assistant and configuration history
+
+**Setup assistant.** The GM console has a chat with Opus for getting the game ready. Ask what is
+still missing, have it check the field photos, brainstorm red herrings or hint wording, or draft
+printable props like the drop-point card. It reads the live configuration, the case files and the
+uploaded photos. A readiness list at the top shows blockers such as a missing target pin or photos.
+The assistant never edits anything itself. A change comes back as a proposal showing each setting's
+current and new value, and nothing happens until a GM presses **Apply**. Opus can read images but
+cannot make them, so for photos it describes what to shoot and reviews what you upload. In mock
+mode it shows the readiness list and accepts simple edits such as `set gate.code to "PHIL2026"`.
+Its messages go only to GMs, never to the player's phone.
+
+**Configuration history.** The configuration is append-only. Every change adds a new numbered
+version, whether it comes from a GM save, an upload, an applied proposal or a restore. Database
+triggers refuse to edit or delete an old version. Under **Version history** in the config editor,
+open any version to see what restoring it would change, then press **Restore**. A restore adds a
+copy of that version as the newest one, so it can be undone the same way. Removing a photo or the
+audio takes it out of the game but keeps the file, so older versions still restore completely.
+
 ## Run it locally
 
 ```bash

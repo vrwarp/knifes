@@ -70,6 +70,10 @@ export class Hub {
         payload = role === 'gm' ? { type: 'gm', state: m.state, config: m.config, players: this.counts().players } : { type: 'state', player: m.player };
         break;
       case 'event':
+      case 'assistant':
+      case 'assistant_status':
+      case 'assistant_proposal':
+        // GM-only: the setup assistant talks about the solution.
         if (role !== 'gm') return;
         payload = m;
         break;

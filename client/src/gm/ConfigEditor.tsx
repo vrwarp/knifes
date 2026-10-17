@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
+import { HistoryPanel } from './HistoryPanel';
 import type { GameConfig, StageId } from '../types';
 import { STAGE_NAME } from './panels';
 
@@ -120,7 +121,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
     }
   };
   const removeUpload = async (id: string) => {
-    if (!window.confirm('Delete this upload from the server? This cannot be undone.')) return;
+    if (!window.confirm('Remove this file from the game? It stays in the version history, so restoring an older version brings it back.')) return;
     setBusy(true);
     try {
       await api(`/api/gm/upload/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -362,6 +363,9 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         {STAGES.map((s) => (
           <div key={s}>{Lines(['hints', 'quick', s], STAGE_NAME[s])}</div>
         ))}
+      </Section>
+      <Section title="Version history">
+        <HistoryPanel currentVersion={config.version} dirty={dirty} />
       </Section>
       <div className="sticky-actions row">
         <button className="btn primary" onClick={() => void save()} disabled={busy || !dirty || conflict}>
