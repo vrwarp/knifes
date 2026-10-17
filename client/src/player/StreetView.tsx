@@ -5,23 +5,34 @@ declare global {
   interface Window {
     /** Called by the Maps script when the key is rejected (wrong key, referrer not allowed, API not enabled). */
     gm_authFailure?: () => void;
+    /** Called by the Maps script once the whole API is loaded (the `callback` query parameter). */
+    __section30MapsReady?: () => void;
   }
 }
 
 let mapsScript: Promise<void> | null = null;
 
-/** Loads the Maps JavaScript API once per page; a failed load resets so the next try can retry. */
+/**
+ * Loads the Maps JavaScript API once per page. The script tag's own load event is useless here: the
+ * URL returns a small bootstrap that fetches the real API as a second file, so `google.maps` is still
+ * empty when it fires. Google's `callback` parameter is the only signal that the API is ready.
+ * A failed load resets so the next mount can retry.
+ */
 function loadMaps(apiKey: string): Promise<void> {
-  if (typeof google !== 'undefined' && typeof google.maps?.importLibrary === 'function') return Promise.resolve();
+  if (typeof google !== 'undefined' && typeof google.maps?.StreetViewPanorama === 'function') return Promise.resolve();
   if (!mapsScript) {
     mapsScript = new Promise<void>((resolve, reject) => {
+      window.__section30MapsReady = () => {
+        window.__section30MapsReady = undefined;
+        resolve();
+      };
       const s = document.createElement('script');
-      const q = new URLSearchParams({ key: apiKey, v: 'weekly', loading: 'async' });
+      const q = new URLSearchParams({ key: apiKey, v: 'weekly', loading: 'async', callback: '__section30MapsReady' });
       s.src = `https://maps.googleapis.com/maps/api/js?${q}`;
       s.async = true;
-      s.onload = () => resolve();
       s.onerror = () => {
         mapsScript = null;
+        window.__section30MapsReady = undefined;
         reject(new Error('script blocked: maps.googleapis.com did not load (content blocker or DNS filter?)'));
       };
       document.head.appendChild(s);
@@ -66,10 +77,9 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
     (async () => {
       try {
         await loadMaps(apiKey);
-        const lib = (await google.maps.importLibrary('streetView')) as google.maps.StreetViewLibrary;
         // Snap to the nearest outdoor panorama so a target that is "inside the deli" still works.
-        const found = await new lib.StreetViewService()
-          .getPanorama({ location, radius: 100, source: lib.StreetViewSource.OUTDOOR })
+        const found = await new google.maps.StreetViewService()
+          .getPanorama({ location, radius: 100, source: google.maps.StreetViewSource.OUTDOOR })
           .catch((e: unknown) => {
             console.warn('[section30] no panorama near', location, e);
             return null;
@@ -81,7 +91,7 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
           return;
         }
         startRef.current = panoId;
-        panoRef.current = new lib.StreetViewPanorama(el, {
+        panoRef.current = new google.maps.StreetViewPanorama(el, {
           pano: panoId,
           pov: { heading, pitch },
           addressControl: false,
