@@ -67,6 +67,25 @@ GM log shows an `ai_error` naming the limit. An API key in `.env` is the fallbac
 Without a credential the app runs in **mock mode**: every screen works, the ARCHIVE answers from canned
 lookups, grading is keyword based, hints come from the quick-hint lists. Good for rehearsals.
 
+## Setup assistant and configuration history
+
+**Setup assistant.** The GM console has a chat with Opus for getting the game ready. Ask what is
+still missing, have it check the field photos, brainstorm red herrings or hint wording, or draft
+printable props like the drop-point card. It reads the live configuration, the case files and the
+uploaded photos. A readiness list at the top shows blockers such as a missing target pin or photos.
+The assistant never edits anything itself. A change comes back as a proposal showing each setting's
+current and new value, and nothing happens until a GM presses **Apply**. Opus can read images but
+cannot make them, so for photos it describes what to shoot and reviews what you upload. In mock
+mode it shows the readiness list and accepts simple edits such as `set gate.code to "PHIL2026"`.
+Its messages go only to GMs, never to the player's phone.
+
+**Configuration history.** The configuration is append-only. Every change adds a new numbered
+version, whether it comes from a GM save, an upload, an applied proposal or a restore. Database
+triggers refuse to edit or delete an old version. Under **Version history** in the config editor,
+open any version to see what restoring it would change, then press **Restore**. A restore adds a
+copy of that version as the newest one, so it can be undone the same way. Removing a photo or the
+audio takes it out of the game but keeps the file, so older versions still restore completely.
+
 ## Run it locally
 
 ```bash
@@ -111,13 +130,16 @@ cd client && npm run build
 
 ### Continuous integration and Docker Hub
 
-Three GitHub Actions workflows live in `.github/workflows`:
+Four GitHub Actions workflows live in `.github/workflows`:
 
 | Workflow | Runs on | What it does |
 | - | - | - |
-| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server, builds the client, then runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size). Reports are uploaded as artifacts. |
+| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server and builds the client. This is the check that gates the Docker Hub publish. |
+| `e2e.yml` | every pull request and every push to `main` | Runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size) and uploads the reports. Informational: it never blocks a merge or a Docker Hub push. |
 | `docker-dry-run.yml` | pull requests only | Builds the image for `linux/amd64` without pushing, boots it, and checks `/healthz`, the player API and the bundled `claude` binary. |
-| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub. Can also be started by hand from the Actions tab. |
+| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub, whatever the browser tests say. Can also be started by hand from the Actions tab. |
+
+If you add a branch protection rule for `main`, require the `CI` and `Docker dry run` checks only, not the `E2E` ones, so a failing browser test never blocks a merge.
 
 Before the first merge, add these under Settings > Secrets and variables > Actions:
 

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText } from '../api';
 import { Markdown } from '../md';
 import type { ArchiveMessage, GameConfig, GameEvent, GameState, Overview } from '../types';
 import { useSocket } from '../ws';
+import { AssistantPanel } from './AssistantPanel';
 import { ClaudePanel } from './ClaudePanel';
 import { ConfigEditor } from './ConfigEditor';
 import { ArchivePanel, HintsPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel, STAGE_NAME, elapsed, fmt, plural, useNow } from './panels';
@@ -115,9 +116,13 @@ export function GmApp() {
     if (authed) void load();
   }, [authed, load]);
 
+  // Assistant updates go to the assistant panel through this bus instead of console state.
+  const assistantBus = useRef(new EventTarget());
   const connected = useSocket(
     'gm',
     (m) => {
+      if (m.type === 'assistant' || m.type === 'assistant_status' || m.type === 'assistant_proposal' || m.type === 'gm')
+        assistantBus.current.dispatchEvent(new CustomEvent('m', { detail: m }));
       if (m.type === 'gm') {
         setData((d) => (d ? { ...d, state: m.state, config: m.config } : d));
         if (typeof m.players === 'number') setPlayers(m.players);
@@ -236,6 +241,7 @@ export function GmApp() {
             <ReportPanel state={state} />
           </div>
         </div>
+        <AssistantPanel bus={assistantBus.current} />
         {running ? (
           <details className="section" style={{ marginTop: 16 }}>
             <summary>Game configuration (collapsed while a game is running)</summary>

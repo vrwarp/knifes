@@ -98,6 +98,24 @@ export function gmRouter(service: GameService): Router {
   r.get('/me', (_req, res) => res.json({ ok: true }));
   r.get('/overview', async (_req, res) => res.json(await service.overview()));
   r.put('/config', (req, res) => res.json({ config: service.updateConfig(req.body) }));
+  r.get('/config/history', (req, res) => {
+    const before = Number(req.query.before);
+    res.json(service.configHistory(Number.isFinite(before) && before > 0 ? before : undefined));
+  });
+  r.get('/config/history/:version', (req, res) => res.json(service.configVersion(num(req.params.version))));
+  r.post('/config/restore', (req, res) => res.json({ config: service.restoreConfig(num(req.body?.version)) }));
+
+  r.get('/assistant', (_req, res) => res.json(service.assistantView()));
+  r.post('/assistant', async (req, res) => res.json({ message: await service.assistantSend(str(req.body?.text, 4000)) }));
+  r.post('/assistant/reset', (_req, res) => {
+    service.assistantReset();
+    res.json({ ok: true });
+  });
+  r.post('/assistant/proposals/:id/apply', (req, res) => res.json({ config: service.applyProposal(num(req.params.id)) }));
+  r.post('/assistant/proposals/:id/dismiss', (req, res) => {
+    service.dismissProposal(num(req.params.id));
+    res.json({ ok: true });
+  });
   r.post('/stage', (req, res) => {
     const stage = str(req.body?.stage, 30) as StageId;
     if (!STAGE_ORDER.includes(stage)) throw new HttpError(400, 'Unknown stage');
@@ -195,8 +213,7 @@ export function gmRouter(service: GameService): Router {
   });
   r.delete('/upload/:id', (req, res) => {
     const id = path.basename(String(req.params.id));
-    const full = path.join(env.uploadsDir, id);
-    if (fs.existsSync(full)) fs.unlinkSync(full);
+    // The file stays on disk: older configuration versions may still use it.
     service.detachUpload(id);
     res.json({ ok: true });
   });

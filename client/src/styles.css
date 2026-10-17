@@ -249,3 +249,39 @@ input[type="file"]::file-selector-button { background: transparent; color: var(-
 .ctl-row select { flex: 1 1 220px; min-width: 220px; width: auto !important; }
 .ctl-row .btn { flex: none; }
 .ctl-row .tiny { flex: none; }
+
+/* configuration version history */
+.history .versions { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.history .vrow { width: 100%; display: grid; grid-template-columns: 52px 84px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.history .vrow:hover { border-color: var(--accent-dim); }
+.history li.current .vrow { border-color: var(--green); }
+.history .vnum { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.history .vsrc { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); }
+.history .vsrc.assistant { color: var(--accent); }
+.history .vsrc.restore { color: var(--amber); }
+.history .vnote { min-width: 0; overflow-wrap: anywhere; }
+.history .vtime { color: var(--dim); font-size: 12px; white-space: nowrap; }
+.history li.current .vtime { color: var(--green); }
+.history .vdetail { padding: 8px 10px 12px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 4px 4px; }
+table.diff { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0 10px; }
+table.diff th { text-align: left; color: var(--dim); font-weight: 400; padding: 3px 8px 3px 0; vertical-align: top; white-space: nowrap; }
+table.diff td { padding: 3px 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .history .vrow { grid-template-columns: 44px minmax(0, 1fr) auto; } .history .vsrc { display: none; } }
+
+/* setup assistant */
+.assistant { margin-top: 16px; }
+.assistant .readiness { margin: 8px 0 12px; border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; }
+.assistant .readiness summary { cursor: pointer; font-size: 13px; }
+.assistant .readiness ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.assistant .readiness .lvl { display: inline-block; min-width: 56px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.assistant .readiness li.blocker .lvl { color: var(--red); }
+.assistant .readiness li.warn .lvl { color: var(--amber); }
+.assistant .readiness li.info .lvl { color: var(--dim); }
+.assistant .proposals { display: grid; gap: 10px; margin-bottom: 12px; }
+.assistant .proposal { border: 1px solid var(--accent); border-radius: 4px; padding: 10px; background: var(--panel-2); }
+.assistant-chat { max-height: 520px; }
+.assistant-chat .msg .md > :last-child { margin-bottom: 0; }
+.assistant .starters { display: grid; gap: 6px; justify-items: start; }
+.assistant .starters .btn { text-transform: none; letter-spacing: 0; text-align: left; }
+table.diff th { width: 1%; }
+.assistant .chat-input { position: static; }
