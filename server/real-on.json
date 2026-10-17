@@ -1,0 +1,170 @@
+[
+  {
+    "word": "ALIVE",
+    "solved": true,
+    "guesses": 3,
+    "sequence": [
+      "CRANE",
+      "LATHE",
+      "ALIVE"
+    ],
+    "latencyMs": [
+      1889,
+      2264,
+      3547
+    ],
+    "errors": 0
+  },
+  {
+    "word": "BUYER",
+    "solved": true,
+    "guesses": 4,
+    "sequence": [
+      "SLATE",
+      "REIGN",
+      "BORED",
+      "BUYER"
+    ],
+    "latencyMs": [
+      2446,
+      3276,
+      2912,
+      3991
+    ],
+    "errors": 0
+  },
+  {
+    "word": "DANCE",
+    "solved": true,
+    "guesses": 2,
+    "sequence": [
+      "CRANE",
+      "DANCE"
+    ],
+    "latencyMs": [
+      2516,
+      2985
+    ],
+    "errors": 0
+  },
+  {
+    "word": "FLOOR",
+    "solved": true,
+    "guesses": 3,
+    "sequence": [
+      "CRANE",
+      "STORY",
+      "FLOOR"
+    ],
+    "latencyMs": [
+      1826,
+      2389,
+      4934
+    ],
+    "errors": 0
+  },
+  {
+    "word": "INPUT",
+    "solved": true,
+    "guesses": 3,
+    "sequence": [
+      "SLATE",
+      "THORN",
+      "INPUT"
+    ],
+    "latencyMs": [
+      2235,
+      3255,
+      4656
+    ],
+    "errors": 0
+  },
+  {
+    "word": "NEVER",
+    "solved": true,
+    "guesses": 4,
+    "sequence": [
+      "CRANE",
+      "RENTS",
+      "HERON",
+      "NEVER"
+    ],
+    "latencyMs": [
+      1758,
+      2503,
+      4016,
+      4114
+    ],
+    "errors": 0
+  },
+  {
+    "word": "QUEUE",
+    "solved": true,
+    "guesses": 5,
+    "sequence": [
+      "CRANE",
+      "STOLE",
+      "MIDGE",
+      "FEUBE",
+      "QUEUE"
+    ],
+    "latencyMs": [
+      2176,
+      2382,
+      2550,
+      8185,
+      6945
+    ],
+    "errors": 0
+  },
+  {
+    "word": "SHIRT",
+    "solved": true,
+    "guesses": 3,
+    "sequence": [
+      "CRANE",
+      "STORY",
+      "SHIRT"
+    ],
+    "latencyMs": [
+      2285,
+      2492,
+      3883
+    ],
+    "errors": 0
+  },
+  {
+    "word": "STUDY",
+    "solved": true,
+    "guesses": 3,
+    "sequence": [
+      "CRANE",
+      "MOUTH",
+      "STUDY"
+    ],
+    "latencyMs": [
+      2035,
+      2372,
+      2505
+    ],
+    "errors": 0
+  },
+  {
+    "word": "UNCLE",
+    "solved": true,
+    "guesses": 4,
+    "sequence": [
+      "SLATE",
+      "LODGE",
+      "RIFLE",
+      "UNCLE"
+    ],
+    "latencyMs": [
+      1779,
+      2896,
+      3351,
+      5515
+    ],
+    "errors": 0
+  }
+]

@@ -41,9 +41,17 @@ function NowStrip({ state, config, events, players, streetViewKeySet }: { state:
     case 'gate':
       facts.push(`${plural(state.gate.attempts, 'code attempt')} · code ${config.gate.code}`);
       break;
-    case 'hack':
-      facts.push(`${state.hack.guesses.length}/${config.hack.maxAttempts} guesses · ${plural(state.hack.rounds, 'reset')}${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · secret ${config.hack.secret}`);
+    case 'hack': {
+      const cap = config.hack.maxAttempts === null ? '' : `/${config.hack.maxAttempts}`;
+      if (config.hack.mode === 'race') {
+        facts.push(
+          `${state.hack.guesses.length}${cap} guesses vs adversary ${state.hack.ai.guesses.length}${cap}${state.hack.ai.thinking ? ' (computing)' : ''} · ${plural(state.hack.rounds, 'race')} lost · pace ${Math.round(Math.min(600, config.hack.aiIntervalSeconds * Math.pow(Math.max(1, config.hack.aiSlowdownPerRound), state.hack.rounds)))}s${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · key ${state.hack.secret ?? '?'}`,
+        );
+      } else {
+        facts.push(`${state.hack.guesses.length}${cap} guesses · ${plural(state.hack.rounds, 'reset')}${state.hack.lockedUntil && state.hack.lockedUntil > now ? ' · LOCKED' : ''} · secret ${config.hack.secret}`);
+      }
       break;
+    }
     case 'reveal':
       facts.push('reading the incident record');
       break;

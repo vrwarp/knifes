@@ -123,13 +123,18 @@ try {
     await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   });
 
-  await step('word puzzle scores APPLE then solves with ALPHA', async () => {
+  await step('word race scores a guess, then solves with the drawn key', async () => {
     const box = player.getByLabel('Key attempt');
-    await box.fill('apple');
+    await box.fill('crane');
     await player.getByRole('button', { name: /attempt key/i }).click();
-    await player.locator('.tile.near').first().waitFor();
+    await player.getByRole('img', { name: /Attempt 1:/ }).waitFor();
+    await player.getByText(/Adversary/).first().waitFor();
     await shot(player, '03-hack');
-    await box.fill('alpha');
+    // The key is drawn from the bank each round; the GM overview knows it.
+    const login = await fetch(`${base}/api/gm/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'test' }) });
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const st = await (await fetch(`${base}/api/gm/overview`, { headers: { cookie } })).json();
+    await box.fill(st.state.hack.secret);
     await player.getByRole('button', { name: /attempt key/i }).click();
     await player.locator('h1', { hasText: 'INCIDENT RECORD' }).waitFor({ timeout: 10_000 });
     await finishTyping(player);

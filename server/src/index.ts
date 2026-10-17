@@ -36,6 +36,7 @@ server.listen(env.port, () => {
 
 function shutdown(signal: string): void {
   console.log(`[section30] ${signal}, shutting down`);
+  service.close();
   server.close(() => {
     db.close();
     process.exit(0);

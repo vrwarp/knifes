@@ -13,8 +13,10 @@ import path from 'node:path';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
 import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
-import { advanceTo, applyInvestigationUnlocks, forceStage, initialState, isAtLeast, nextStage, playerView, resetStage, type PlayerView } from './game/state.js';
+import { drawWord, opponentDelayMs, opponentPace, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
+import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
+import { aiOpponentGuess, opponentLive } from './ai/opponent.js';
 import { SLOT_IDS, STAGE_ORDER, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
 
 /** Minimum time a deduction verdict takes to come back, so it reads as weighed rather than instant. */
@@ -82,12 +84,28 @@ export const ConfigSchema = z.object({
     revealBody: z.string(),
   }),
   gate: z.object({ prompt: z.string(), code: z.string().min(1), successText: z.string() }),
-  hack: z.object({
-    secret: z.string().regex(/^[A-Za-z]{3,8}$/, 'secret must be 3 to 8 letters'),
-    maxAttempts: z.number().int().min(1).max(20),
-    lockoutSeconds: z.number().int().min(0).max(3600),
-    intro: z.string(),
-  }),
+  hack: z
+    .object({
+      mode: z.enum(['solo', 'race']),
+      secret: z.string().regex(/^[A-Za-z]{3,8}$/, 'secret must be 3 to 8 letters'),
+      maxAttempts: z.number().int().min(1).max(50).nullable(),
+      lockoutSeconds: z.number().int().min(0).max(3600),
+      intro: z.string(),
+      wordBank: z.array(z.string().regex(/^[A-Za-z]{3,8}$/, 'bank words must be 3 to 8 letters')).max(10_000),
+      aiModel: z.string().trim().min(1).max(80),
+      aiIntervalSeconds: z.number().min(1).max(600),
+      aiJitterSeconds: z.number().min(0).max(600),
+      aiSlowdownPerRound: z.number().min(1).max(5),
+      aiShowLetters: z.boolean(),
+      aiThinking: z.boolean(),
+    })
+    .superRefine((h, ctx) => {
+      if (h.mode !== 'race') return;
+      if (h.wordBank.length < 2) ctx.addIssue({ code: 'custom', path: ['wordBank'], message: 'race mode needs at least two words in the bank' });
+      const lengths = new Set(h.wordBank.map((w) => w.length));
+      if (lengths.size > 1) ctx.addIssue({ code: 'custom', path: ['wordBank'], message: 'every word in the bank must have the same length' });
+      if (h.aiJitterSeconds >= h.aiIntervalSeconds) ctx.addIssue({ code: 'custom', path: ['aiJitterSeconds'], message: 'jitter must be smaller than the interval' });
+    }),
   reveal: z.object({ title: z.string(), body: z.string(), buttonLabel: z.string().min(1) }),
   evidence: z.object({
     gateMode: z.enum(['after_hack', 'passcodes']),
@@ -149,7 +167,18 @@ export class GameService {
     }
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
     this.state.archive.busy = false;
+    this.state.hack = normalizeHack(this.state.hack);
+    // No request survives a restart; the loop below starts a new one if the race is still on.
+    this.state.hack.ai.thinking = false;
+    this.state.hack.ai.nextAt = null;
+    this.syncOpponent();
     this.save();
+  }
+
+  /** Stops the opponent timer, for tests and shutdown. */
+  close(): void {
+    if (this.opponentTimer) clearTimeout(this.opponentTimer);
+    this.opponentTimer = null;
   }
 
   subscribe(fn: Listener): () => void {
@@ -174,6 +203,7 @@ export class GameService {
 
   /** Persist and push the new state to every connected client. */
   private touch(): void {
+    this.syncOpponent();
     this.rev = Math.max(Date.now(), this.rev + 1);
     this.save();
     this.emit(this.snapshotMessage());
@@ -252,13 +282,13 @@ export class GameService {
 
   hackGuess(word: string): { solved: boolean; lockedUntil: number | null } {
     this.requireStage('hack', 'hack');
-    const h = this.state.hack;
-    if (h.solved) return { solved: true, lockedUntil: null };
+    if (this.state.hack.solved) return { solved: true, lockedUntil: null };
     const now = Date.now();
-    if (h.lockedUntil && h.lockedUntil > now) throw new HttpError(423, 'Partition locked');
-    if (h.lockedUntil && h.lockedUntil <= now) this.hackRetry();
+    if (this.state.hack.lockedUntil && this.state.hack.lockedUntil > now) throw new HttpError(423, 'Partition locked');
+    if (this.state.hack.lockedUntil && this.state.hack.lockedUntil <= now) this.hackRetry();
+    const h = this.state.hack;
     const guess = normalizeGuess(word);
-    const secret = this.config.hack.secret.toUpperCase();
+    const secret = currentSecret(this.config, this.state);
     if (guess.length !== secret.length) throw new HttpError(400, `Key must be ${secret.length} characters`);
     h.guesses.push(guess);
     const scores = scoreGuess(guess, secret);
@@ -267,12 +297,12 @@ export class GameService {
     if (solved) {
       h.solved = true;
       h.lockedUntil = null;
-      this.event('hack_solved', { attempts: h.guesses.length, rounds: h.rounds });
+      h.roundResult = 'player';
+      h.lastWord = secret;
+      this.event('hack_solved', { attempts: h.guesses.length, rounds: h.rounds, aiAttempts: h.ai.guesses.length });
       if (advanceTo(this.state, 'reveal')) this.event('stage', { stage: 'reveal' });
-    } else if (h.guesses.length >= this.config.hack.maxAttempts) {
-      h.lockedUntil = now + this.config.hack.lockoutSeconds * 1000;
-      h.rounds++;
-      this.event('hack_lockout', { rounds: h.rounds, lockedUntil: h.lockedUntil });
+    } else if (this.config.hack.maxAttempts !== null && h.guesses.length >= this.config.hack.maxAttempts) {
+      this.endRound('exhausted', now);
     }
     this.touch();
     return { solved, lockedUntil: h.lockedUntil };
@@ -283,8 +313,126 @@ export class GameService {
     const h = this.state.hack;
     if (h.solved) return;
     if (h.lockedUntil && h.lockedUntil > Date.now()) throw new HttpError(423, 'Partition still locked');
-    h.guesses = [];
-    h.lockedUntil = null;
+    // A race draws a new word (touch() starts the round); solo mode keeps the same secret.
+    this.state.hack = this.config.hack.mode === 'race' ? freshRound(h) : { ...h, guesses: [], lockedUntil: null };
+    this.touch();
+  }
+
+  // ------------------------------------------------------------ opponent
+
+  private opponentTimer: NodeJS.Timeout | null = null;
+
+  /** Race mode and a round that is still open: nobody has the key, the partition is not locked, attempts remain. */
+  private raceOpen(): boolean {
+    const h = this.state.hack;
+    return (
+      this.config.hack.mode === 'race' &&
+      this.state.stage === 'hack' &&
+      !h.solved &&
+      !h.roundResult &&
+      !(h.lockedUntil && h.lockedUntil > Date.now()) &&
+      !h.ai.solved &&
+      (this.config.hack.maxAttempts === null || h.ai.guesses.length < this.config.hack.maxAttempts)
+    );
+  }
+
+  /**
+   * Keeps the opponent in step with the state. Called from touch(), so every entry into the
+   * puzzle (gate passed, GM jump, reset, retry, config change, restart) starts a round and the
+   * timer, and every exit stops it.
+   */
+  private syncOpponent(): void {
+    if (this.config.hack.mode === 'race' && this.state.stage === 'hack' && !this.state.hack.solved && !this.state.hack.secret) this.startRound();
+    // Read after startRound(): it replaces the hack object.
+    const h = this.state.hack;
+    if (!this.raceOpen()) {
+      if (this.opponentTimer) clearTimeout(this.opponentTimer);
+      this.opponentTimer = null;
+      if (h.ai.nextAt !== null && !h.ai.thinking) h.ai.nextAt = null;
+      return;
+    }
+    if (this.opponentTimer || h.ai.thinking) return;
+    const pace = opponentPace(this.config.hack, h.rounds);
+    const due = (h.ai.lastAt ?? Date.now()) + opponentDelayMs(pace.intervalSeconds, pace.jitterSeconds);
+    const delay = Math.max(500, due - Date.now());
+    h.ai.nextAt = Date.now() + delay;
+    this.opponentTimer = setTimeout(() => {
+      this.opponentTimer = null;
+      void this.opponentTurn();
+    }, delay);
+  }
+
+  private startRound(): void {
+    const h = freshRound(this.state.hack);
+    const word = drawWord(this.config.hack.wordBank, h.used);
+    if (!word) return; // empty bank: solo secret applies via currentSecret()
+    h.secret = word;
+    h.used.push(word);
+    h.round++;
+    h.ai.lastAt = Date.now();
+    this.state.hack = h;
+    const pace = opponentPace(this.config.hack, h.rounds);
+    this.event('hack_round', { round: h.round, word, used: h.used.length, bank: this.config.hack.wordBank.length, paceSeconds: pace.intervalSeconds, jitterSeconds: pace.jitterSeconds });
+  }
+
+  private endRound(result: 'ai' | 'exhausted', now = Date.now()): void {
+    const h = this.state.hack;
+    h.roundResult = result;
+    h.lastWord = currentSecret(this.config, this.state);
+    h.lockedUntil = now + this.config.hack.lockoutSeconds * 1000;
+    h.rounds++;
+    h.ai.nextAt = null;
+    this.event('hack_lockout', { rounds: h.rounds, lockedUntil: h.lockedUntil, reason: result, word: h.lastWord });
+  }
+
+  private async opponentTurn(): Promise<void> {
+    if (!this.raceOpen()) return;
+    const h = this.state.hack;
+    const round = h.round;
+    const secret = currentSecret(this.config, this.state);
+    const history: OpponentHistoryRow[] = h.ai.guesses.map((g) => ({ guess: g, scores: scoreGuess(g, secret).map((x) => x.state) }));
+    const fallback = () => solverGuess(this.config.hack.wordBank, secret.length, history);
+    h.ai.thinking = true;
+    h.ai.nextAt = null;
+    // Pace from when the guess is requested, so model latency (2 to 4 s) does not add to the interval.
+    h.ai.lastAt = Date.now();
+    this.touch();
+    let guess: string | null = null;
+    let source: 'ai' | 'solver' = 'solver';
+    let costUsd: number | null = null;
+    if (opponentLive()) {
+      try {
+        const r = await aiOpponentGuess({
+          model: this.config.hack.aiModel,
+          length: secret.length,
+          history,
+          timeoutMs: Math.max(20_000, opponentPace(this.config.hack, h.rounds).intervalSeconds * 4000),
+          thinking: this.config.hack.aiThinking,
+        });
+        guess = r.guess;
+        costUsd = r.costUsd;
+        source = 'ai';
+      } catch (err) {
+        this.event('ai_error', { where: 'opponent', error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    guess ??= fallback();
+    // The round may have ended, been reset or re-drawn while the model was thinking.
+    if (h !== this.state.hack || h.round !== round) return;
+    h.ai.thinking = false;
+    if (!guess || !this.raceOpen()) {
+      this.touch();
+      return;
+    }
+    h.ai.guesses.push(guess);
+    const scores = scoreGuess(guess, secret);
+    const solved = isSolved(scores);
+    this.event('hack_ai_guess', { guess, scores: scores.map((s) => s.state), attempt: h.ai.guesses.length, solved, source, costUsd });
+    if (solved) {
+      h.ai.solved = true;
+      this.event('hack_ai_solved', { attempts: h.ai.guesses.length, playerAttempts: h.guesses.length, word: secret });
+      this.endRound('ai');
+    }
     this.touch();
   }
 
@@ -492,8 +640,12 @@ export class GameService {
     }
     const next = parsed.data as GameConfig;
     next.hack.secret = next.hack.secret.toUpperCase();
+    next.hack.wordBank = [...new Set(next.hack.wordBank.map((w) => w.toUpperCase()))];
     const changes = diffPaths(this.config, next);
     if (!changes.length) return this.config;
+    // A new bank or a mode switch mid-puzzle: redraw so the word in play comes from the current bank.
+    const bankChanged = JSON.stringify(next.hack.wordBank) !== JSON.stringify(this.config.hack.wordBank) || next.hack.mode !== this.config.hack.mode;
+    if (bankChanged && this.state.stage === 'hack' && !this.state.hack.solved) this.state.hack = freshRound(this.state.hack);
     next.version = this.db.appendConfig(next, source, note, changes);
     this.config = next;
     this.event('gm_action', { action: 'config_update', version: next.version, source, note, changes: changes.slice(0, 12) });

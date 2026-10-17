@@ -17,7 +17,7 @@ export function buildReportPrompt(config: GameConfig, state: GameState, events: 
   return `Title: ${config.title}
 Started: ${state.startedAt ? fmt(state.startedAt) : 'unknown'}
 Stage times: ${JSON.stringify(state.stageTimes)}
-Geo attempts: ${state.geo.attempts}. Gate attempts: ${state.gate.attempts}. Word puzzle guesses: ${state.hack.guesses.length} (lockouts ${state.hack.rounds}). Deduction attempts: ${state.deduction.attempts}, passed: ${state.deduction.passed}.
+Geo attempts: ${state.geo.attempts}. Gate attempts: ${state.gate.attempts}. Word puzzle guesses: ${state.hack.guesses.length} (lockouts ${state.hack.rounds}${config.hack.mode === 'race' ? '; he raced a hostile AI process for the same key, see the hack_ai_* and hack_round events' : ''}). Deduction attempts: ${state.deduction.attempts}, passed: ${state.deduction.passed}.
 Final deduction answers: ${JSON.stringify(state.deduction.lastAnswers)}
 
 Activity log:

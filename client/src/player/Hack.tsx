@@ -1,13 +1,30 @@
-import { useCallback, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { api, errorText } from '../api';
-import type { PlayerView } from '../types';
+import type { LetterScore, PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
 
 const STATE_WORD = { hit: 'placed', near: 'misplaced', miss: 'absent' } as const;
 
+function describeRow(scored: LetterScore[]): string {
+  return scored.map((s) => (s.letter ? `${s.letter} ${STATE_WORD[s.state]}` : STATE_WORD[s.state])).join(', ');
+}
+
+/** Ticks a few times a second while the opponent's next guess is pending, for the progress bar. */
+function useTick(active: boolean): number {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const t = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(t);
+  }, [active]);
+  return now;
+}
+
 export function Hack({ view, setView, refresh }: StageProps) {
   const h = view.hack;
+  const ai = h.ai;
+  const race = h.mode === 'race' && ai !== null;
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -16,6 +33,10 @@ export function Hack({ view, setView, refresh }: StageProps) {
   const lockPassed = h.lockedUntil !== null && (expired || h.lockedUntil <= Date.now());
   const onDone = useCallback(() => setExpired(true), []);
   const rowStyle = { '--n': h.length } as CSSProperties;
+  const roundOpen = !locked && !lockPassed && !h.solved;
+  const now = useTick(race && roundOpen && !!ai && !ai.solved && !ai.exhausted);
+  // A fresh lockout arrives with a new lockedUntil; forget that the previous one ran out.
+  useEffect(() => setExpired(false), [h.lockedUntil]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +62,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
     try {
       setView(await api<PlayerView>('/api/player/hack/retry', { method: 'POST' }));
       setExpired(false);
+      setInput('');
     } catch (e2) {
       setErr(errorText(e2));
     } finally {
@@ -48,13 +70,16 @@ export function Hack({ view, setView, refresh }: StageProps) {
     }
   };
 
+  const cap = h.maxAttempts === null ? '' : `/${h.maxAttempts}`;
+  // With no cap the board grows: at least six rows, always one empty row beyond the last guess.
+  const playerRows = h.maxAttempts ?? Math.max(6, h.rows.length + (roundOpen ? 1 : 0));
   const rows = [];
-  for (let i = 0; i < h.maxAttempts; i++) {
+  for (let i = 0; i < playerRows; i++) {
     const scored = h.rows[i];
     if (scored) {
       const win = h.solved && i === h.rows.length - 1;
       rows.push(
-        <div className={`trow ${win ? 'win' : ''}`} key={i} style={rowStyle} role="img" aria-label={`Attempt ${i + 1}: ${scored.map((s) => `${s.letter} ${STATE_WORD[s.state]}`).join(', ')}`}>
+        <div className={`trow ${win ? 'win' : ''}`} key={i} style={rowStyle} role="img" aria-label={`Attempt ${i + 1}: ${describeRow(scored)}`}>
           {scored.map((s, j) => (
             <div key={j} className={`tile ${s.state}`} style={{ '--i': j } as CSSProperties} aria-hidden="true">
               {s.letter}
@@ -62,7 +87,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
           ))}
         </div>,
       );
-    } else if (i === h.rows.length && !locked && !lockPassed && !h.solved) {
+    } else if (i === h.rows.length && roundOpen) {
       const letters = input.toUpperCase().replace(/[^A-Z]/g, '').padEnd(h.length).split('');
       rows.push(
         <div className="trow" key={i} style={rowStyle} aria-hidden="true">
@@ -84,10 +109,83 @@ export function Hack({ view, setView, refresh }: StageProps) {
     }
   }
 
+  // The opponent's board: one small row per attempt, colours only unless the GM shows letters.
+  const aiRows = [];
+  if (ai) {
+    const n = h.maxAttempts ?? Math.max(6, ai.rows.length + (roundOpen && !ai.solved ? 1 : 0));
+    for (let i = 0; i < n; i++) {
+      const scored = ai.rows[i];
+      if (scored) {
+        const win = ai.solved && i === ai.rows.length - 1;
+        aiRows.push(
+          <div className={`trow mini ${win ? 'lost' : ''}`} key={i} style={rowStyle} role="img" aria-label={`Adversary attempt ${i + 1}: ${describeRow(scored)}`}>
+            {scored.map((s, j) => (
+              <div key={j} className={`tile ${s.state}`} aria-hidden="true">
+                {s.letter}
+              </div>
+            ))}
+          </div>,
+        );
+      } else {
+        aiRows.push(
+          <div className="trow mini" key={i} style={rowStyle} aria-hidden="true">
+            {Array.from({ length: h.length }, (_, j) => (
+              <div key={j} className={`tile ${i === ai.rows.length && roundOpen && ai.thinking ? 'computing' : ''}`} />
+            ))}
+          </div>,
+        );
+      }
+    }
+  }
+
+  let aiStatus: { text: string; cls: string } | null = null;
+  let aiProgress: number | null = null;
+  if (ai) {
+    if (h.solved) aiStatus = { text: `ADVERSARY BEATEN · IT HAD USED ${ai.attempts}${cap} ATTEMPTS`, cls: 'green' };
+    else if (ai.solved) aiStatus = { text: 'ADVERSARY RECOVERED THE KEY', cls: 'red' };
+    else if (h.roundResult === 'exhausted') aiStatus = { text: 'ROUND LOST · KEY ROTATED', cls: 'red' };
+    else if (ai.exhausted) aiStatus = { text: 'ADVERSARY EXHAUSTED · THE KEY IS YOURS TO FIND', cls: 'green' };
+    else if (ai.thinking) aiStatus = { text: 'ADVERSARY COMPUTING', cls: 'amber' };
+    else if (ai.nextAt !== null) {
+      const left = Math.max(0, ai.nextAt - now);
+      aiStatus = { text: `ADVERSARY NEXT ATTEMPT IN ${Math.ceil(left / 1000)}s`, cls: 'amber' };
+      const span = Math.max(1000, ai.nextAt - (ai.sinceAt ?? ai.nextAt - 5000));
+      aiProgress = 1 - Math.min(1, left / span);
+    } else aiStatus = { text: 'ADVERSARY STANDING BY', cls: 'muted' };
+  }
+
   return (
     <Frame kicker="Partition 30-BETA" title="Brute-force key" className={`accent ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
       <p className="small muted">{h.intro}</p>
-      <div className="grid">{rows}</div>
+      {race ? (
+        <p className="small muted">
+          A hostile process is brute-forcing the same key from the other side of the partition. It sees only its own results; you can see its progress below. Recover the key before it does, or the key rotates.
+        </p>
+      ) : null}
+      <div className="grid" aria-label="Your attempts">
+        {rows}
+      </div>
+      {ai ? (
+        <div className={`adversary ${ai.solved ? 'won' : ''}`} aria-label="Adversary attempts">
+          <div className="adv-head">
+            <span className="tiny">
+              Adversary · {ai.attempts}
+              {cap}
+            </span>
+            {aiStatus ? (
+              <span className={`tiny ${aiStatus.cls}`} role="status" aria-live="polite">
+                {aiStatus.text}
+              </span>
+            ) : null}
+          </div>
+          {aiProgress !== null ? (
+            <div className="adv-bar" aria-hidden="true">
+              <i style={{ width: `${Math.round(aiProgress * 100)}%` }} />
+            </div>
+          ) : null}
+          <div className="grid mini">{aiRows}</div>
+        </div>
+      ) : null}
       <div className="legend" aria-hidden="true">
         <span>
           <i className="hit" /> placed
@@ -105,14 +203,20 @@ export function Hack({ view, setView, refresh }: StageProps) {
         </div>
       ) : locked && h.lockedUntil ? (
         <div className="center" style={{ marginTop: 16 }} role="status">
-          <div className="red">PARTITION LOCKED</div>
+          <div className="red">{h.roundResult === 'ai' ? 'ADVERSARY RECOVERED THE KEY FIRST' : 'PARTITION LOCKED'}</div>
+          {h.lastWord ? (
+            <div className="tiny">
+              the key was <b className="amber">{h.lastWord}</b>
+              {race ? ' · a new key is being issued' : ''}
+            </div>
+          ) : null}
           <div className="tiny">
-            Reset available in <Countdown until={h.lockedUntil} onDone={onDone} />
+            {race ? 'Next race in' : 'Reset available in'} <Countdown until={h.lockedUntil} onDone={onDone} />
           </div>
         </div>
       ) : lockPassed ? (
         <button className="btn block" onClick={retry} disabled={busy} style={{ marginTop: 16 }}>
-          Reset partition
+          {race ? 'Start next race' : 'Reset partition'}
         </button>
       ) : (
         <form onSubmit={submit} className="stack" style={{ marginTop: 16 }}>
@@ -128,12 +232,17 @@ export function Hack({ view, setView, refresh }: StageProps) {
             aria-label="Key attempt"
           />
           <button className="btn primary block" disabled={busy || input.length !== h.length}>
-            Attempt key ({h.rows.length + 1}/{h.maxAttempts})
+            Attempt key ({h.rows.length + 1}
+            {cap})
           </button>
         </form>
       )}
       {err ? <div className="error">{err}</div> : null}
-      {h.rounds ? <div className="tiny center" style={{ marginTop: 8 }}>Partition resets: {h.rounds}</div> : null}
+      {h.rounds ? (
+        <div className="tiny center" style={{ marginTop: 8 }}>
+          {race ? 'Races lost' : 'Partition resets'}: {h.rounds}
+        </div>
+      ) : null}
     </Frame>
   );
 }

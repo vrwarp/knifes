@@ -198,3 +198,26 @@ test.describe('GM configuration', () => {
     await expect(gm.getByText(/Another GM saved a newer configuration/)).toHaveCount(0);
   });
 });
+
+test.describe('word puzzle mode switch', () => {
+  test('the GM flips between race and solo from the status panel, and the phone follows', async ({ player, gm, app }) => {
+    acceptDialogs(gm);
+    await app.setStage('hack');
+    await player.goto(app.base);
+    await expect(player.getByText(/Adversary · 0/)).toBeVisible();
+    const group = gm.getByRole('group', { name: 'Word puzzle mode' });
+    await expect(group.getByRole('button', { name: 'Race vs AI' })).toHaveAttribute('aria-pressed', 'true');
+    await group.getByRole('button', { name: 'Solo' }).click();
+    await expect(gm.getByText('Solo mode on')).toBeVisible();
+    await expect(player.getByText(/Adversary · /)).toHaveCount(0);
+    expect((await app.config()).hack.mode).toBe('solo');
+    await player.getByLabel('Key attempt').fill('ALPHA');
+    await player.getByRole('button', { name: /attempt key/i }).click();
+    await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
+    // Back to race from the GM side while he is already past the puzzle: the config changes, nothing else moves.
+    await app.setStage('hack');
+    await group.getByRole('button', { name: 'Race vs AI' }).click();
+    await expect(gm.getByText('Race mode on')).toBeVisible();
+    await expect(player.getByText(/Adversary · 0/)).toBeVisible();
+  });
+});
