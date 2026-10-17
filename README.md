@@ -31,7 +31,9 @@ Full requirements and design: [docs/SPEC.md](docs/SPEC.md).
 
 The AI features run through the Claude Agent SDK, which spawns the Claude Code binary bundled in
 the image. That binary authenticates the same way Claude Code does on your laptop, so your Pro or Max
-subscription works without an API key. **Easiest: sign in from the GM console.** Open `/gm`, find the **Claude link** panel (top right while
+subscription works without an API key.
+
+**Easiest: sign in from the GM console.** Open `/gm`, find the **Claude link** panel (top right while
 the AI is not linked), press **Sign in with Claude**, open the link, approve on Claude's site, and paste
 the code it shows back into the panel. **Test connection** then sends one tiny request to prove it
 answers. The login is stored in the data volume and survives restarts and image updates; **Sign out**
