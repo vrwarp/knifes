@@ -1,6 +1,8 @@
 name: Docker publish
 
-# Pushes to Docker Hub only after a merge to main, and only once CI passed on that commit.
+# Pushes to Docker Hub only after a merge to main, and only once CI (typecheck, unit tests,
+# build) passed on that commit. The browser tests run in the separate E2E workflow and never
+# hold up a push.
 #
 # Repository settings needed (Settings > Secrets and variables > Actions):
 #   secret   DOCKERHUB_USERNAME  Docker Hub user name

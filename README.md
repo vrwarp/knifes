@@ -130,13 +130,16 @@ cd client && npm run build
 
 ### Continuous integration and Docker Hub
 
-Three GitHub Actions workflows live in `.github/workflows`:
+Four GitHub Actions workflows live in `.github/workflows`:
 
 | Workflow | Runs on | What it does |
 | - | - | - |
-| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server, builds the client, then runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size). Reports are uploaded as artifacts. |
+| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server and builds the client. This is the check that gates the Docker Hub publish. |
+| `e2e.yml` | every pull request and every push to `main` | Runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size) and uploads the reports. Informational: it never blocks a merge or a Docker Hub push. |
 | `docker-dry-run.yml` | pull requests only | Builds the image for `linux/amd64` without pushing, boots it, and checks `/healthz`, the player API and the bundled `claude` binary. |
-| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub. Can also be started by hand from the Actions tab. |
+| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub, whatever the browser tests say. Can also be started by hand from the Actions tab. |
+
+If you add a branch protection rule for `main`, require the `CI` and `Docker dry run` checks only, not the `E2E` ones, so a failing browser test never blocks a merge.
 
 Before the first merge, add these under Settings > Secrets and variables > Actions:
 
