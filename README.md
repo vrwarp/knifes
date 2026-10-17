@@ -25,13 +25,15 @@ Without a Claude credential the opponent is a deterministic solver, so the race 
 ## Run it on the Synology NAS
 
 1. Copy this repo to a shared folder on the NAS, for example `docker/section30`.
-2. Copy `.env.example` to `.env` and set `GM_PASSWORD`, one Claude credential (see below), and optionally `PLAYER_KEY`.
+2. Copy `.env.example` to `.env` and set `GM_PASSWORD`, one Claude credential (see below), and optionally `PLAYER_KEY`
+   and `GOOGLE_MAPS_API_KEY` (a Maps JavaScript API browser key; with it the location puzzle embeds Street View).
 3. Container Manager → Project → Create → pick the folder. It reads `docker-compose.yml` and builds the image.
    The first build downloads the Agent SDK binary (about 270 MB) and takes a few minutes.
 4. Point your existing reverse proxy at the container's port 8080 with WebSocket support enabled
    (Synology reverse proxy: add the `Upgrade` and `Connection` custom headers, or use the WebSocket preset).
 5. Open `https://your-host/gm`, log in, and walk through the configuration panel.
-   Set the deli coordinates, upload the field photos and the audio clip, and check the codes.
+   Set the deli coordinates (Street View starts there unless you give it its own spot), upload the
+   audio clip, and check the codes. Without a Maps key, upload field photos instead.
 6. The QR code in the fake book points at `https://your-host/` (or `https://your-host/?k=PLAYER_KEY` when a key is set).
 
 ## Use your Claude subscription instead of an API key
@@ -73,6 +75,25 @@ GM log shows an `ai_error` naming the limit. An API key in `.env` is the fallbac
 
 Without a credential the app runs in **mock mode**: every screen works, the ARCHIVE answers from canned
 lookups, grading is keyword based, hints come from the quick-hint lists. Good for rehearsals.
+
+## Setup assistant and configuration history
+
+**Setup assistant.** The GM console has a chat with Opus for getting the game ready. Ask what is
+still missing, have it check the field photos, brainstorm red herrings or hint wording, or draft
+printable props like the drop-point card. It reads the live configuration, the case files and the
+uploaded photos. A readiness list at the top shows blockers such as a missing target pin or photos.
+The assistant never edits anything itself. A change comes back as a proposal showing each setting's
+current and new value, and nothing happens until a GM presses **Apply**. Opus can read images but
+cannot make them, so for photos it describes what to shoot and reviews what you upload. In mock
+mode it shows the readiness list and accepts simple edits such as `set gate.code to "PHIL2026"`.
+Its messages go only to GMs, never to the player's phone.
+
+**Configuration history.** The configuration is append-only. Every change adds a new numbered
+version, whether it comes from a GM save, an upload, an applied proposal or a restore. Database
+triggers refuse to edit or delete an old version. Under **Version history** in the config editor,
+open any version to see what restoring it would change, then press **Restore**. A restore adds a
+copy of that version as the newest one, so it can be undone the same way. Removing a photo or the
+audio takes it out of the game but keeps the file, so older versions still restore completely.
 
 ## Run it locally
 
@@ -118,13 +139,16 @@ cd client && npm run build
 
 ### Continuous integration and Docker Hub
 
-Three GitHub Actions workflows live in `.github/workflows`:
+Four GitHub Actions workflows live in `.github/workflows`:
 
 | Workflow | Runs on | What it does |
 | - | - | - |
-| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server, builds the client, then runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size). Reports are uploaded as artifacts. |
+| `ci.yml` | every pull request and every push to `main` | Typechecks and unit-tests the server and builds the client. This is the check that gates the Docker Hub publish. |
+| `e2e.yml` | every pull request and every push to `main` | Runs the Playwright suite in two parallel jobs (Chromium and WebKit, each at phone and desktop size) and uploads the reports. Informational: it never blocks a merge or a Docker Hub push. |
 | `docker-dry-run.yml` | pull requests only | Builds the image for `linux/amd64` without pushing, boots it, and checks `/healthz`, the player API and the bundled `claude` binary. |
-| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub. Can also be started by hand from the Actions tab. |
+| `docker-publish.yml` | after CI passes on a push to `main` (a merge) | Builds and pushes `latest` and `sha-<commit>` tags to Docker Hub, whatever the browser tests say. Can also be started by hand from the Actions tab. |
+
+If you add a branch protection rule for `main`, require the `CI` and `Docker dry run` checks only, not the `E2E` ones, so a failing browser test never blocks a merge.
 
 Before the first merge, add these under Settings > Secrets and variables > Actions:
 

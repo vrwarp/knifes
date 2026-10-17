@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
+import { HistoryPanel } from './HistoryPanel';
 import type { GameConfig, StageId } from '../types';
 import { STAGE_NAME } from './panels';
 
@@ -33,7 +34,7 @@ function Section({ title, children, open = false }: { title: string; children: R
 
 const STAGES: StageId[] = ['geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
 
-export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved: () => Promise<void> }) {
+export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: GameConfig; onSaved: () => Promise<void>; streetViewKeySet: boolean }) {
   const [draft, setDraft] = useState<GameConfig>(() => structuredClone(config));
   const [dirty, setDirty] = useState(false);
   const [baseVersion, setBaseVersion] = useState(config.version);
@@ -120,7 +121,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
     }
   };
   const removeUpload = async (id: string) => {
-    if (!window.confirm('Delete this upload from the server? This cannot be undone.')) return;
+    if (!window.confirm('Remove this file from the game? It stays in the version history, so restoring an older version brings it back.')) return;
     setBusy(true);
     try {
       await api(`/api/gm/upload/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -221,6 +222,8 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
   };
 
   const target = draft.geo.target;
+  const svLoc = draft.geo.streetView.location;
+  const coordRe = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/;
   return (
     <div className="panel config-wrap" style={{ marginTop: 16 }}>
       <h2>Game configuration {dirty ? <span className="amber">· unsaved changes</span> : null}</h2>
@@ -233,7 +236,7 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
       </Section>
       <Section title="Location puzzle (geo)">
         {S(['geo', 'mode'], 'Mode', [
-          ['puzzle', 'Puzzle: photos + map pin'],
+          ['puzzle', 'Puzzle: Street View (or photos) + map pin'],
           ['reveal', 'Reveal only: show the briefing and next location, no puzzle'],
           ['off', 'Off: skip straight to the code gate'],
         ])}
@@ -265,7 +268,38 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         </div>
         {N(['geo', 'mapZoom'], 'Map start zoom (1 to 19)')}
         <div className="field">
-          <span className="tiny">Field photos</span>
+          <span className="tiny">Street View</span>
+          {streetViewKeySet ? (
+            <div className="small">The player gets a Street View panorama to look around in, with the address and road labels hidden. Any photos below are shown as well.</div>
+          ) : (
+            <div className="small amber">GOOGLE_MAPS_API_KEY is not set in .env, so the player sees field photos only. Set it and restart to embed Street View.</div>
+          )}
+        </div>
+        <label className="field">
+          <span>Street View start as "lat, lng" (blank = the target itself; the nearest panorama within 100 m is used)</span>
+          <input
+            value={raw['geo.streetView.location'] ?? (svLoc ? `${svLoc.lat}, ${svLoc.lng}` : '')}
+            placeholder="leave blank to use the target"
+            onChange={(e) => {
+              const v = e.target.value;
+              setRaw((r) => ({ ...r, 'geo.streetView.location': v }));
+              const m = coordRe.exec(v);
+              if (v.trim() === '') up(['geo', 'streetView', 'location'], null);
+              else if (m) up(['geo', 'streetView', 'location'], { lat: Number(m[1]), lng: Number(m[2]) });
+              else setDirty(true);
+            }}
+          />
+          {raw['geo.streetView.location'] !== undefined && raw['geo.streetView.location'].trim() !== '' && !coordRe.test(raw['geo.streetView.location']) ? (
+            <div className="small red">Not a "lat, lng" pair yet.</div>
+          ) : null}
+        </label>
+        <div className="two">
+          {N(['geo', 'streetView', 'heading'], 'Start heading (0 to 360, 0 = north)')}
+          {N(['geo', 'streetView', 'pitch'], 'Start pitch (-90 to 90)')}
+        </div>
+        {B(['geo', 'streetView', 'allowMoving'], 'Let the player walk along the street (off = look around from one spot only)')}
+        <div className="field">
+          <span className="tiny">Field photos{streetViewKeySet ? ' (optional extras)' : ''}</span>
           <div className="row">
             {draft.geo.photos.map((p) => (
               <span key={p} className="row" style={{ gap: 4 }}>
@@ -399,6 +433,9 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         {STAGES.map((s) => (
           <div key={s}>{Lines(['hints', 'quick', s], STAGE_NAME[s])}</div>
         ))}
+      </Section>
+      <Section title="Version history">
+        <HistoryPanel currentVersion={config.version} dirty={dirty} />
       </Section>
       <div className="sticky-actions row">
         <button className="btn primary" onClick={() => void save()} disabled={busy || !dirty || conflict}>

@@ -2,10 +2,14 @@ import { z } from 'zod';
 import { AgentError, aiLive, probeAuth, runAgent } from './ai/agent.js';
 import { ARCHIVE_ALLOWED_TOOLS, ARCHIVE_SYSTEM_PROMPT, createArchiveServer, mockArchiveReply } from './ai/archive.js';
 import { draftHint, type HintStrength } from './ai/copilot.js';
+import { SETUP_ALLOWED_TOOLS, SETUP_SYSTEM_PROMPT, createSetupServer, mockSetupReply, type SetupContext } from './ai/setup.js';
 import { gradeDeduction } from './ai/grader.js';
 import { generateReport } from './ai/report.js';
 import { ACCESS_LOG, CAMERA_NOTES, MANIFEST, PENDELTON_NOTE, TOXICOLOGY_REPORT } from './content/evidence.js';
-import type { Db } from './db.js';
+import type { AssistantMessage, ConfigSource, Db, Proposal, ProposalChange } from './db.js';
+import { diffPaths, getPath, preview, setPath } from './game/configPaths.js';
+import fs from 'node:fs';
+import path from 'node:path';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
 import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
@@ -33,7 +37,16 @@ export type ServerMessage =
   | { type: 'event'; event: GameEvent }
   | { type: 'hint'; hint: HintPush }
   | { type: 'archive'; message: ArchiveMessage }
-  | { type: 'archive_status'; busy: boolean };
+  | { type: 'archive_status'; busy: boolean }
+  | { type: 'assistant'; message: AssistantMessage }
+  | { type: 'assistant_status'; busy: boolean }
+  | { type: 'assistant_proposal'; proposal: Proposal };
+
+export interface ReadinessItem {
+  level: 'blocker' | 'warn' | 'info';
+  area: string;
+  text: string;
+}
 
 type Listener = (m: ServerMessage) => void;
 
@@ -61,6 +74,12 @@ export const ConfigSchema = z.object({
     mapCenter: latLng,
     mapZoom: z.number().min(1).max(19),
     photos: z.array(z.string()),
+    streetView: z.object({
+      location: latLng.nullable(),
+      heading: z.number().min(0).max(360),
+      pitch: z.number().min(-90).max(90),
+      allowMoving: z.boolean(),
+    }),
     revealTitle: z.string(),
     revealBody: z.string(),
   }),
@@ -135,7 +154,17 @@ export class GameService {
   private readonly listeners = new Set<Listener>();
 
   constructor(private readonly db: Db) {
-    this.config = mergeConfig(db.getJson<GameConfig>('config'));
+    // The configuration lives in an append-only version table. Older installs kept a single
+    // copy in kv; import it once as the first version.
+    const latest = db.latestConfig<GameConfig>();
+    const legacy = latest ? null : db.getJson<GameConfig>('config');
+    this.config = mergeConfig(latest ?? legacy);
+    if (!latest) {
+      this.config.version = db.appendConfig(this.config, 'system', legacy ? 'Imported the configuration saved before version history' : 'Initial configuration', []);
+    } else {
+      const added = diffPaths(latest, this.config);
+      this.config.version = added.length ? db.appendConfig(this.config, 'system', 'Filled in settings added by an update', added) : latest.version;
+    }
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
     this.state.archive.busy = false;
     this.state.hack = normalizeHack(this.state.hack);
@@ -168,7 +197,7 @@ export class GameService {
   }
 
   private save(): void {
-    this.db.setJson('config', this.config);
+    // The configuration is saved only through commitConfig, as a new version.
     this.db.setJson('state', this.state);
   }
 
@@ -194,7 +223,7 @@ export class GameService {
   private rev = Date.now();
 
   view(): PlayerView & { rev: number } {
-    return { ...playerView(this.config, this.state), rev: this.rev };
+    return { ...playerView(this.config, this.state, env.googleMapsApiKey), rev: this.rev };
   }
 
   // ---------------------------------------------------------------- player
@@ -594,11 +623,16 @@ export class GameService {
         credentialLabel: CREDENTIAL_LABEL[credential],
         auth: aiLive() ? await probeAuth() : 'needs_login',
       },
+      streetViewKeySet: env.googleMapsApiKey !== '',
       stages: STAGE_ORDER,
     };
   }
 
-  updateConfig(input: unknown): GameConfig {
+  /**
+   * The only way the configuration changes: validate, append a new version, then go live.
+   * Old versions are never edited, so any of them can be restored later.
+   */
+  private commitConfig(input: unknown, source: ConfigSource, note: string): GameConfig {
     const parsed = ConfigSchema.safeParse(input);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
@@ -607,14 +641,210 @@ export class GameService {
     const next = parsed.data as GameConfig;
     next.hack.secret = next.hack.secret.toUpperCase();
     next.hack.wordBank = [...new Set(next.hack.wordBank.map((w) => w.toUpperCase()))];
+    const changes = diffPaths(this.config, next);
+    if (!changes.length) return this.config;
     // A new bank or a mode switch mid-puzzle: redraw so the word in play comes from the current bank.
     const bankChanged = JSON.stringify(next.hack.wordBank) !== JSON.stringify(this.config.hack.wordBank) || next.hack.mode !== this.config.hack.mode;
     if (bankChanged && this.state.stage === 'hack' && !this.state.hack.solved) this.state.hack = freshRound(this.state.hack);
-    next.version = this.config.version + 1;
+    next.version = this.db.appendConfig(next, source, note, changes);
     this.config = next;
-    this.event('gm_action', { action: 'config_update', version: next.version });
+    this.event('gm_action', { action: 'config_update', version: next.version, source, note, changes: changes.slice(0, 12) });
     this.touch();
     return this.config;
+  }
+
+  updateConfig(input: unknown, note = 'Saved from the config editor'): GameConfig {
+    return this.commitConfig(input, 'gm', note);
+  }
+
+  configHistory(before?: number) {
+    return { current: this.config.version, total: this.db.countConfigVersions(), versions: this.db.listConfigVersions(50, before) };
+  }
+
+  /** One version, with what restoring it would change compared with the live configuration. */
+  configVersion(version: number) {
+    const row = this.db.getConfigVersion<GameConfig>(version);
+    if (!row) throw new HttpError(404, `No version ${version}`);
+    const old = mergeConfig(row.config);
+    const diff = diffPaths(this.config, old).map((p) => ({ path: p, now: preview(getPath(this.config, p)), then: preview(getPath(old, p)) }));
+    return { version: row.version, ts: row.ts, source: row.source, note: row.note, changes: row.changes, config: old, diff };
+  }
+
+  /** Going backwards appends a copy of the old version, so the restore itself can be undone. */
+  restoreConfig(version: number): GameConfig {
+    const row = this.db.getConfigVersion<GameConfig>(version);
+    if (!row) throw new HttpError(404, `No version ${version}`);
+    const before = this.config.version;
+    const next = this.commitConfig(mergeConfig(row.config), 'restore', `Restored version ${version}`);
+    if (next.version === before) throw new HttpError(409, `The live configuration already matches version ${version}.`);
+    return next;
+  }
+
+  // ---------------------------------------------------------------- setup assistant
+
+  /** What is still missing or risky before the night. Used by the console and the assistant. */
+  readiness(): ReadinessItem[] {
+    const c = this.config;
+    const items: ReadinessItem[] = [];
+    const add = (level: ReadinessItem['level'], area: string, text: string) => items.push({ level, area, text });
+    if (env.aiMode === 'mock' || !aiLive()) add('warn', 'AI', 'The AI is in mock mode. Link Claude in the Claude link panel so ARCHIVE, hints, grading and this assistant use Opus.');
+    if (c.geo.mode === 'puzzle' && !c.geo.target) add('blocker', 'Location puzzle', 'No target pin is set, so any pin on the map passes. Set the deli location and a radius.');
+    if (c.geo.mode !== 'off' && c.geo.photos.length === 0)
+      add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken near the deli.');
+    for (const id of c.geo.photos) if (!fs.existsSync(path.join(env.uploadsDir, id))) add('blocker', 'Location puzzle', `Photo ${id} is listed but its file is missing.`);
+    if (!c.evidence.audioUploadId) add('warn', 'Evidence vault', 'No intercept recording is uploaded. The audio file shows the waveform notes only until the GMs upload theirs.');
+    if (c.evidence.gateMode === 'passcodes') add('info', 'Evidence vault', `Passcode mode is on. Make sure the contacts have ${c.evidence.passcodes.audio} and ${c.evidence.passcodes.toxicology}.`);
+    if (c.gate.code === DEFAULT_CONFIG.gate.code) add('info', 'Code gate', `The code is still the default ${c.gate.code}. Fine if that is what Phil will read out.`);
+    for (const s of c.deduction.slots) if (!s.canonical.trim()) add('blocker', 'Deduction', `The ${s.label} blank has no canonical answer.`);
+    for (const st of ['geo', 'gate', 'hack', 'investigation'] as StageId[]) {
+      if (st === 'geo' && c.geo.mode === 'off') continue;
+      if (!(c.hints.quick[st] ?? []).some((h) => h.trim())) add('info', 'Hints', `No quick hints for ${st}.`);
+    }
+    if (!env.gmPassword || ['change-me', 'test', 'password'].includes(env.gmPassword) || env.gmPassword.length < 8)
+      add('warn', 'Security', 'The GM password is short or a default. Set a longer GM_PASSWORD.');
+    if (!env.playerKey) add('info', 'Security', 'No PLAYER_KEY: anyone with the link can open the game. Put the key in the QR code to lock it.');
+    if (!env.sessionSecret) add('info', 'Security', 'No SESSION_SECRET: GM logins end when the container restarts.');
+    if (!env.cookieSecure) add('info', 'Security', 'COOKIE_SECURE is off. Set it to 1 when the site is served over HTTPS.');
+    const order = { blocker: 0, warn: 1, info: 2 };
+    return items.sort((a, b) => order[a.level] - order[b.level]);
+  }
+
+  /** Validate a proposed set of edits against the live configuration without applying it. */
+  checkChanges(changes: ProposalChange[]): GameConfig {
+    if (!changes.length) throw new HttpError(400, 'A proposal needs at least one change.');
+    let next: GameConfig = this.config;
+    for (const ch of changes) {
+      try {
+        next = setPath(next, ch.path, ch.value);
+      } catch (e) {
+        throw new HttpError(400, e instanceof Error ? e.message : String(e));
+      }
+    }
+    const parsed = ConfigSchema.safeParse(next);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw new HttpError(400, `Invalid value at ${issue?.path.join('.') || '?'}: ${issue?.message ?? 'unknown'}`);
+    }
+    return parsed.data as GameConfig;
+  }
+
+  propose(summary: string, changes: ProposalChange[]): Proposal {
+    this.checkChanges(changes);
+    const p = this.db.addProposal(summary.trim().slice(0, 300) || 'Suggested changes', changes);
+    this.emit({ type: 'assistant_proposal', proposal: p });
+    return p;
+  }
+
+  proposals() {
+    return this.db.listProposals(30).map((p) => ({
+      ...p,
+      preview: p.changes.map((c) => ({ path: c.path, now: preview(getPath(this.config, c.path)), next: preview(c.value) })),
+    }));
+  }
+
+  applyProposal(id: number): GameConfig {
+    const p = this.db.getProposal(id);
+    if (!p) throw new HttpError(404, 'No such proposal');
+    if (p.status !== 'pending') throw new HttpError(409, `That proposal was already ${p.status}.`);
+    const next = this.checkChanges(p.changes);
+    const before = this.config.version;
+    const cfg = this.commitConfig(next, 'assistant', `Assistant: ${p.summary}`);
+    this.db.decideProposal(id, 'applied', cfg.version === before ? null : cfg.version);
+    const updated = this.db.getProposal(id);
+    if (updated) this.emit({ type: 'assistant_proposal', proposal: updated });
+    return cfg;
+  }
+
+  private assistantBusy = false;
+
+  private setupContext(): SetupContext {
+    return {
+      config: () => this.config,
+      readiness: () => this.readiness(),
+      history: () => this.db.listConfigVersions(20),
+      propose: (summary, changes) => this.propose(summary, changes),
+    };
+  }
+
+  assistantView() {
+    return { messages: this.db.listAssistantMessages(), proposals: this.proposals(), readiness: this.readiness(), busy: this.assistantBusy, live: aiLive() };
+  }
+
+  async assistantSend(text: string): Promise<AssistantMessage> {
+    const clean = text.trim().slice(0, 4000);
+    if (!clean) throw new HttpError(400, 'Empty message');
+    if (this.assistantBusy) throw new HttpError(429, 'The assistant is still answering the previous message.');
+    const user = this.db.addAssistantMessage('user', clean);
+    this.emit({ type: 'assistant', message: user });
+    this.assistantBusy = true;
+    this.emit({ type: 'assistant_status', busy: true });
+    try {
+      let reply: string;
+      let meta: Record<string, unknown>;
+      if (!aiLive()) {
+        reply = mockSetupReply(clean, this.setupContext());
+        meta = { source: 'mock' };
+      } else {
+        const run = await this.runSetup(clean);
+        reply = run.text.trim() || 'No answer came back. Try asking again.';
+        meta = { source: 'ai', costUsd: run.costUsd, tools: run.toolCalls.map((t) => t.name) };
+      }
+      const msg = this.db.addAssistantMessage('assistant', reply, meta);
+      this.emit({ type: 'assistant', message: msg });
+      return msg;
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      this.event('ai_error', { where: 'assistant', error });
+      const msg = this.db.addAssistantMessage('system', `The assistant did not answer: ${error.slice(0, 300)}`);
+      this.emit({ type: 'assistant', message: msg });
+      return msg;
+    } finally {
+      this.assistantBusy = false;
+      this.emit({ type: 'assistant_status', busy: false });
+    }
+  }
+
+  /** Clears the chat only. Proposals and configuration versions are kept. */
+  assistantReset(): void {
+    if (this.assistantBusy) throw new HttpError(429, 'Wait for the current answer first.');
+    this.db.clearAssistantMessages();
+    this.db.setJson('assistant_session', null);
+  }
+
+  private async runSetup(text: string) {
+    const attempt = (resume: string | null) =>
+      runAgent({
+        prompt: text,
+        systemPrompt: SETUP_SYSTEM_PROMPT,
+        mcpServers: { setup: createSetupServer(this.setupContext()) },
+        allowedTools: SETUP_ALLOWED_TOOLS,
+        resume,
+        persist: true,
+        maxTurns: 16,
+        effort: 'high',
+        timeoutMs: Math.max(env.aiTimeoutMs, 240_000),
+      });
+    const sessionId = this.db.getJson<string>('assistant_session');
+    try {
+      const run = await attempt(sessionId);
+      if (run.sessionId) this.db.setJson('assistant_session', run.sessionId);
+      return run;
+    } catch (err) {
+      if (!sessionId || (err instanceof AgentError && err.subtype === 'error_max_turns')) throw err;
+      this.db.setJson('assistant_session', null);
+      const run = await attempt(null);
+      if (run.sessionId) this.db.setJson('assistant_session', run.sessionId);
+      return run;
+    }
+  }
+
+  dismissProposal(id: number): void {
+    const p = this.db.getProposal(id);
+    if (!p) throw new HttpError(404, 'No such proposal');
+    if (p.status !== 'pending') return;
+    this.db.decideProposal(id, 'dismissed', null);
+    const updated = this.db.getProposal(id);
+    if (updated) this.emit({ type: 'assistant_proposal', proposal: updated });
   }
 
   setStage(stage: StageId): void {
@@ -695,17 +925,20 @@ export class GameService {
   }
 
   attachUpload(kind: 'audio' | 'photo', id: string): void {
-    if (kind === 'audio') this.config.evidence.audioUploadId = id;
-    else if (!this.config.geo.photos.includes(id)) this.config.geo.photos.push(id);
+    const next = structuredClone(this.config);
+    if (kind === 'audio') next.evidence.audioUploadId = id;
+    else if (!next.geo.photos.includes(id)) next.geo.photos.push(id);
     this.event('gm_action', { action: 'upload', kind, id });
-    this.touch();
+    this.commitConfig(next, 'upload', kind === 'audio' ? 'Uploaded the intercept recording' : 'Added a field photo');
   }
 
+  /** Takes the file out of the live configuration. The file itself is kept so older versions still restore. */
   detachUpload(id: string): void {
-    if (this.config.evidence.audioUploadId === id) this.config.evidence.audioUploadId = null;
-    this.config.geo.photos = this.config.geo.photos.filter((p) => p !== id);
+    const next = structuredClone(this.config);
+    if (next.evidence.audioUploadId === id) next.evidence.audioUploadId = null;
+    next.geo.photos = next.geo.photos.filter((p) => p !== id);
     this.event('gm_action', { action: 'upload_remove', id });
-    this.touch();
+    this.commitConfig(next, 'upload', 'Removed an upload');
   }
 
   // ---------------------------------------------------------------- helpers

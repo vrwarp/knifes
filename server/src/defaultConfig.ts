@@ -23,12 +23,13 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
   geo: {
     mode: 'puzzle',
     briefing:
-      "Pendelton's last outbound transmission carried an image burst from a field contact. Identify where the images were taken and drop a marker on the map. The next link in the chain is waiting there.",
+      "Pendelton's last outbound transmission carried a live feed from a field contact's camera. Look around, work out where the feed is coming from, and drop a marker on the map. The next link in the chain is waiting there.",
     target: null,
     radiusMeters: 200,
     mapCenter: { lat: 34.0522, lng: -118.2437 },
     mapZoom: 11,
     photos: [],
+    streetView: { location: null, heading: 0, pitch: 0, allowMoving: true },
     revealTitle: 'LOCATION CONFIRMED',
     revealBody:
       'Field contact drop point confirmed. Proceed to the location now. Look for Section 30 markings. Further instructions are waiting on site.',
@@ -158,7 +159,7 @@ Case 30-0415 closed. Happy thirtieth, Detective.`,
   },
   hints: {
     quick: {
-      geo: ['Look at the signage in the second image. The street name is partially visible.'],
+      geo: ['Turn towards the shopfronts. One of the signs carries a street name.'],
       gate: ['The remote asset is expecting your call. Use the number on the drop-point card.'],
       hack: [
         'The partition key is a five-letter designation. Drive names are worth a try.',

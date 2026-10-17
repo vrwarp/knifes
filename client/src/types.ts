@@ -31,6 +31,8 @@ export interface PlayerView {
     mapCenter: LatLng;
     mapZoom: number;
     photos: string[];
+    /** Null when no Maps key is configured, no location is set, or the puzzle is over. */
+    streetView: { apiKey: string; location: LatLng; heading: number; pitch: number; allowMoving: boolean } | null;
     revealTitle: string;
     revealBody: string;
     attempts: number;
@@ -179,6 +181,7 @@ export interface GameConfig {
     mapCenter: LatLng;
     mapZoom: number;
     photos: string[];
+    streetView: { location: LatLng | null; heading: number; pitch: number; allowMoving: boolean };
     revealTitle: string;
     revealBody: string;
   };
@@ -229,6 +232,8 @@ export interface Overview {
     credentialLabel: string;
     auth: 'ok' | 'needs_login' | 'unknown';
   };
+  /** GOOGLE_MAPS_API_KEY is set, so the location puzzle can embed Street View. */
+  streetViewKeySet: boolean;
   stages: StageId[];
 }
 
@@ -238,4 +243,37 @@ export type WsMessage =
   | { type: 'event'; event: GameEvent }
   | { type: 'hint'; hint: HintPush }
   | { type: 'archive'; message: ArchiveMessage }
-  | { type: 'archive_status'; busy: boolean };
+  | { type: 'archive_status'; busy: boolean }
+  | { type: 'assistant'; message: AssistantMessage }
+  | { type: 'assistant_status'; busy: boolean }
+  | { type: 'assistant_proposal'; proposal: Proposal };
+
+export interface AssistantMessage {
+  id: number;
+  ts: number;
+  role: 'user' | 'assistant' | 'system';
+  text: string;
+  meta?: Record<string, unknown>;
+}
+export interface Proposal {
+  id: number;
+  ts: number;
+  summary: string;
+  changes: { path: string; value: unknown }[];
+  status: 'pending' | 'applied' | 'dismissed';
+  appliedVersion: number | null;
+  decidedAt: number | null;
+  preview?: { path: string; now: string; next: string }[];
+}
+export interface ReadinessItem {
+  level: 'blocker' | 'warn' | 'info';
+  area: string;
+  text: string;
+}
+export interface AssistantView {
+  messages: AssistantMessage[];
+  proposals: (Proposal & { preview: { path: string; now: string; next: string }[] })[];
+  readiness: ReadinessItem[];
+  busy: boolean;
+  live: boolean;
+}

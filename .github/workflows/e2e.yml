@@ -1,0 +1,110 @@
+name: E2E
+
+# Browser tests on every pull request and every merge to main. Informational: Docker Hub
+# publishing waits only for the CI workflow, so a red run here never blocks a push. Keep this
+# check out of the branch protection rule's required checks so it never blocks a merge either.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build for the browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install server
+        working-directory: server
+        run: npm ci
+
+      - name: Build server
+        working-directory: server
+        run: npm run build
+
+      - name: Install client
+        working-directory: client
+        run: npm ci
+
+      - name: Typecheck and build client
+        working-directory: client
+        run: npm run build
+
+      - name: Upload builds for the browser tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: builds
+          path: |
+            server/dist
+            client/dist
+          retention-days: 3
+
+  e2e:
+    name: E2E (${{ matrix.browser }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            e2e/package-lock.json
+
+      # The tests run the built server, which needs its runtime dependencies.
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci --omit=dev
+
+      - name: Download builds
+        uses: actions/download-artifact@v4
+        with:
+          name: builds
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install ${{ matrix.browser }}
+        working-directory: e2e
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run phone and desktop tests
+        working-directory: e2e
+        run: npm run test:${{ matrix.browser }}
+
+      - name: Upload report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: |
+            e2e/output/report
+            e2e/output/test-results
+          retention-days: 7

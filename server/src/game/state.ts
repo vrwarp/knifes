@@ -157,8 +157,21 @@ function hackView(config: GameConfig, state: GameState) {
   };
 }
 
+/**
+ * The Street View panorama the phone embeds, or null when there is no key, no location, or nothing
+ * to guess yet. Like the real thing, the panorama's coordinates are visible to anyone who reads the
+ * page's network traffic, so they only go out while the puzzle is live and never once it is solved
+ * (the reveal text already names the place by then).
+ */
+export function streetViewForPlayer(config: GameConfig, state: GameState, apiKey: string) {
+  const sv = config.geo.streetView;
+  const location = sv.location ?? config.geo.target;
+  if (!apiKey || !location || config.geo.mode !== 'puzzle' || state.stage !== 'geo' || state.geo.solved) return null;
+  return { apiKey, location, heading: sv.heading, pitch: sv.pitch, allowMoving: sv.allowMoving };
+}
+
 /** Everything the player's browser may know. No codes, secrets or canonical answers. */
-export function playerView(config: GameConfig, state: GameState) {
+export function playerView(config: GameConfig, state: GameState, googleMapsApiKey = '') {
   return {
     title: config.title,
     stage: state.stage,
@@ -170,6 +183,7 @@ export function playerView(config: GameConfig, state: GameState) {
       mapCenter: config.geo.mapCenter,
       mapZoom: config.geo.mapZoom,
       photos: config.geo.photos,
+      streetView: streetViewForPlayer(config, state, googleMapsApiKey),
       revealTitle: config.geo.revealTitle,
       revealBody: config.geo.revealBody,
       attempts: state.geo.attempts,
