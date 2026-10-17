@@ -38,3 +38,37 @@ test.describe('street view feed', () => {
     await expect(player.getByLabel('Street View feed')).toHaveCount(0);
   });
 });
+
+test.describe('street view feed with a stand-in Maps API', () => {
+  // Google's loader is a bootstrap that fetches the real API as a second file, so the component must
+  // wait for the `callback` parameter, not the script's load event. This stand-in behaves the same way:
+  // it defines the classes and then fires the callback named in the URL.
+  test('reaches the panorama once the API calls back', async ({ player, app }) => {
+    const c = await app.config();
+    await app.patch((cfg) => (cfg.geo.target = { ...c.geo.mapCenter }));
+    await player.route('https://maps.googleapis.com/**', (route) => {
+      const url = new URL(route.request().url());
+      const cb = url.searchParams.get('callback');
+      expect(cb, 'the loader asks Google for a ready callback').toBeTruthy();
+      const body = `
+        window.google = { maps: {
+          StreetViewSource: { OUTDOOR: 'outdoor' },
+          StreetViewService: class { getPanorama(req) { window.__svReq = req; return Promise.resolve({ data: { location: { pano: 'pano-1' } } }); } },
+          StreetViewPanorama: class { constructor(el, opts) { el.textContent = 'STAND-IN PANORAMA ' + opts.pano; window.__svOpts = opts; } setVisible() {} setPano(p) { window.__svPano = p; } setPov() {} },
+        } };
+        setTimeout(() => window[${JSON.stringify(cb)}](), 50);`;
+      void route.fulfill({ status: 200, contentType: 'application/javascript', body });
+    });
+    await startGame(player, app.base);
+    await expect(player.getByText('STAND-IN PANORAMA pano-1')).toBeVisible();
+    await expect(player.getByText(/FEED OFFLINE/)).toHaveCount(0);
+    const opts = await player.evaluate(() => (window as unknown as { __svOpts: Record<string, unknown> }).__svOpts);
+    expect(opts.addressControl, 'the address would give the answer away').toBe(false);
+    expect(opts.showRoadLabels).toBe(false);
+    await player.getByRole('button', { name: /tap to look around/i }).click();
+    await player.getByRole('button', { name: /back to start/i }).click();
+    expect(await player.evaluate(() => (window as unknown as { __svPano: string }).__svPano)).toBe('pano-1');
+    await player.getByRole('button', { name: /lock feed/i }).click();
+    await expect(player.getByRole('button', { name: /tap to look around/i })).toBeVisible();
+  });
+});
