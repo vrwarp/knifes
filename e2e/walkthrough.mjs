@@ -357,7 +357,7 @@ try {
   await app.patch((c) => { c.hack.lockoutSeconds = 45; c.hack.mode = 'race'; });
 
   // ============================================================================================
-  begin('race', 'Key race against the AI', 'Race mode: each round draws a fresh word from the bank and an AI opponent (Sonnet live, a deterministic solver here) guesses on a timer, one attempt every few seconds. Jimmy watches its colour feedback and must find the key first. If the opponent wins, the key rotates after a short lockout.');
+  begin('race', 'Key race against the AI', 'Race mode: each round draws a fresh word from the bank and an AI opponent (Haiku live, a deterministic solver here) guesses on a timer, one attempt every few seconds. Jimmy watches its colour feedback and must find the key first. If the opponent wins, the key rotates after a short lockout.');
   await app.resetGame();
   await app.patch((c) => { c.hack.aiIntervalSeconds = 2; c.hack.aiJitterSeconds = 0; c.hack.lockoutSeconds = 6; c.hack.wordBank = ['CRANE', 'SLATE', 'PLANT']; });
   await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'hack' } });

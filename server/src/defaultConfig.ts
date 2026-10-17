@@ -47,7 +47,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     intro:
       'Five-character key. Placed letters light green, misplaced letters amber, absent letters go dark. Six attempts, then the partition resets.',
     wordBank: DEFAULT_WORD_BANK,
-    aiModel: 'claude-sonnet-5-5',
+    aiModel: 'claude-haiku-5-5',
     aiIntervalSeconds: 5,
     aiJitterSeconds: 1,
     aiShowLetters: false,

@@ -16,13 +16,13 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style hacking puzzle, incident reveal, evidence vault, ARCHIVE terminal, deduction grid, final reveal. |
 | Geo puzzle | Photos plus a map pin on OpenStreetMap, accepted within a configurable radius. Switchable to reveal-only or off. |
 | Phil call | One-way: Phil gives Jimmy the unlock code. Default `MAGENTA30`, editable. |
-| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5`): each round draws a fresh 5-letter word from a GM-editable bank; the opponent guesses on a timer (5 s ± 1 s by default), Jimmy sees its colour feedback and must find the key first. 6 attempts each; if the opponent wins or Jimmy runs out, a short lockout, then a new word. Solo mode keeps the fixed secret `ALPHA`. |
+| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-haiku-5-5`): each round draws a fresh 5-letter word from a GM-editable bank; the opponent guesses on a timer (5 s ± 1 s by default), Jimmy sees its colour feedback and must find the key first. 6 attempts each; if the opponent wins or Jimmy runs out, a short lockout, then a new word. Solo mode keeps the fixed secret `ALPHA`. |
 | Reveal after puzzle | In-world incident record (03:45 window, three office entries) plus the order to return to base. |
 | Evidence unlock | Both modes available: everything opens after the puzzle, or audio and toxicology sit behind `CANIS30` and `1996`. |
 | Murder method | Poisoned tea is canon. The letter opener is a red herring on the desk. |
 | Deduction grid | Six free-text slots in the dossier's sentence. Pass or fail only. AI grader with keyword fallback. |
 | AI features | ARCHIVE terminal, GM hint copilot, grader, post-game case report, all on the Claude Agent SDK. |
-| Model | `claude-opus-5-5` for every feature except the word-race opponent, which runs on `claude-sonnet-5-5` (configurable). |
+| Model | `claude-opus-5-5` for every feature except the word-race opponent, which runs on `claude-haiku-5-5` (configurable). |
 | Credential | Personal Claude subscription through the bundled Claude Code binary: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`, or `claude auth login` inside the container. An API key still works and outranks both. |
 | GM console | Live progress and attempt log, jump/skip, push hints, reset stage or game, edit codes and text live, seal ARCHIVE, case report. |
 | Hosting | Docker container on the Synology NAS, already exposed through the existing reverse proxy. |
@@ -79,7 +79,7 @@ the data volume, and a timeout. Mock mode replaces each with a deterministic sta
 | GM copilot | `query()` with structured output `{hint, rationale}` from stage, attempts and recent log, at a chosen strength. | GM edits and approves before anything reaches the player. |
 | Grader | `query()` with structured output per slot, given canonical answer, accept and reject lists and guidance. | Every slot must pass. Any failure of the AI path drops to keyword grading so the game never stalls. GMs see per-slot reasons. |
 | Case report | `query()` over the full event log and transcript, Markdown out. | GM previews and publishes explicitly. |
-| Word-race opponent | One `query()` per guess on `hack.aiModel` (default `claude-sonnet-5-5`), structured output `{guess}`, given the key length and its own feedback so far. Paced server-side at `aiIntervalSeconds ± aiJitterSeconds`, measured from its previous guess. | Low effort, 2 turns, no tools. A bad or late answer (wrong length, repeat, timeout) is logged as `ai_error` and replaced by a deterministic bank solver so the race never stalls; mock mode uses the solver alone. A guess that returns after the round ended is dropped. The loop stops on any exit from the stage and resumes after a restart. |
+| Word-race opponent | One `query()` per guess on `hack.aiModel` (default `claude-haiku-5-5`), structured output `{guess}`, given the key length and its own feedback so far. Paced server-side at `aiIntervalSeconds ± aiJitterSeconds`, measured from its previous guess. | Low effort, 2 turns, no tools. A bad or late answer (wrong length, repeat, timeout) is logged as `ai_error` and replaced by a deterministic bank solver so the race never stalls; mock mode uses the solver alone. A guess that returns after the round ended is dropped. The loop stops on any exit from the stage and resumes after a restart. |
 
 Expected cost for the evening at Opus 5.5 rates: a few dollars.
 
