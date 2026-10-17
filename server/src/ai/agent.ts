@@ -17,6 +17,8 @@ export function aiLive(): boolean {
  * `claude auth login` inside the container.
  */
 export function findClaudeBinary(): string | null {
+  // Override for tests and unusual installs.
+  if (process.env.CLAUDE_BINARY) return process.env.CLAUDE_BINARY;
   const require = createRequire(import.meta.url);
   const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
   const candidates =
