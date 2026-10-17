@@ -188,6 +188,14 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
   const r = state.deduction.lastResult;
   const lockLeft = state.hack.lockedUntil && state.hack.lockedUntil > now ? Math.ceil((state.hack.lockedUntil - now) / 1000) : 0;
   const lastBadCode = [...events].reverse().find((e) => e.type === 'gate_attempt' && e.payload.ok === false)?.payload.code;
+  const mode = useAction();
+  /** Live switch between the race and the classic solo puzzle; the server redraws the round if he is mid-puzzle. */
+  const setMode = (m: 'race' | 'solo') => {
+    if (m === config.hack.mode) return;
+    const inPuzzle = state.stage === 'hack' && !state.hack.solved;
+    if (inPuzzle && !window.confirm(m === 'race' ? 'Switch to the race now? His board clears and a new key is drawn against the AI opponent.' : 'Switch to solo now? His board clears and the fixed secret word applies.')) return;
+    void mode.run(() => api('/api/gm/config', { method: 'PUT', json: { ...config, hack: { ...config.hack, mode: m } } }), m === 'race' ? 'Race mode on' : 'Solo mode on');
+  };
   return (
     <div className="panel">
       <h2>Player status</h2>
@@ -220,6 +228,15 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
             </>
           )}
           {lockLeft ? <span className="red"> · LOCKED {lockLeft}s</span> : ''}
+          <div className="row" style={{ marginTop: 6 }} role="group" aria-label="Word puzzle mode">
+            <button className={`btn small ${config.hack.mode === 'race' ? 'primary' : 'ghost'}`} onClick={() => setMode('race')} disabled={mode.busy} aria-pressed={config.hack.mode === 'race'}>
+              Race vs AI
+            </button>
+            <button className={`btn small ${config.hack.mode === 'solo' ? 'primary' : 'ghost'}`} onClick={() => setMode('solo')} disabled={mode.busy} aria-pressed={config.hack.mode === 'solo'}>
+              Solo
+            </button>
+            <span className="tiny">{mode.msg ?? (config.hack.mode === 'race' ? `Haiku every ${config.hack.aiIntervalSeconds}s ± ${config.hack.aiJitterSeconds}s, ×${config.hack.aiSlowdownPerRound} per lost round` : `secret ${config.hack.secret}`)}</span>
+          </div>
         </dd>
         <dt>Evidence</dt>
         <dd>

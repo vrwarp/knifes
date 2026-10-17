@@ -63,7 +63,7 @@ Progress lives on the server, so a dead phone or a refresh loses nothing; any de
 ## 4. GM console (`/gm`)
 
 Password login. Panels: progress chips with times, jump/unlock and reset controls, seal/unseal ARCHIVE,
-player status (attempts, guesses, evidence state, last deduction with per-slot verdicts), hint panel
+player status (attempts, guesses, the word in play and the opponent's board, a live Race / Solo switch for the word puzzle, evidence state, last deduction with per-slot verdicts), hint panel
 (type, pick a quick hint, or draft with AI at nudge/clear/strong strength, then push), live event log,
 ARCHIVE transcript with tool calls and cost, case report (generate, preview, publish, print), and the
 full configuration editor with photo and audio uploads. Everything updates live over WebSocket.
