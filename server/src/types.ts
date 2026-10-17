@@ -33,6 +33,8 @@ export interface GameConfig {
     mapCenter: LatLng;
     mapZoom: number;
     photos: string[];
+    /** Street View panorama the player looks around in. `location` null means the target itself. */
+    streetView: { location: LatLng | null; heading: number; pitch: number; allowMoving: boolean };
     revealTitle: string;
     revealBody: string;
   };

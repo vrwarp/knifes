@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '../defaultConfig.js';
 import type { GameConfig } from '../types.js';
-import { advanceTo, forceStage, initialState, nextStage, playerView, resetStage } from './state.js';
+import { mergeConfig } from '../service.js';
+import { advanceTo, forceStage, initialState, nextStage, playerView, resetStage, streetViewForPlayer } from './state.js';
 
 const cfg = (): GameConfig => structuredClone(DEFAULT_CONFIG);
 
@@ -62,5 +63,39 @@ describe('playerView', () => {
     s.hack.guesses = ['APPLE'];
     const v = playerView(c, s) as unknown as { hack: { rows: { state: string }[][] } };
     expect(v.hack.rows[0].map((x) => x.state)).toEqual(['hit', 'miss', 'hit', 'near', 'miss']);
+  });
+});
+
+describe('streetViewForPlayer', () => {
+  const live = () => {
+    const c = cfg();
+    c.geo.target = { lat: 1, lng: 2 };
+    const s = initialState();
+    s.stage = 'geo';
+    return { c, s };
+  };
+  it('is off without a key, a location, or a live puzzle', () => {
+    const { c, s } = live();
+    expect(streetViewForPlayer(c, s, '')).toBeNull();
+    c.geo.target = null;
+    expect(streetViewForPlayer(c, s, 'k')).toBeNull();
+    c.geo.target = { lat: 1, lng: 2 };
+    s.geo.solved = true;
+    expect(streetViewForPlayer(c, s, 'k')).toBeNull();
+    s.geo.solved = false;
+    s.stage = 'intro';
+    expect(streetViewForPlayer(c, s, 'k')).toBeNull();
+  });
+  it('falls back to the target and honours an explicit start', () => {
+    const { c, s } = live();
+    expect(streetViewForPlayer(c, s, 'k')).toEqual({ apiKey: 'k', location: { lat: 1, lng: 2 }, heading: 0, pitch: 0, allowMoving: true });
+    c.geo.streetView = { location: { lat: 3, lng: 4 }, heading: 90, pitch: -5, allowMoving: false };
+    expect(streetViewForPlayer(c, s, 'k')?.location).toEqual({ lat: 3, lng: 4 });
+    expect(streetViewForPlayer(c, s, 'k')?.allowMoving).toBe(false);
+  });
+  it('is filled in for configs saved before it existed', () => {
+    const saved = structuredClone(DEFAULT_CONFIG) as unknown as { geo: Record<string, unknown> };
+    delete saved.geo.streetView;
+    expect(mergeConfig(saved).geo.streetView).toEqual(DEFAULT_CONFIG.geo.streetView);
   });
 });

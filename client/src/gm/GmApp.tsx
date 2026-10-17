@@ -20,7 +20,7 @@ const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt'
 const PUZZLE_STAGES = new Set(['geo', 'gate', 'hack', 'investigation']);
 
 /** The across-the-room strip: where he is, how long since he last did anything, what is happening. */
-function NowStrip({ state, config, events, players }: { state: GameState; config: GameConfig; events: GameEvent[]; players: number | null }) {
+function NowStrip({ state, config, events, players, streetViewKeySet }: { state: GameState; config: GameConfig; events: GameEvent[]; players: number | null; streetViewKeySet: boolean }) {
   const now = useNow(1000);
   const since = state.stageTimes[state.stage] ?? state.startedAt;
   const inStage = since ? now - since : null;
@@ -56,7 +56,9 @@ function NowStrip({ state, config, events, players }: { state: GameState; config
       facts.push(`verified on attempt ${state.deduction.attempts}${state.report.published ? ' · case file live' : ''}`);
       break;
   }
-  const geoWarn = config.geo.mode === 'puzzle' && !config.geo.target && (state.stage === 'intro' || state.stage === 'geo');
+  const geoLive = config.geo.mode === 'puzzle' && (state.stage === 'intro' || state.stage === 'geo');
+  const geoWarn = geoLive && !config.geo.target;
+  const svWarn = geoLive && !geoWarn && !streetViewKeySet && config.geo.photos.length === 0;
   return (
     <div className={`now ${stuck2 ? 'stuck2' : stuck ? 'stuck' : ''}`} aria-live="polite">
       <span className="stage">{STAGE_NAME[state.stage]}</span>
@@ -79,6 +81,7 @@ function NowStrip({ state, config, events, players }: { state: GameState; config
       ) : null}
       {aiError ? <span className="warn red">AI error {fmt(aiError.ts)} · {String(aiError.payload.where ?? '')}: {String(aiError.payload.error ?? '').slice(0, 120)}</span> : null}
       {geoWarn ? <span className="warn">Location puzzle has no target set: any pin will pass. Set it in Game configuration → Location puzzle.</span> : null}
+      {svWarn ? <span className="warn">Location puzzle has nothing to look at: set GOOGLE_MAPS_API_KEY in .env for Street View, or upload field photos.</span> : null}
     </div>
   );
 }
@@ -222,7 +225,7 @@ export function GmApp() {
           </span>
         </div>
         {err ? <div className="error">{err}</div> : null}
-        <NowStrip state={state} config={config} events={events} players={players} />
+        <NowStrip state={state} config={config} events={events} players={players} streetViewKeySet={data.streetViewKeySet} />
         <div className="cols">
           <div className="col">
             <ProgressPanel state={state} config={config} stages={data.stages} />
@@ -245,10 +248,10 @@ export function GmApp() {
         {running ? (
           <details className="section" style={{ marginTop: 16 }}>
             <summary>Game configuration (collapsed while a game is running)</summary>
-            <ConfigEditor config={config} onSaved={load} />
+            <ConfigEditor config={config} onSaved={load} streetViewKeySet={data.streetViewKeySet} />
           </details>
         ) : (
-          <ConfigEditor config={config} onSaved={load} />
+          <ConfigEditor config={config} onSaved={load} streetViewKeySet={data.streetViewKeySet} />
         )}
       </div>
       <div className="print-only">{state.report.markdown ? <Markdown text={state.report.markdown} /> : null}</div>

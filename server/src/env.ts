@@ -30,6 +30,8 @@ export const env = {
   aiTimeoutMs: int('AI_TIMEOUT_MS', 120_000),
   clientDist: path.resolve(str('CLIENT_DIST', path.resolve(process.cwd(), '../client/dist'))),
   cookieSecure: str('COOKIE_SECURE', '0') === '1',
+  /** Browser key for the Maps JavaScript API; the location puzzle embeds Street View when it is set. */
+  googleMapsApiKey: str('GOOGLE_MAPS_API_KEY', '').trim(),
 };
 
 export function ensureDirs(): void {

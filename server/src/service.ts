@@ -72,6 +72,12 @@ export const ConfigSchema = z.object({
     mapCenter: latLng,
     mapZoom: z.number().min(1).max(19),
     photos: z.array(z.string()),
+    streetView: z.object({
+      location: latLng.nullable(),
+      heading: z.number().min(0).max(360),
+      pitch: z.number().min(-90).max(90),
+      allowMoving: z.boolean(),
+    }),
     revealTitle: z.string(),
     revealBody: z.string(),
   }),
@@ -187,7 +193,7 @@ export class GameService {
   private rev = Date.now();
 
   view(): PlayerView & { rev: number } {
-    return { ...playerView(this.config, this.state), rev: this.rev };
+    return { ...playerView(this.config, this.state, env.googleMapsApiKey), rev: this.rev };
   }
 
   // ---------------------------------------------------------------- player
@@ -469,6 +475,7 @@ export class GameService {
         credentialLabel: CREDENTIAL_LABEL[credential],
         auth: aiLive() ? await probeAuth() : 'needs_login',
       },
+      streetViewKeySet: env.googleMapsApiKey !== '',
       stages: STAGE_ORDER,
     };
   }
