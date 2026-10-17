@@ -3,6 +3,7 @@ import { api, errorText } from '../api';
 import { Markdown } from '../md';
 import type { ArchiveMessage, GameConfig, GameEvent, GameState, Overview } from '../types';
 import { useSocket } from '../ws';
+import { ClaudePanel } from './ClaudePanel';
 import { ConfigEditor } from './ConfigEditor';
 import { ArchivePanel, HintsPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel, STAGE_NAME, elapsed, fmt, plural, useNow } from './panels';
 
@@ -227,6 +228,10 @@ export function GmApp() {
             <ArchivePanel archive={archive} state={state} />
           </div>
           <div className="col">
+            {/* Stays mounted when the AI goes live; CSS order moves it from the top to the bottom. */}
+            <div style={{ order: data.ai.mode === 'live' ? 9 : -1 }}>
+              <ClaudePanel onChanged={() => void load()} />
+            </div>
             <PlayerStatus state={state} config={config} events={events} />
             <ReportPanel state={state} />
           </div>

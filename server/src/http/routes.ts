@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express, { type NextFunction, type Request, type Response, Router } from 'express';
 import multer from 'multer';
-import { env } from '../env.js';
+import { AgentError, aiLive, probeAuth, runAgent } from '../ai/agent.js';
+import { ClaudeLogin, LoginError, envCredentialShadowsLogin, readAccount } from '../ai/login.js';
+import { CREDENTIAL_LABEL, detectCredential, env } from '../env.js';
 import { HttpError, type GameService } from '../service.js';
 import { STAGE_ORDER, type StageId } from '../types.js';
 import { GM_COOKIE, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
@@ -126,6 +128,57 @@ export function gmRouter(service: GameService): Router {
   r.post('/report/publish', (req, res) => {
     service.publishReport(Boolean(req.body?.published));
     res.json({ ok: true });
+  });
+
+  // ---- Claude link: sign the container in from the console --------------------------------
+  const login = new ClaudeLogin();
+  const loginGuard = async (res: Response, fn: () => Promise<unknown>) => {
+    try {
+      res.json(await fn());
+    } catch (e) {
+      if (e instanceof LoginError) throw new HttpError(e.status, e.message);
+      throw e;
+    }
+  };
+  r.get('/claude', async (req, res) => {
+    const credential = detectCredential();
+    res.json({
+      mode: aiLive() ? 'live' : 'mock',
+      forcedMock: env.aiMode === 'mock',
+      credential,
+      credentialLabel: CREDENTIAL_LABEL[credential],
+      shadowedByEnv: envCredentialShadowsLogin(),
+      hasLoginFile: fs.existsSync(path.join(env.claudeConfigDir, '.credentials.json')),
+      auth: credential === 'none' ? 'needs_login' : await probeAuth(),
+      inProgress: login.inProgress,
+      model: env.claudeModel,
+      account: req.query.account === '1' && credential !== 'none' ? await readAccount() : undefined,
+    });
+  });
+  r.post('/claude/login/start', (_req, res) => loginGuard(res, () => login.start()));
+  r.post('/claude/login/code', (req, res) => loginGuard(res, () => login.submit(str(req.body?.id, 100), str(req.body?.code, 2000))));
+  r.post('/claude/login/cancel', (_req, res) => {
+    login.cancel();
+    res.json({ ok: true });
+  });
+  r.post('/claude/logout', (_req, res) => loginGuard(res, async () => (await login.signOut(), { ok: true })));
+  // One tiny real request, so "linked" means "answers", not just "a credential file exists".
+  r.post('/claude/test', async (_req, res) => {
+    if (!aiLive()) return res.json({ ok: false, error: env.aiMode === 'mock' ? 'AI_MODE is set to mock.' : 'No Claude credential yet. Sign in first.' });
+    const started = Date.now();
+    try {
+      const out = await runAgent({
+        prompt: 'Reply with exactly: LINK OK',
+        systemPrompt: 'You are a connectivity check. Reply with exactly the requested words.',
+        maxTurns: 1,
+        effort: 'low',
+        timeoutMs: 90_000,
+      });
+      res.json({ ok: true, reply: out.text.trim().slice(0, 200), ms: Date.now() - started, model: env.claudeModel });
+    } catch (e) {
+      const msg = e instanceof AgentError ? e.message : e instanceof Error ? e.message : String(e);
+      res.json({ ok: false, error: msg.slice(0, 500), ms: Date.now() - started });
+    }
   });
 
   r.post('/upload', upload.single('file'), (req, res) => {

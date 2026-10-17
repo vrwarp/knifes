@@ -47,6 +47,9 @@ label.field > span { display: block; font-size: 12px; letter-spacing: 0.12em; te
 .btn.small { padding: 8px 12px; min-height: 40px; font-size: 12px; }
 .btn:disabled, .btn.primary:disabled { opacity: 1; cursor: not-allowed; background: transparent; color: var(--dim); border-color: var(--line-strong); font-weight: 400; }
 .btn.block { display: block; width: 100%; }
+a.btn { text-decoration: none; text-align: center; line-height: 18px; }
+.claude-steps { margin-top: 10px; gap: 8px; }
+.claude-steps p { margin: 0; }
 .btn.unread { color: var(--amber); border-color: var(--amber); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .stack > * + * { margin-top: 12px; }
