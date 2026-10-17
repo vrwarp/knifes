@@ -2,6 +2,8 @@ export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigat
 export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
 export type SlotId = 'time' | 'suspect' | 'method' | 'asset' | 'motive' | 'prop';
 export type LetterState = 'hit' | 'near' | 'miss';
+export type HackMode = 'solo' | 'race';
+export type HackRoundResult = 'player' | 'ai' | 'exhausted';
 export interface LetterScore {
   letter: string;
   state: LetterState;
@@ -38,6 +40,7 @@ export interface PlayerView {
   };
   gate: { prompt: string; successText: string; attempts: number; passed: boolean };
   hack: {
+    mode: HackMode;
     intro: string;
     length: number;
     maxAttempts: number;
@@ -47,6 +50,19 @@ export interface PlayerView {
     solved: boolean;
     lockedUntil: number | null;
     rounds: number;
+    roundResult: HackRoundResult | null;
+    lastWord: string | null;
+    ai: {
+      /** Letters are blank unless the GM chose to show them. */
+      rows: LetterScore[][];
+      attempts: number;
+      solved: boolean;
+      thinking: boolean;
+      nextAt: number | null;
+      /** When the countdown to nextAt began, for the progress bar. */
+      sinceAt: number | null;
+      exhausted: boolean;
+    } | null;
   };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean }; hasAudio: boolean; audioNotes: string };
@@ -124,7 +140,18 @@ export interface GameState {
   stageTimes: Partial<Record<StageId, number>>;
   geo: { attempts: number; solved: boolean; lastDistanceM: number | null };
   gate: { attempts: number; passed: boolean };
-  hack: { guesses: string[]; solved: boolean; lockedUntil: number | null; rounds: number };
+  hack: {
+    guesses: string[];
+    solved: boolean;
+    lockedUntil: number | null;
+    rounds: number;
+    secret: string | null;
+    used: string[];
+    round: number;
+    roundResult: HackRoundResult | null;
+    lastWord: string | null;
+    ai: { guesses: string[]; solved: boolean; thinking: boolean; nextAt: number | null; lastAt: number | null };
+  };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
@@ -156,7 +183,18 @@ export interface GameConfig {
     revealBody: string;
   };
   gate: { prompt: string; code: string; successText: string };
-  hack: { secret: string; maxAttempts: number; lockoutSeconds: number; intro: string };
+  hack: {
+    mode: HackMode;
+    secret: string;
+    maxAttempts: number;
+    lockoutSeconds: number;
+    intro: string;
+    wordBank: string[];
+    aiModel: string;
+    aiIntervalSeconds: number;
+    aiJitterSeconds: number;
+    aiShowLetters: boolean;
+  };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: {
     gateMode: 'after_hack' | 'passcodes';

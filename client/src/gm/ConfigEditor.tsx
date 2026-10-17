@@ -287,12 +287,47 @@ export function ConfigEditor({ config, onSaved }: { config: GameConfig; onSaved:
         {T(['gate', 'successText'], 'Success text')}
       </Section>
       <Section title="Word puzzle (mirror partition)">
-        {T(['hack', 'secret'], 'Secret word (3 to 8 letters)')}
+        {S(['hack', 'mode'], 'Mode', [
+          ['race', 'Race: Jimmy against an AI opponent, a fresh word from the bank each round'],
+          ['solo', 'Solo: one fixed key, classic Wordle'],
+        ])}
         <div className="two">
-          {N(['hack', 'maxAttempts'], 'Attempts per round')}
-          {N(['hack', 'lockoutSeconds'], 'Lockout seconds after a failed round')}
+          {N(['hack', 'maxAttempts'], 'Attempts per round (each side)')}
+          {N(['hack', 'lockoutSeconds'], 'Lockout seconds after a lost round')}
         </div>
         {A(['hack', 'intro'], 'Intro text', 4)}
+        {draft.hack.mode === 'solo' ? (
+          T(['hack', 'secret'], 'Secret word (3 to 8 letters)')
+        ) : (
+          <>
+            <div className="two">
+              {N(['hack', 'aiIntervalSeconds'], 'Seconds between opponent guesses')}
+              {N(['hack', 'aiJitterSeconds'], 'Jitter, plus or minus seconds')}
+            </div>
+            {T(['hack', 'aiModel'], 'Opponent model')}
+            {B(['hack', 'aiShowLetters'], "Show the opponent's letters on the phone (off: colours only)")}
+            <label className="field">
+              <span>
+                Word bank, one per line ({draft.hack.wordBank.length} words, all the same length). Each round draws a word that has not been used this game.
+              </span>
+              <textarea
+                rows={6}
+                value={raw['hack.wordBank'] ?? draft.hack.wordBank.join('\n')}
+                onChange={(e) => {
+                  setRaw((r) => ({ ...r, 'hack.wordBank': e.target.value }));
+                  up(
+                    ['hack', 'wordBank'],
+                    e.target.value
+                      .split(/[\s,]+/)
+                      .map((x) => x.trim().toUpperCase())
+                      .filter(Boolean),
+                  );
+                }}
+              />
+            </label>
+            {T(['hack', 'secret'], 'Fallback secret word (3 to 8 letters), used only if the bank is empty')}
+          </>
+        )}
       </Section>
       <Section title="Incident reveal (after the puzzle)">
         {T(['reveal', 'title'], 'Title')}

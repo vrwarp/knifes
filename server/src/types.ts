@@ -1,5 +1,6 @@
 export type GeoMode = 'puzzle' | 'reveal' | 'off';
 export type EvidenceGateMode = 'after_hack' | 'passcodes';
+export type HackMode = 'solo' | 'race';
 export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation' | 'solved';
 export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
 
@@ -37,7 +38,21 @@ export interface GameConfig {
     revealBody: string;
   };
   gate: { prompt: string; code: string; successText: string };
-  hack: { secret: string; maxAttempts: number; lockoutSeconds: number; intro: string };
+  hack: {
+    /** Solo: the fixed secret below. Race: a fresh word from the bank each round, against an AI opponent. */
+    mode: HackMode;
+    secret: string;
+    maxAttempts: number;
+    lockoutSeconds: number;
+    intro: string;
+    wordBank: string[];
+    aiModel: string;
+    /** Mean seconds between opponent guesses, and the uniform jitter around it. */
+    aiIntervalSeconds: number;
+    aiJitterSeconds: number;
+    /** Whether the phone shows the opponent's letters or only its colour feedback. */
+    aiShowLetters: boolean;
+  };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: {
     gateMode: EvidenceGateMode;
@@ -78,13 +93,43 @@ export interface HintPush {
   text: string;
 }
 
+export type HackRoundResult = 'player' | 'ai' | 'exhausted';
+
+export interface HackState {
+  guesses: string[];
+  solved: boolean;
+  lockedUntil: number | null;
+  /** Completed rounds (lockouts and opponent wins). */
+  rounds: number;
+  /** Race mode: the word in play this round. Null until a round starts, and always null in solo mode. */
+  secret: string | null;
+  /** Race mode: words already drawn this game, so no round repeats one. */
+  used: string[];
+  /** Bumped whenever a new word is drawn; lets a slow opponent reply be dropped when the round moved on. */
+  round: number;
+  /** How the current round ended, if it has. Cleared when the next round starts. */
+  roundResult: HackRoundResult | null;
+  /** The word of the last finished round, shown to the player once it is retired. */
+  lastWord: string | null;
+  ai: {
+    guesses: string[];
+    solved: boolean;
+    /** A guess request is in flight. */
+    thinking: boolean;
+    /** When the next opponent guess is due, for the countdown on the phone. */
+    nextAt: number | null;
+    /** When the opponent last guessed (or the round began); paces the next guess. */
+    lastAt: number | null;
+  };
+}
+
 export interface GameState {
   stage: StageId;
   startedAt: number | null;
   stageTimes: Partial<Record<StageId, number>>;
   geo: { attempts: number; solved: boolean; lastDistanceM: number | null };
   gate: { attempts: number; passed: boolean };
-  hack: { guesses: string[]; solved: boolean; lockedUntil: number | null; rounds: number };
+  hack: HackState;
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean; /** Bumped when the GM starts a new ARCHIVE session. */ epoch?: number };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
@@ -100,6 +145,9 @@ export type EventType =
   | 'hack_guess'
   | 'hack_lockout'
   | 'hack_solved'
+  | 'hack_round'
+  | 'hack_ai_guess'
+  | 'hack_ai_solved'
   | 'evidence_unlock'
   | 'archive_user'
   | 'archive_assistant'
@@ -125,7 +173,8 @@ export interface ArchiveMessage {
   meta?: Record<string, unknown>;
 }
 
+export type LetterState = 'hit' | 'near' | 'miss';
 export interface LetterScore {
   letter: string;
-  state: 'hit' | 'near' | 'miss';
+  state: LetterState;
 }

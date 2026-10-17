@@ -2,6 +2,7 @@ import { RIGHT_ANSWERS, expect, fillDeduction, finishBeats, finishTyping, noHori
 
 test.describe('player journey', () => {
   test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
+    await app.patch((c) => (c.hack.mode = 'solo'));
     await player.goto(app.base);
     await expect(player.locator('h1', { hasText: 'MAGENTA CHANNEL' })).toBeVisible();
     const start = player.getByRole('button', { name: /initiate recovery protocol/i });
@@ -83,6 +84,12 @@ test.describe('player journey', () => {
       const text = await (await request.get(`${app.base}/api/player/state`)).text();
       for (const secret of ['MAGENTA30', 'CANIS30', '"ALPHA"', 'Agent Vector', 'canonical', 'guidance']) {
         expect(text, `${secret} leaked at ${stage}`).not.toContain(secret);
+      }
+      if (stage === 'hack') {
+        const { state } = await (await app.gmApi('/api/gm/overview')).json();
+        expect(state.hack.secret, 'a race word was drawn').toMatch(/^[A-Z]{5}$/);
+        expect(text, 'the drawn key leaked').not.toContain(state.hack.secret);
+        expect(text, 'the word bank leaked').not.toContain('wordBank');
       }
     }
   });

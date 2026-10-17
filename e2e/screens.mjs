@@ -97,6 +97,14 @@ try {
   await shot(player, 'p05b-gate-accepted');
 
   await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
+  await shot(player, 'p06-hack-race');
+  // The rest of the sequence uses the fixed secret so the captions stay true.
+  {
+    const c = (await (await gmApi('/api/gm/overview')).json()).config;
+    c.hack.mode = 'solo';
+    await gmApi('/api/gm/config', { method: 'PUT', json: c });
+  }
+  await settle(400);
   await shot(player, 'p06-hack-empty');
   for (const w of ['APPLE', 'PLANT']) {
     await player.getByLabel('Key attempt').fill(w);

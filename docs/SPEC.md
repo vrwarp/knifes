@@ -16,13 +16,13 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style hacking puzzle, incident reveal, evidence vault, ARCHIVE terminal, deduction grid, final reveal. |
 | Geo puzzle | Photos plus a map pin on OpenStreetMap, accepted within a configurable radius. Switchable to reveal-only or off. |
 | Phil call | One-way: Phil gives Jimmy the unlock code. Default `MAGENTA30`, editable. |
-| Hacking puzzle | Wordle-like, 5-letter secret `ALPHA`, 6 attempts per round, then a short lockout and reset. |
+| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5`): each round draws a fresh 5-letter word from a GM-editable bank; the opponent guesses on a timer (5 s ± 1 s by default), Jimmy sees its colour feedback and must find the key first. 6 attempts each; if the opponent wins or Jimmy runs out, a short lockout, then a new word. Solo mode keeps the fixed secret `ALPHA`. |
 | Reveal after puzzle | In-world incident record (03:45 window, three office entries) plus the order to return to base. |
 | Evidence unlock | Both modes available: everything opens after the puzzle, or audio and toxicology sit behind `CANIS30` and `1996`. |
 | Murder method | Poisoned tea is canon. The letter opener is a red herring on the desk. |
 | Deduction grid | Six free-text slots in the dossier's sentence. Pass or fail only. AI grader with keyword fallback. |
 | AI features | ARCHIVE terminal, GM hint copilot, grader, post-game case report, all on the Claude Agent SDK. |
-| Model | `claude-opus-5-5` for every feature. |
+| Model | `claude-opus-5-5` for every feature except the word-race opponent, which runs on `claude-sonnet-5-5` (configurable). |
 | Credential | Personal Claude subscription through the bundled Claude Code binary: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`, or `claude auth login` inside the container. An API key still works and outranks both. |
 | GM console | Live progress and attempt log, jump/skip, push hints, reset stage or game, edit codes and text live, seal ARCHIVE, case report. |
 | Hosting | Docker container on the Synology NAS, already exposed through the existing reverse proxy. |
@@ -42,8 +42,13 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 2. **Geo.** Field photos and a map. Tap to place a marker, "Triangulate". Within the radius the deli briefing appears.
    Reveal mode skips the map. Off mode skips the stage.
 3. **Gate.** Enter the code Phil gives over the phone. Case, spaces and dashes are ignored.
-4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. After 6 misses the partition locks for
-   45 seconds, then resets. GMs can jump past it or push a hint.
+4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. In race mode (default) a second, smaller
+   board shows the adversary's attempts as colours (letters optional), with a countdown to its next guess. The
+   adversary only sees its own feedback; Jimmy sees both boards. Jimmy finds the key first: key accepted, on to the
+   reveal. The adversary finds it first, or Jimmy uses all 6 attempts: the retired key is shown, the partition locks
+   for 45 seconds, then a new key is drawn from the bank (no repeats within a game) and the next race starts. An
+   adversary that uses all its attempts simply stalls for that round. GMs can jump past it, push a hint, change the
+   pace, or switch to solo mode live.
 5. **Reveal.** Incident record with the 03:45 window and the directive to return to base.
 6. **Investigation.** Three tabs.
    - Evidence: Director's note, access log with camera notes, audio intercept (player plus waveform notes), toxicology report and operative manifest. Sealed files take a passcode in passcode mode.
@@ -74,6 +79,7 @@ the data volume, and a timeout. Mock mode replaces each with a deterministic sta
 | GM copilot | `query()` with structured output `{hint, rationale}` from stage, attempts and recent log, at a chosen strength. | GM edits and approves before anything reaches the player. |
 | Grader | `query()` with structured output per slot, given canonical answer, accept and reject lists and guidance. | Every slot must pass. Any failure of the AI path drops to keyword grading so the game never stalls. GMs see per-slot reasons. |
 | Case report | `query()` over the full event log and transcript, Markdown out. | GM previews and publishes explicitly. |
+| Word-race opponent | One `query()` per guess on `hack.aiModel` (default `claude-sonnet-5-5`), structured output `{guess}`, given the key length and its own feedback so far. Paced server-side at `aiIntervalSeconds ± aiJitterSeconds`, measured from its previous guess. | Low effort, 2 turns, no tools. A bad or late answer (wrong length, repeat, timeout) is logged as `ai_error` and replaced by a deterministic bank solver so the race never stalls; mock mode uses the solver alone. A guess that returns after the round ended is dropped. The loop stops on any exit from the stage and resumes after a restart. |
 
 Expected cost for the evening at Opus 5.5 rates: a few dollars.
 
@@ -94,7 +100,7 @@ Expected cost for the evening at Opus 5.5 rates: a few dollars.
 
 ### API summary
 
-Player (`/api/player/*`): `state`, `start`, `geo/guess`, `geo/proceed`, `gate`, `hack/guess`, `hack/retry`, `reveal/continue`, `evidence`, `evidence/unlock`, `audio`, `archive` (GET, POST), `deduction`.
+Player (`/api/player/*`): `state`, `start`, `geo/guess`, `geo/proceed`, `gate`, `hack/guess`, `hack/retry` (race: starts the next round), `reveal/continue`, `evidence`, `evidence/unlock`, `audio`, `archive` (GET, POST), `deduction`.
 GM (`/api/gm/*`): `login`, `logout`, `me`, `overview`, `config` (PUT), `stage`, `reset`, `hint`, `hint/draft`, `archive/lock`, `archive/reset`, `report/generate`, `report/publish`, `upload`, `upload/:id` (DELETE).
 WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIVE messages, ARCHIVE busy flag.
 
@@ -108,7 +114,7 @@ WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIV
 
 ## 9. Test plan
 
-- Unit: word scoring, geo distance, fallback grader, state machine, player-view redaction (`server`, vitest).
+- Unit: word scoring, geo distance, fallback grader, state machine, player-view redaction, bank solver, race loop with fake timers (`server`, vitest).
 - End to end in mock mode: full run from intro to solved through the real HTTP and WebSocket paths, GM login, jump, reset, hint push (`e2e/`, Playwright).
 - Live AI: with a key set, exercise the ARCHIVE with the five canonical questions (who was in the office at 03:45, what does the intercept show, read the toxicology, who is Vector, who did it), the grader with the canonical answers and a letter-opener answer, one hint draft, one case report.
 - Dry run on real phones before the 23rd, over cellular, through the reverse proxy.

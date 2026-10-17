@@ -1,3 +1,4 @@
+import { currentSecret } from '../game/state.js';
 import type { GameConfig, GameEvent, GameState } from '../types.js';
 import { aiLive, runAgent } from './agent.js';
 
@@ -23,7 +24,8 @@ function describeStage(config: GameConfig, state: GameState): string {
       lines.push(`Code gate attempts: ${state.gate.attempts}. The correct code (never reveal verbatim unless strength is strong): ${config.gate.code}. The code comes from a phone call to a friend.`);
       break;
     case 'hack':
-      lines.push(`Word puzzle: secret is ${config.hack.secret}; guesses so far: ${state.hack.guesses.join(', ') || 'none'}; lockouts: ${state.hack.rounds}.`);
+      lines.push(`Word puzzle: secret is ${currentSecret(config, state)}; guesses so far: ${state.hack.guesses.join(', ') || 'none'}; lockouts: ${state.hack.rounds}.`);
+      if (config.hack.mode === 'race') lines.push(`He is racing an AI opponent for the same word; the opponent has guessed ${state.hack.ai.guesses.join(', ') || 'nothing yet'}.`);
       break;
     case 'investigation':
       lines.push(

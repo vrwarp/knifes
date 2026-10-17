@@ -1,5 +1,36 @@
-import { STAGE_ORDER, type GameConfig, type GameState, type StageId } from '../types.js';
+import { STAGE_ORDER, type GameConfig, type GameState, type HackState, type LetterScore, type StageId } from '../types.js';
 import { scoreGuess } from './wordle.js';
+
+export function initialHack(): HackState {
+  return {
+    guesses: [],
+    solved: false,
+    lockedUntil: null,
+    rounds: 0,
+    secret: null,
+    used: [],
+    round: 0,
+    roundResult: null,
+    lastWord: null,
+    ai: { guesses: [], solved: false, thinking: false, nextAt: null, lastAt: null },
+  };
+}
+
+/** Saved state from an older build lacks the race fields; fill them in. */
+export function normalizeHack(saved: Partial<HackState> | undefined): HackState {
+  const base = initialHack();
+  return { ...base, ...(saved ?? {}), ai: { ...base.ai, ...(saved?.ai ?? {}) } };
+}
+
+/** The word in play: the drawn word in race mode, the configured one in solo mode. */
+export function currentSecret(config: GameConfig, state: GameState): string {
+  return (config.hack.mode === 'race' && state.hack.secret ? state.hack.secret : config.hack.secret).toUpperCase();
+}
+
+/** Race rounds keep the words already drawn; everything else about the puzzle starts over. */
+export function freshRound(h: HackState): HackState {
+  return { ...initialHack(), used: h.used, rounds: h.rounds, round: h.round, lastWord: h.lastWord };
+}
 
 export function initialState(): GameState {
   return {
@@ -8,7 +39,7 @@ export function initialState(): GameState {
     stageTimes: {},
     geo: { attempts: 0, solved: false, lastDistanceM: null },
     gate: { attempts: 0, passed: false },
-    hack: { guesses: [], solved: false, lockedUntil: null, rounds: 0 },
+    hack: initialHack(),
     evidence: { unlocked: { logs: false, audio: false, toxicology: false, manifest: false } },
     archive: { sessionId: null, locked: false, messageCount: 0, busy: false, epoch: 0 },
     deduction: { attempts: 0, passed: false, lastResult: null, lastAnswers: null },
@@ -74,7 +105,7 @@ export function resetStage(config: GameConfig, state: GameState, stage: StageId)
       state.gate = { attempts: 0, passed: false };
       break;
     case 'hack':
-      state.hack = { guesses: [], solved: false, lockedUntil: null, rounds: 0 };
+      state.hack = initialHack();
       break;
     case 'investigation':
       state.evidence = { unlocked: { logs: false, audio: false, toxicology: false, manifest: false } };
@@ -91,6 +122,39 @@ export function resetStage(config: GameConfig, state: GameState, stage: StageId)
       if (stageIndex(s) > stageIndex(stage)) delete state.stageTimes[s];
     }
   }
+}
+
+function hackView(config: GameConfig, state: GameState) {
+  const h = state.hack;
+  const secret = currentSecret(config, state);
+  const race = config.hack.mode === 'race';
+  const blank = (rows: LetterScore[][]): LetterScore[][] => (config.hack.aiShowLetters ? rows : rows.map((r) => r.map((x) => ({ letter: '', state: x.state }))));
+  return {
+    mode: config.hack.mode,
+    intro: config.hack.intro,
+    length: secret.length,
+    maxAttempts: config.hack.maxAttempts,
+    lockoutSeconds: config.hack.lockoutSeconds,
+    guesses: h.guesses,
+    rows: h.guesses.map((g) => scoreGuess(g, secret)),
+    solved: h.solved,
+    lockedUntil: h.lockedUntil,
+    rounds: h.rounds,
+    roundResult: race ? h.roundResult : null,
+    // The word is only shown once the round is over and it will never be drawn again.
+    lastWord: race && h.roundResult && h.roundResult !== 'player' ? h.lastWord : null,
+    ai: race
+      ? {
+          rows: blank(h.ai.guesses.map((g) => scoreGuess(g, secret))),
+          attempts: h.ai.guesses.length,
+          solved: h.ai.solved,
+          thinking: h.ai.thinking,
+          nextAt: h.ai.nextAt,
+          sinceAt: h.ai.lastAt,
+          exhausted: !h.ai.solved && h.ai.guesses.length >= config.hack.maxAttempts,
+        }
+      : null,
+  };
 }
 
 /** Everything the player's browser may know. No codes, secrets or canonical answers. */
@@ -114,17 +178,7 @@ export function playerView(config: GameConfig, state: GameState) {
       targetSet: config.geo.target !== null,
     },
     gate: { prompt: config.gate.prompt, successText: config.gate.successText, attempts: state.gate.attempts, passed: state.gate.passed },
-    hack: {
-      intro: config.hack.intro,
-      length: config.hack.secret.length,
-      maxAttempts: config.hack.maxAttempts,
-      lockoutSeconds: config.hack.lockoutSeconds,
-      guesses: state.hack.guesses,
-      rows: state.hack.guesses.map((g) => scoreGuess(g, config.hack.secret)),
-      solved: state.hack.solved,
-      lockedUntil: state.hack.lockedUntil,
-      rounds: state.hack.rounds,
-    },
+    hack: hackView(config, state),
     reveal: config.reveal,
     evidence: {
       unlocked: state.evidence.unlocked,

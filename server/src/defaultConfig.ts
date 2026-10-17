@@ -1,3 +1,4 @@
+import { DEFAULT_WORD_BANK } from './content/words.js';
 import type { GameConfig } from './types.js';
 
 export const DEDUCTION_TEMPLATE =
@@ -39,11 +40,17 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     successText: 'Recovery key accepted. Mirror partition 30-BETA located. Encryption active.',
   },
   hack: {
+    mode: 'race',
     secret: 'ALPHA',
     maxAttempts: 6,
     lockoutSeconds: 45,
     intro:
       'Five-character key. Placed letters light green, misplaced letters amber, absent letters go dark. Six attempts, then the partition resets.',
+    wordBank: DEFAULT_WORD_BANK,
+    aiModel: 'claude-sonnet-5-5',
+    aiIntervalSeconds: 5,
+    aiJitterSeconds: 1,
+    aiShowLetters: false,
   },
   reveal: {
     title: 'PARTITION DECRYPTED // INCIDENT RECORD 30-0415',

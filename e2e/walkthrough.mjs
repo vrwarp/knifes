@@ -187,7 +187,9 @@ try {
   await shot(player, 'Key accepted', 'The success state holds for a beat before the next stage arrives.', { wait: 150 });
 
   await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
-  await shot(player, 'Word puzzle', 'A five-letter key in six attempts, scored like Wordle.');
+  await shot(player, 'Word race', 'Jimmy races a hostile AI process for the same five-letter key. He sees its colour feedback, it sees only its own. This recording switches to the fixed-secret solo mode for the next steps.');
+  await app.patch((c) => { c.hack.mode = 'solo'; });
+  await player.getByLabel('Key attempt').waitFor();
   for (const w of ['APPLE', 'PLANT']) {
     await player.getByLabel('Key attempt').fill(w);
     await player.getByRole('button', { name: /attempt key/i }).click();
@@ -333,7 +335,7 @@ try {
   // ============================================================================================
   begin('hack', 'Word puzzle lockout and retry', 'Six wrong keys lock the partition for a countdown, then Jimmy can reset it and try again. The GM can also reset it at once. The lockout here is shortened to 8 seconds for the recording.');
   await app.resetGame();
-  await app.patch((c) => { c.hack.lockoutSeconds = 8; });
+  await app.patch((c) => { c.hack.lockoutSeconds = 8; c.hack.mode = 'solo'; });
   await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'hack' } });
   ctx = await browser.newContext(phoneOpts);
   p = await ctx.newPage();
@@ -352,7 +354,24 @@ try {
   await p.getByLabel('Key attempt').waitFor();
   await shot(p, 'Fresh board', 'A clean board with six attempts. The secret does not change.');
   await ctx.close();
-  await app.patch((c) => { c.hack.lockoutSeconds = 45; });
+  await app.patch((c) => { c.hack.lockoutSeconds = 45; c.hack.mode = 'race'; });
+
+  // ============================================================================================
+  begin('race', 'Key race against the AI', 'Race mode: each round draws a fresh word from the bank and an AI opponent (Sonnet live, a deterministic solver here) guesses on a timer, one attempt every few seconds. Jimmy watches its colour feedback and must find the key first. If the opponent wins, the key rotates after a short lockout.');
+  await app.resetGame();
+  await app.patch((c) => { c.hack.aiIntervalSeconds = 2; c.hack.aiJitterSeconds = 0; c.hack.lockoutSeconds = 6; c.hack.wordBank = ['CRANE', 'SLATE', 'PLANT']; });
+  await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'hack' } });
+  ctx = await browser.newContext(phoneOpts);
+  p = await ctx.newPage();
+  await p.goto(app.base);
+  await p.locator('h1', { hasText: 'Brute-force key' }).waitFor();
+  await shot(p, 'Race begins', 'Both boards are empty. The adversary panel counts down to its first attempt.');
+  await p.getByRole('img', { name: /Adversary attempt 1:/ }).waitFor({ timeout: 15_000 });
+  await shot(p, 'The adversary has guessed', 'Its row shows placed, misplaced and absent as colours only; the GM can switch letters on.');
+  await p.getByText(/ADVERSARY RECOVERED THE KEY/).first().waitFor({ timeout: 20_000 });
+  await shot(p, 'The adversary won the round', 'The retired key is shown, the partition locks briefly, then a new key is issued and the next race starts.');
+  await ctx.close();
+  await app.patch((c) => { c.hack.aiIntervalSeconds = 5; c.hack.aiJitterSeconds = 1; c.hack.lockoutSeconds = 45; });
 
   // ============================================================================================
   begin('vault', 'Evidence vault with passcodes', 'The alternative vault mode: the audio and toxicology files stay sealed until Jimmy gets passcodes from out-of-town contacts (CANIS30 and 1996 by default).');

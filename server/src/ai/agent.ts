@@ -91,6 +91,8 @@ export interface RunResult {
 
 export interface RunOpts {
   prompt: string;
+  /** Overrides CLAUDE_MODEL for this one run (the word-race opponent uses a cheaper model). */
+  model?: string;
   systemPrompt: string;
   mcpServers?: Options['mcpServers'];
   allowedTools?: string[];
@@ -125,7 +127,7 @@ export async function runAgent(o: RunOpts): Promise<RunResult> {
   const timer = setTimeout(() => abort.abort(), o.timeoutMs ?? env.aiTimeoutMs);
 
   const options: Options = {
-    model: env.claudeModel,
+    model: o.model ?? env.claudeModel,
     systemPrompt: o.systemPrompt,
     tools: [],
     mcpServers: o.mcpServers ?? {},

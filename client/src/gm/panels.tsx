@@ -207,7 +207,18 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
         </dd>
         <dt>Word puzzle</dt>
         <dd>
-          secret <b>{config.hack.secret}</b> · guesses {state.hack.guesses.join(', ') || 'none'} · resets {state.hack.rounds}
+          {config.hack.mode === 'race' ? (
+            <>
+              race {state.hack.round || '–'} · key <b>{state.hack.secret ?? 'not drawn yet'}</b> · Jimmy {state.hack.guesses.join(', ') || 'none'} · adversary{' '}
+              {state.hack.ai.guesses.join(', ') || 'none'}
+              {state.hack.ai.thinking ? ' (computing)' : ''} · races lost {state.hack.rounds}
+              {state.hack.roundResult === 'ai' ? <span className="red"> · ADVERSARY WON</span> : state.hack.roundResult === 'exhausted' ? <span className="red"> · OUT OF ATTEMPTS</span> : ''}
+            </>
+          ) : (
+            <>
+              secret <b>{config.hack.secret}</b> · guesses {state.hack.guesses.join(', ') || 'none'} · resets {state.hack.rounds}
+            </>
+          )}
           {lockLeft ? <span className="red"> · LOCKED {lockLeft}s</span> : ''}
         </dd>
         <dt>Evidence</dt>
@@ -353,7 +364,7 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
 
 type Lane = 'all' | 'player' | 'gm' | 'ai';
 const GM_TYPES = new Set(['gm_action', 'hint_pushed']);
-const AI_TYPES = new Set(['archive_assistant', 'archive_tool', 'ai_error', 'report']);
+const AI_TYPES = new Set(['archive_assistant', 'archive_tool', 'ai_error', 'report', 'hack_ai_guess', 'hack_ai_solved']);
 const laneOf = (t: string): Lane => (GM_TYPES.has(t) ? 'gm' : AI_TYPES.has(t) ? 'ai' : 'player');
 
 function describe(e: GameEvent): { text: string; cls: string } {
@@ -373,9 +384,17 @@ function describe(e: GameEvent): { text: string; cls: string } {
       return { text: `${s('guess')} ${scores}${p.solved ? ' SOLVED' : ''}`, cls: p.solved ? 'ok' : '' };
     }
     case 'hack_lockout':
-      return { text: `partition locked, round ${s('rounds')}`, cls: 'fail' };
+      return { text: `${p.reason === 'ai' ? 'adversary took the key' : 'partition locked'}${p.word ? ` (${s('word')})` : ''}, round ${s('rounds')}`, cls: 'fail' };
     case 'hack_solved':
-      return { text: `solved in ${s('attempts')}`, cls: 'ok' };
+      return { text: `solved in ${s('attempts')}${p.aiAttempts !== undefined ? `, adversary at ${s('aiAttempts')}` : ''}`, cls: 'ok' };
+    case 'hack_round':
+      return { text: `race ${s('round')}: key is ${s('word')} (${s('used')}/${s('bank')} words used)`, cls: '' };
+    case 'hack_ai_guess': {
+      const scores = Array.isArray(p.scores) ? (p.scores as string[]).map((x) => (x === 'hit' ? '■' : x === 'near' ? '◪' : '□')).join('') : '';
+      return { text: `adversary ${s('guess')} ${scores}${p.solved ? ' SOLVED' : ''}${p.source === 'solver' ? ' (solver)' : ''}`, cls: p.solved ? 'fail' : '' };
+    }
+    case 'hack_ai_solved':
+      return { text: `adversary solved in ${s('attempts')}, Jimmy was at ${s('playerAttempts')}`, cls: 'fail' };
     case 'evidence_unlock': {
       const u = Array.isArray(p.unlocked) ? (p.unlocked as string[]) : [];
       return { text: u.length ? `unlocked ${u.join(', ')}` : `passcode "${s('passcode')}" rejected`, cls: u.length ? 'ok' : 'fail' };
