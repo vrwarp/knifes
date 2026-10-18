@@ -96,19 +96,38 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .tile.pending { border-color: var(--accent); color: var(--accent); }
 .trow.win .tile { animation: flip 0.5s ease both; animation-delay: calc(var(--i, 0) * 140ms); }
 @keyframes flip { 0% { transform: rotateX(90deg); opacity: 0.3; } 100% { transform: none; opacity: 1; } }
-/* the opponent's board in the key race */
-.adversary { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px 6px; margin: 0 0 14px; background: rgba(0,0,0,0.25); }
-.adversary.won { border-color: var(--red); }
-.adv-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.adv-bar { height: 3px; background: var(--line); border-radius: 2px; margin: 6px 0 2px; overflow: hidden; }
-.adv-bar i { display: block; height: 100%; background: var(--amber); transition: width 0.2s linear; }
-.grid.mini { gap: 3px; margin: 8px 0 4px; }
-.grid .trow.mini { gap: 3px; width: min(100%, calc(var(--n, 5) * 30px)); }
-.trow.mini .tile { font-size: 12px; border-width: 1px; border-radius: 2px; }
+/* key race: two boards side by side on a phone, an on-screen keyboard below */
+.frame.hack { padding: 14px 12px 12px; }
+.hack-intro { font-size: 12px; line-height: 1.4; margin-bottom: 8px; }
+.round-banner { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; text-align: center; }
+.boards { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 10px; align-items: start; }
+.board { min-width: 0; }
+.board-head { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; min-height: 18px; }
+.board-head .tiny { font-size: 10px; letter-spacing: 0.08em; }
+.board .grid { margin: 6px 0 0; gap: 4px; }
+.board .grid .trow { gap: 4px; width: 100%; }
+.board.you .tile { font-size: 20px; border-width: 2px; }
+.tile.pending.filled { border-color: var(--ink); color: var(--ink); }
+.board.adversary { border: 1px solid var(--line); border-radius: 6px; padding: 6px 6px 4px; background: rgba(0,0,0,0.25); }
+.board.adversary.won { border-color: var(--red); }
+.board-head .thinking { animation: blink 1.2s steps(1) infinite; }
+.grid.mini { gap: 3px; }
+.grid .trow.mini { gap: 3px; }
+.trow.mini .tile { font-size: 12px; font-weight: 600; border-width: 1px; border-radius: 2px; }
 .trow.mini .tile.hit, .trow.mini .tile.near { border-width: 2px; }
 .trow.mini.lost .tile { animation: flip 0.5s ease both; }
-.tile.computing { border-color: var(--amber); animation: computing 1s steps(2) infinite; }
+.tile.computing { border-color: var(--amber); animation: computing 1.6s ease-in-out infinite; }
 @keyframes computing { 50% { border-color: var(--line-strong); } }
+.keyboard { display: grid; gap: 6px; margin-top: 12px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.krow { display: flex; gap: 4px; justify-content: center; }
+.key { flex: 1 1 0; min-width: 0; max-width: 40px; height: 46px; padding: 0; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--panel-2, #151823); border: 1px solid var(--line-strong); border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+.key.wide { flex: 1.6 1 0; max-width: 64px; font-size: 11px; letter-spacing: 0.06em; }
+.key.hit { background: var(--tile-hit); border-color: var(--tile-hit-edge); color: #fff; }
+.key.near { background: var(--tile-near); border-color: var(--tile-near-edge); color: #fff; }
+.key.miss { background: var(--tile-miss); border-color: var(--tile-miss-edge); color: var(--tile-miss-ink); }
+.key:disabled { opacity: 0.45; cursor: default; }
+.key:active:not(:disabled) { transform: translateY(1px); filter: brightness(1.2); }
+@media (max-width: 360px) { .key { height: 42px; font-size: 14px; } .board.you .tile { font-size: 17px; } }
 .legend { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
 .legend i.hit { background: var(--tile-hit); border: 2px solid var(--tile-hit-edge); }
@@ -237,7 +256,8 @@ details.section > summary { cursor: pointer; text-transform: uppercase; letter-s
   .md h2, .md h3 { color: #000; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cursor::after, .shake, .trow.win .tile, .trow.mini.lost .tile, .tile.computing, .pulse { animation: none !important; }
+  .cursor::after, .shake, .trow.win .tile, .trow.mini.lost .tile, .tile.computing, .board-head .thinking, .pulse { animation: none !important; }
+  .key:active:not(:disabled) { transform: none; }
 }
 
 /* round 2 additions */

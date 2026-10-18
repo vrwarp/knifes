@@ -179,6 +179,12 @@ export async function startGame(page: Page, base: string) {
   await start.click();
 }
 
+/** Types a word on the puzzle's on-screen keyboard (ENTER is the "Attempt key" button). */
+export async function typeWord(page: Page, word: string) {
+  const kb = page.getByRole('group', { name: 'Keyboard' });
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+}
+
 export async function fillDeduction(page: Page, answers: Record<string, string>) {
   for (const [label, value] of Object.entries(answers)) await page.getByLabel(label, { exact: true }).fill(value);
 }

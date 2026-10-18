@@ -3,7 +3,7 @@ export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal',
 export type SlotId = 'time' | 'suspect' | 'method' | 'asset' | 'motive' | 'prop';
 export type LetterState = 'hit' | 'near' | 'miss';
 export type HackMode = 'solo' | 'race';
-export type HackRoundResult = 'player' | 'ai' | 'exhausted';
+export type HackRoundResult = 'player' | 'ai' | 'exhausted' | 'pass';
 export interface LetterScore {
   letter: string;
   state: LetterState;
@@ -52,17 +52,19 @@ export interface PlayerView {
     solved: boolean;
     lockedUntil: number | null;
     rounds: number;
+    round: number;
     roundResult: HackRoundResult | null;
     lastWord: string | null;
+    lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
+    /** The failsafe text when the bank ran out and Jimmy was let through. */
+    freePass: string | null;
+    wordsLeft: number | null;
     ai: {
       /** Letters are blank unless the GM chose to show them. */
       rows: LetterScore[][];
       attempts: number;
       solved: boolean;
       thinking: boolean;
-      nextAt: number | null;
-      /** When the countdown to nextAt began, for the progress bar. */
-      sinceAt: number | null;
       exhausted: boolean;
     } | null;
   };
@@ -152,8 +154,11 @@ export interface GameState {
     round: number;
     roundResult: HackRoundResult | null;
     lastWord: string | null;
-    ai: { guesses: string[]; solved: boolean; thinking: boolean; nextAt: number | null; lastAt: number | null };
+    freePass: boolean;
+    lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
+    ai: { guesses: string[]; solved: boolean; thinking: boolean; plan: string[] | null; planSource: 'ai' | 'generated' | null; nextAt: number | null; lastAt: number | null };
   };
+  hackScripts: { key: string; byWord: Record<string, { plan: string[]; source: 'ai' | 'generated'; at: number }>; busy: boolean };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
@@ -193,12 +198,16 @@ export interface GameConfig {
     lockoutSeconds: number;
     intro: string;
     wordBank: string[];
+    aiStyle: 'scripted' | 'live';
     aiModel: string;
+    aiPlanGuesses: number;
+    aiPlanJitter: number;
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
     aiSlowdownPerRound: number;
     aiShowLetters: boolean;
     aiThinking: boolean;
+    freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: {

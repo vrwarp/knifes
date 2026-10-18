@@ -16,7 +16,7 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style hacking puzzle, incident reveal, evidence vault, ARCHIVE terminal, deduction grid, final reveal. |
 | Geo puzzle | GeoGuessr-style: an embedded Google Street View panorama (address and road labels hidden, walking optional) plus a map pin on OpenStreetMap, accepted within a configurable radius. Uploaded photos stand in when no Maps key is set. Switchable to reveal-only or off. |
 | Phil call | One-way: Phil gives Jimmy the unlock code. Default `MAGENTA30`, editable. |
-| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-haiku-5-5`): each round draws a fresh 5-letter word from a GM-editable bank; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins), Jimmy sees its colour feedback and must find the key first. Attempts are unlimited by default (a GM can cap them); when the opponent wins, a short lockout, then a new word. Solo mode keeps the fixed secret `ALPHA`. |
+| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5` scripting each round in advance, 8 ± 2 guesses to the key): each round draws a fresh 5-letter word from a GM-editable bank of ten keys, whose scripts are written when the configuration is saved; when the adversary has taken every key, a configurable free pass lets Jimmy through; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins), Jimmy sees its colour feedback and must find the key first. Attempts are unlimited by default (a GM can cap them); when the opponent wins, the next word is drawn at once and a banner names the lost one. Solo mode keeps the fixed secret `ALPHA`. |
 | Reveal after puzzle | In-world incident record (03:45 window, three office entries) plus the order to return to base. |
 | Evidence unlock | Both modes available: everything opens after the puzzle, or audio and toxicology sit behind `CANIS30` and `1996`. |
 | Murder method | Poisoned tea is canon. The letter opener is a red herring on the desk. |
@@ -43,12 +43,19 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
    Reveal mode skips the map. Off mode skips the stage.
 3. **Gate.** Enter the code Phil gives over the phone. Case, spaces and dashes are ignored.
 4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. In race mode (default) a second, smaller
-   board shows the adversary's attempts as colours (letters optional), with a countdown to its next guess. The
+   board shows the adversary's attempts (letters by default, colours only as an option) and reads THINKING... between
+   them; the clock is never shown to the player. The
    adversary only sees its own feedback; Jimmy sees both boards. Jimmy finds the key first: key accepted, on to the
-   reveal. The adversary finds it first: the retired key is shown, the partition locks for 45 seconds, then a new
-   key is drawn from the bank (no repeats within a game) and the next race starts. Attempts are unlimited by default,
-   so the boards grow and a round ends only on a solve; with a GM-set cap, a side that uses all its attempts is out
-   for the round (Jimmy: lockout and new word; the adversary: it stalls and Jimmy keeps going). GMs can jump past it, push a hint, change the
+   reveal. The adversary finds it first: a new key is drawn from the bank at once (no repeats within a game), both
+   boards clear, and a banner names the lost round and its word. Attempts are unlimited by default, so the boards
+   grow and a round ends only on a solve; with a GM-set cap, Jimmy using all his attempts also rolls into the next
+   word, while an adversary that uses all of its stalls and Jimmy keeps going. The lockout only applies in solo mode.
+   The bank holds ten keys by default (VENOM, VAULT, GHOST, DRIVE, ALIBI, TRACE, BADGE, TOKEN, SIREN, RADAR). When the
+   adversary has taken every key and the free pass is on, the phone shows the configured failsafe text for a few
+   seconds and moves on to the reveal; with it off, the keys recycle.
+   Input is an on-screen keyboard whose keys take the colours of what Jimmy has learned; the adversary's letters are
+   shown by default (GM toggle for colours only). Both boards sit side by side so the whole race fits a phone screen
+   above the keyboard. GMs can jump past it, push a hint, change the
    pace, or switch to solo mode live.
 5. **Reveal.** Incident record with the 03:45 window and the directive to return to base.
 6. **Investigation.** Three tabs.
@@ -80,7 +87,7 @@ the data volume, and a timeout. Mock mode replaces each with a deterministic sta
 | GM copilot | `query()` with structured output `{hint, rationale}` from stage, attempts and recent log, at a chosen strength. | GM edits and approves before anything reaches the player. |
 | Grader | `query()` with structured output per slot, given canonical answer, accept and reject lists and guidance. | Every slot must pass. Any failure of the AI path drops to keyword grading so the game never stalls. GMs see per-slot reasons. |
 | Case report | `query()` over the full event log and transcript, Markdown out. | GM previews and publishes explicitly. |
-| Word-race opponent | One `query()` per guess on `hack.aiModel` (default `claude-haiku-5-5`), structured output `{guess}`, given the key length and its own feedback so far. Paced server-side at `aiIntervalSeconds ± aiJitterSeconds`, both multiplied by `aiSlowdownPerRound` for every round it has already won (10 ± 5, 15 ± 7.5, 22.5 ± 11.25 s…), measured from when its previous guess was requested. | Low effort, extended thinking off unless `hack.aiThinking` is set, 2 turns, no tools. A bad or late answer (wrong length, repeat, timeout) is logged as `ai_error` and replaced by a deterministic bank solver so the race never stalls; mock mode uses the solver alone. A guess that returns after the round ended is dropped. The loop stops on any exit from the stage and resumes after a restart. |
+| Word-race opponent | Scripted by default: one `query()` per round on `hack.aiModel` (default `claude-sonnet-5-5`, adaptive thinking) is told the key and a target length (`aiPlanGuesses ± aiPlanJitter`, default 8 ± 2) and returns the whole guess list, which the server validates (length within one, real-looking words, the key last and only last) and plays on the timer. Scripts are prepared for every bank word whenever the configuration is saved (and at boot), stored with the game state, kept across a game reset, and rewritten when the bank, plan length, model or thinking setting changes or the GM presses **Rewrite scripts**; a round only writes one at play time if none is ready. Without a credential the scripts are generated locally from a common-word vocabulary. Live style instead makes one `query()` per guess, structured output `{guess}`, given the key length and its own feedback so far. Paced server-side at `aiIntervalSeconds ± aiJitterSeconds`, both multiplied by `aiSlowdownPerRound` for every round it has already won (10 ± 5, 15 ± 7.5, 22.5 ± 11.25 s…), measured from when its previous guess was requested. | Low effort, extended thinking off unless `hack.aiThinking` is set, 2 turns, no tools. A bad or late answer (wrong length, repeat, timeout) is logged as `ai_error` and replaced by a deterministic bank solver so the race never stalls; mock mode uses the solver alone. A guess that returns after the round ended is dropped. The loop stops on any exit from the stage and resumes after a restart. |
 
 Expected cost for the evening at Opus 5.5 rates: a few dollars.
 

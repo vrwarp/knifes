@@ -7,6 +7,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+// Types a word on the puzzle's on-screen keyboard; the ENTER key is the "Attempt key" button.
+const typeWord = async (page, word) => {
+  const kb = page.getByRole('group', { name: 'Keyboard' });
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+};
+
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -108,21 +114,21 @@ try {
   await settle(400);
   await shot(player, 'p06-hack-empty');
   for (const w of ['APPLE', 'PLANT']) {
-    await player.getByLabel('Key attempt').fill(w);
+    await typeWord(player, w);
     await player.getByRole('button', { name: /attempt key/i }).click();
     await settle(300);
   }
   await shot(player, 'p07-hack-two-rows');
   for (const w of ['BRICK', 'STORM', 'QUEST', 'ZEBRA']) {
-    await player.getByLabel('Key attempt').fill(w);
+    await typeWord(player, w);
     await player.getByRole('button', { name: /attempt key/i }).click();
     await settle(300);
   }
   await player.getByText('PARTITION LOCKED', { exact: true }).waitFor();
   await shot(player, 'p08-hack-locked');
   await gmApi('/api/gm/reset', { method: 'POST', json: { scope: 'hack' } });
-  await player.getByLabel('Key attempt').waitFor({ timeout: 10_000 });
-  await player.getByLabel('Key attempt').fill('ALPHA');
+  await player.getByRole('group', { name: 'Keyboard' }).waitFor({ timeout: 10_000 });
+  await typeWord(player, 'ALPHA');
   await player.getByRole('button', { name: /attempt key/i }).click();
   await player.getByText('KEY ACCEPTED').waitFor();
   await settle(900);

@@ -12,7 +12,9 @@ export function initialHack(): HackState {
     round: 0,
     roundResult: null,
     lastWord: null,
-    ai: { guesses: [], solved: false, thinking: false, nextAt: null, lastAt: null },
+    freePass: false,
+    lastRound: null,
+    ai: { guesses: [], solved: false, thinking: false, plan: null, planSource: null, nextAt: null, lastAt: null },
   };
 }
 
@@ -29,7 +31,7 @@ export function currentSecret(config: GameConfig, state: GameState): string {
 
 /** Race rounds keep the words already drawn; everything else about the puzzle starts over. */
 export function freshRound(h: HackState): HackState {
-  return { ...initialHack(), used: h.used, rounds: h.rounds, round: h.round, lastWord: h.lastWord };
+  return { ...initialHack(), used: h.used, rounds: h.rounds, round: h.round, lastWord: h.lastWord, lastRound: h.lastRound };
 }
 
 export function initialState(): GameState {
@@ -40,6 +42,7 @@ export function initialState(): GameState {
     geo: { attempts: 0, solved: false, lastDistanceM: null },
     gate: { attempts: 0, passed: false },
     hack: initialHack(),
+    hackScripts: { key: '', byWord: {}, busy: false },
     evidence: { unlocked: { logs: false, audio: false, toxicology: false, manifest: false } },
     archive: { sessionId: null, locked: false, messageCount: 0, busy: false, epoch: 0 },
     deduction: { attempts: 0, passed: false, lastResult: null, lastAnswers: null },
@@ -140,17 +143,19 @@ function hackView(config: GameConfig, state: GameState) {
     solved: h.solved,
     lockedUntil: h.lockedUntil,
     rounds: h.rounds,
+    round: h.round,
     roundResult: race ? h.roundResult : null,
     // The word is only shown once the round is over and it will never be drawn again.
     lastWord: race && h.roundResult && h.roundResult !== 'player' ? h.lastWord : null,
+    lastRound: race ? h.lastRound : null,
+    freePass: h.freePass ? config.hack.freePass.text : null,
+    wordsLeft: race ? Math.max(0, config.hack.wordBank.length - h.used.length) : null,
     ai: race
       ? {
           rows: blank(h.ai.guesses.map((g) => scoreGuess(g, secret))),
           attempts: h.ai.guesses.length,
           solved: h.ai.solved,
           thinking: h.ai.thinking,
-          nextAt: h.ai.nextAt,
-          sinceAt: h.ai.lastAt,
           exhausted: !h.ai.solved && config.hack.maxAttempts !== null && h.ai.guesses.length >= config.hack.maxAttempts,
         }
       : null,

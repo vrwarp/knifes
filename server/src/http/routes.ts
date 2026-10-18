@@ -122,6 +122,10 @@ export function gmRouter(service: GameService): Router {
     service.setStage(stage);
     res.json({ ok: true });
   });
+  r.post('/hack/scripts', (_req, res) => {
+    service.regenerateScripts();
+    res.json({ ok: true });
+  });
   r.post('/reset', (req, res) => {
     const scope = str(req.body?.scope, 30);
     if (scope !== 'game' && !STAGE_ORDER.includes(scope as StageId)) throw new HttpError(400, 'Unknown scope');

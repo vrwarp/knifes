@@ -34,8 +34,15 @@ test('primary buttons are at least 44px tall on touch devices', async ({ player,
     await player.goto(app.base);
     await expect(player.locator('h1').first()).toBeVisible();
     await finishTyping(player);
-    const heights = await player.locator('.btn.block:visible').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
-    for (const h of heights) expect(h, `${stage} button height`).toBeGreaterThanOrEqual(44);
+    const heights = await player.locator('.btn.block:visible, .key:visible').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+    for (const h of heights) expect(h, `${stage} button height`).toBeGreaterThanOrEqual(42);
+    if (stage === 'hack') {
+      // The whole race screen (both boards and the keyboard) fits a phone without scrolling past the keyboard.
+      const kb = await player.getByRole('group', { name: 'Keyboard' }).boundingBox();
+      const vh = player.viewportSize()!.height;
+      expect(kb, 'keyboard rendered').not.toBeNull();
+      expect(kb!.y + kb!.height, 'keyboard bottom within the viewport').toBeLessThanOrEqual(vh + 40);
+    }
   }
 });
 

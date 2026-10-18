@@ -219,7 +219,9 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
             <>
               race {state.hack.round || '–'} · key <b>{state.hack.secret ?? 'not drawn yet'}</b> · Jimmy {state.hack.guesses.join(', ') || 'none'} · adversary{' '}
               {state.hack.ai.guesses.join(', ') || 'none'}
-              {state.hack.ai.thinking ? ' (computing)' : ''} · races lost {state.hack.rounds}
+              {state.hack.ai.thinking ? ' (computing)' : ''}
+              {state.hack.ai.plan ? ` · script ${state.hack.ai.guesses.length}/${state.hack.ai.plan.length} (${state.hack.ai.planSource})` : ''} · races lost {state.hack.rounds} · words left{' '}
+              {Math.max(0, config.hack.wordBank.length - state.hack.used.length)}/{config.hack.wordBank.length}
               {state.hack.roundResult === 'ai' ? <span className="red"> · ADVERSARY WON</span> : state.hack.roundResult === 'exhausted' ? <span className="red"> · OUT OF ATTEMPTS</span> : ''}
             </>
           ) : (
@@ -228,6 +230,18 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
             </>
           )}
           {lockLeft ? <span className="red"> · LOCKED {lockLeft}s</span> : ''}
+          {config.hack.mode === 'race' && config.hack.aiStyle === 'scripted' ? (
+            <div className="row" style={{ marginTop: 6 }}>
+              <span className="tiny" data-testid="scripts-ready">
+                scripts {Object.keys(state.hackScripts.byWord).filter((w) => config.hack.wordBank.includes(w)).length}/{config.hack.wordBank.length}
+                {state.hackScripts.busy ? ' · writing…' : ''}
+                {Object.values(state.hackScripts.byWord).some((s) => s.source === 'generated') ? ' · some generated' : ''}
+              </span>
+              <button className="btn small ghost" disabled={state.hackScripts.busy || mode.busy} onClick={() => void mode.run(() => api('/api/gm/hack/scripts', { method: 'POST' }), 'Rewriting scripts')}>
+                Rewrite scripts
+              </button>
+            </div>
+          ) : null}
           <div className="row" style={{ marginTop: 6 }} role="group" aria-label="Word puzzle mode">
             <button className={`btn small ${config.hack.mode === 'race' ? 'primary' : 'ghost'}`} onClick={() => setMode('race')} disabled={mode.busy} aria-pressed={config.hack.mode === 'race'}>
               Race vs AI
@@ -235,7 +249,12 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
             <button className={`btn small ${config.hack.mode === 'solo' ? 'primary' : 'ghost'}`} onClick={() => setMode('solo')} disabled={mode.busy} aria-pressed={config.hack.mode === 'solo'}>
               Solo
             </button>
-            <span className="tiny">{mode.msg ?? (config.hack.mode === 'race' ? `Haiku every ${config.hack.aiIntervalSeconds}s ± ${config.hack.aiJitterSeconds}s, ×${config.hack.aiSlowdownPerRound} per lost round` : `secret ${config.hack.secret}`)}</span>
+            <span className="tiny">
+              {mode.msg ??
+                (config.hack.mode === 'race'
+                  ? `${config.hack.aiStyle === 'scripted' ? `scripted ${config.hack.aiPlanGuesses} ± ${config.hack.aiPlanJitter} guesses` : 'live guesses'} · every ${config.hack.aiIntervalSeconds}s ± ${config.hack.aiJitterSeconds}s, ×${config.hack.aiSlowdownPerRound} per lost round`
+                  : `secret ${config.hack.secret}`)}
+            </span>
           </div>
         </dd>
         <dt>Evidence</dt>
@@ -381,7 +400,7 @@ export function HintsPanel({ state, config }: { state: GameState; config: GameCo
 
 type Lane = 'all' | 'player' | 'gm' | 'ai';
 const GM_TYPES = new Set(['gm_action', 'hint_pushed']);
-const AI_TYPES = new Set(['archive_assistant', 'archive_tool', 'ai_error', 'report', 'hack_ai_guess', 'hack_ai_solved']);
+const AI_TYPES = new Set(['archive_assistant', 'archive_tool', 'ai_error', 'report', 'hack_ai_guess', 'hack_ai_solved', 'hack_ai_plan', 'hack_scripts']);
 const laneOf = (t: string): Lane => (GM_TYPES.has(t) ? 'gm' : AI_TYPES.has(t) ? 'ai' : 'player');
 
 function describe(e: GameEvent): { text: string; cls: string } {
@@ -410,6 +429,14 @@ function describe(e: GameEvent): { text: string; cls: string } {
       const scores = Array.isArray(p.scores) ? (p.scores as string[]).map((x) => (x === 'hit' ? '■' : x === 'near' ? '◪' : '□')).join('') : '';
       return { text: `adversary ${s('guess')} ${scores}${p.solved ? ' SOLVED' : ''}${p.source === 'solver' ? ' (solver)' : ''}`, cls: p.solved ? 'fail' : '' };
     }
+    case 'hack_ai_plan':
+      return { text: `adversary script (${s('source')}): ${Array.isArray(p.plan) ? (p.plan as string[]).join(' → ') : s('guesses') + ' guesses'}`, cls: '' };
+    case 'hack_free_pass':
+      return { text: `free pass after ${s('rounds')} lost races: "${s('text').slice(0, 80)}"`, cls: 'ok' };
+    case 'hack_scripts':
+      return { text: `adversary scripts ready ${s('ready')}/${s('total')}${p.live ? '' : ' (generated, no Claude credential)'}`, cls: '' };
+    case 'hack_round_lost':
+      return { text: `race lost (${s('reason') === 'ai' ? 'adversary took' : 'out of attempts on'} ${s('word')}), next key issued`, cls: 'fail' };
     case 'hack_ai_solved':
       return { text: `adversary solved in ${s('attempts')}, Jimmy was at ${s('playerAttempts')}`, cls: 'fail' };
     case 'evidence_unlock': {

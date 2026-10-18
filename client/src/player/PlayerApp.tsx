@@ -77,7 +77,7 @@ export function PlayerApp() {
       lastRev.current = v.rev;
       const cur = shownStage.current;
       if (cur === 'gate' && v.stage === 'hack') hold('gate', 1700);
-      else if (cur === 'hack' && v.stage === 'reveal') hold('hack', 2000);
+      else if (cur === 'hack' && v.stage === 'reveal') hold('hack', v.hack.freePass ? 5000 : 2000);
       setView(v);
       setArchiveBusy(v.archive.busy);
       if (archiveEpoch.current !== v.archive.epoch) {

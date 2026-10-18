@@ -49,7 +49,12 @@ export interface GameConfig {
     lockoutSeconds: number;
     intro: string;
     wordBank: string[];
+    /** Scripted: one model call per round writes the whole guess list. Live: one call per guess. */
+    aiStyle: 'scripted' | 'live';
     aiModel: string;
+    /** Scripted: how many guesses the script should take to reach the key, ± jitter. */
+    aiPlanGuesses: number;
+    aiPlanJitter: number;
     /** Mean seconds between opponent guesses, and the uniform jitter around it. */
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
@@ -59,6 +64,8 @@ export interface GameConfig {
     aiShowLetters: boolean;
     /** Extended thinking for the opponent. Off keeps it quick and beatable. */
     aiThinking: boolean;
+    /** When the adversary has taken every word in the bank, let Jimmy through with this in-world reason. */
+    freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
   evidence: {
@@ -100,13 +107,13 @@ export interface HintPush {
   text: string;
 }
 
-export type HackRoundResult = 'player' | 'ai' | 'exhausted';
+export type HackRoundResult = 'player' | 'ai' | 'exhausted' | 'pass';
 
 export interface HackState {
   guesses: string[];
   solved: boolean;
   lockedUntil: number | null;
-  /** Completed rounds (lockouts and opponent wins). */
+  /** Completed rounds (opponent wins, and lockouts when attempts are capped). */
   rounds: number;
   /** Race mode: the word in play this round. Null until a round starts, and always null in solo mode. */
   secret: string | null;
@@ -118,16 +125,38 @@ export interface HackState {
   roundResult: HackRoundResult | null;
   /** The word of the last finished round, shown to the player once it is retired. */
   lastWord: string | null;
+  /** Set when the bank ran out and the free pass let Jimmy through. */
+  freePass: boolean;
+  /** Race mode: how the previous round ended, kept through the next round for the banner on the phone. */
+  lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
   ai: {
     guesses: string[];
     solved: boolean;
     /** A guess request is in flight. */
     thinking: boolean;
+    /** Scripted style: the guesses this round will play, written once the round starts. */
+    plan: string[] | null;
+    planSource: 'ai' | 'generated' | null;
     /** When the next opponent guess is due, for the countdown on the phone. */
     nextAt: number | null;
     /** When the opponent last guessed (or the round began); paces the next guess. */
     lastAt: number | null;
   };
+}
+
+/** One prepared adversary script for a bank word, written ahead of the party. */
+export interface HackScript {
+  plan: string[];
+  source: 'ai' | 'generated';
+  at: number;
+}
+
+/** Scripts prepared for the current bank and plan settings; `key` says which settings they were written for. */
+export interface HackScripts {
+  key: string;
+  byWord: Record<string, HackScript>;
+  /** A preparation pass is running. */
+  busy: boolean;
 }
 
 export interface GameState {
@@ -137,6 +166,8 @@ export interface GameState {
   geo: { attempts: number; solved: boolean; lastDistanceM: number | null };
   gate: { attempts: number; passed: boolean };
   hack: HackState;
+  /** Survives a game reset: it belongs to the configuration, not the evening. */
+  hackScripts: HackScripts;
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean; /** Bumped when the GM starts a new ARCHIVE session. */ epoch?: number };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
@@ -153,6 +184,10 @@ export type EventType =
   | 'hack_lockout'
   | 'hack_solved'
   | 'hack_round'
+  | 'hack_round_lost'
+  | 'hack_ai_plan'
+  | 'hack_free_pass'
+  | 'hack_scripts'
   | 'hack_ai_guess'
   | 'hack_ai_solved'
   | 'evidence_unlock'
