@@ -16,8 +16,9 @@ Full requirements and design: [docs/SPEC.md](docs/SPEC.md).
 | `docs/SPEC.md` | Decisions, flow, content, API and test plan. |
 
 The word puzzle is a race by default: each round draws a five-letter word from a bank (735 common words, editable
-in the GM console) and an AI opponent on `claude-haiku-5-5` guesses the same word on a timer, one attempt every
-10 seconds give or take 5, slowing by half again after each round it wins. Jimmy sees the opponent's attempts on a second board and has to find the key first; when the opponent wins, the next word starts at once.
+in the GM console) and an AI opponent plays the same word on a timer, one attempt every 10 seconds give or take 5,
+slowing by half again after each round it wins. By default `claude-sonnet-5-5` scripts each round in
+advance, 8 ± 2 guesses to the key, so the difficulty is a number; a live turn-by-turn style is available. Jimmy sees the opponent's attempts on a second board and has to find the key first; when the opponent wins, the next word starts at once.
 Attempts are unlimited by default, so a round ends only when one side finds the word.
 Pace, model, attempt cap, word bank, letter visibility and a classic solo mode are all in **Game configuration → Word puzzle**.
 Without a Claude credential the opponent is a deterministic solver, so the race still runs in mock mode.

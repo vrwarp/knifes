@@ -339,6 +339,16 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
               {N(['hack', 'aiJitterSeconds'], 'Jitter, plus or minus seconds')}
             </div>
             {N(['hack', 'aiSlowdownPerRound'], 'Slowdown multiplier after each round the opponent wins (1 = constant; 1.5 gives 10, 15, 22.5 s…)')}
+            {S(['hack', 'aiStyle'], 'Opponent style', [
+              ['scripted', 'Scripted: one model call per round writes the whole guess list to the key'],
+              ['live', 'Live: the model guesses turn by turn from its own feedback'],
+            ])}
+            {draft.hack.aiStyle === 'scripted' ? (
+              <div className="two">
+                {N(['hack', 'aiPlanGuesses'], 'Guesses the script takes to reach the key')}
+                {N(['hack', 'aiPlanJitter'], 'Plan jitter, plus or minus guesses')}
+              </div>
+            ) : null}
             {T(['hack', 'aiModel'], 'Opponent model')}
             {B(['hack', 'aiShowLetters'], "Show the opponent's letters on the phone (off: colours only)")}
             {draft.hack.mode === 'race' ? <div className="small muted">In race mode a lost round rolls straight into the next key; the lockout only applies in solo mode.</div> : null}

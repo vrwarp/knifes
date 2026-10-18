@@ -25,6 +25,37 @@ export function solverGuess(bank: string[], length: number, history: OpponentHis
   return words.find((w) => consistentWithHistory(w, history)) ?? words[0] ?? null;
 }
 
+/**
+ * A scripted round without a model: `n` guesses that read like a player narrowing in, ending on the
+ * answer. Each step prefers a bank word still consistent with every clue so far; when those run out
+ * it takes a word sharing letters with the answer, the way a person chases a near miss.
+ */
+export function generatedPlan(bank: string[], answer: string, n: number, random: () => number = Math.random): string[] {
+  const target = answer.toUpperCase();
+  const words = [...new Set(bank.map((w) => w.toUpperCase()))].filter((w) => w.length === target.length && w !== target);
+  const pick = <T,>(xs: T[]): T => xs[Math.floor(random() * xs.length)];
+  const history: OpponentHistoryRow[] = [];
+  const used = new Set<string>();
+  const plan: string[] = [];
+  for (let i = 0; i < Math.max(1, n) - 1; i++) {
+    const fresh = words.filter((w) => !used.has(w));
+    if (!fresh.length) break;
+    const consistent = fresh.filter((w) => consistentWithHistory(w, history));
+    const shared = fresh.filter((w) => w.split('').filter((l, j) => target[j] === l).length >= 2);
+    const g = consistent.length ? pick(consistent) : shared.length ? pick(shared) : pick(fresh);
+    plan.push(g);
+    used.add(g);
+    history.push({ guess: g, scores: scoreGuess(g, target).map((x) => x.state) });
+  }
+  plan.push(target);
+  return plan;
+}
+
+/** Script length for a round: guesses ± jitter, never below 2. */
+export function planLength(guesses: number, jitter: number, random: () => number = Math.random): number {
+  return Math.max(2, Math.round(guesses + jitter * (random() * 2 - 1)));
+}
+
 /** Picks a word for a new round, avoiding `used`; once the bank is exhausted every word is fair again. */
 export function drawWord(bank: string[], used: string[], random: () => number = Math.random): string | null {
   const all = bank.map((w) => w.toUpperCase());

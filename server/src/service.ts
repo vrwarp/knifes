@@ -13,10 +13,10 @@ import path from 'node:path';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
 import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
-import { drawWord, opponentDelayMs, opponentPace, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
+import { drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
 import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
-import { aiOpponentGuess, opponentLive } from './ai/opponent.js';
+import { aiOpponentGuess, aiOpponentPlan, opponentLive } from './ai/opponent.js';
 import { SLOT_IDS, STAGE_ORDER, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
 
 /** Minimum time a deduction verdict takes to come back, so it reads as weighed rather than instant. */
@@ -92,7 +92,10 @@ export const ConfigSchema = z.object({
       lockoutSeconds: z.number().int().min(0).max(3600),
       intro: z.string(),
       wordBank: z.array(z.string().regex(/^[A-Za-z]{3,8}$/, 'bank words must be 3 to 8 letters')).max(10_000),
+      aiStyle: z.enum(['scripted', 'live']),
       aiModel: z.string().trim().min(1).max(80),
+      aiPlanGuesses: z.number().int().min(2).max(30),
+      aiPlanJitter: z.number().int().min(0).max(15),
       aiIntervalSeconds: z.number().min(1).max(600),
       aiJitterSeconds: z.number().min(0).max(600),
       aiSlowdownPerRound: z.number().min(1).max(5),
@@ -105,6 +108,7 @@ export const ConfigSchema = z.object({
       const lengths = new Set(h.wordBank.map((w) => w.length));
       if (lengths.size > 1) ctx.addIssue({ code: 'custom', path: ['wordBank'], message: 'every word in the bank must have the same length' });
       if (h.aiJitterSeconds >= h.aiIntervalSeconds) ctx.addIssue({ code: 'custom', path: ['aiJitterSeconds'], message: 'jitter must be smaller than the interval' });
+      if (h.aiPlanJitter >= h.aiPlanGuesses) ctx.addIssue({ code: 'custom', path: ['aiPlanJitter'], message: 'plan jitter must be smaller than the plan length' });
     }),
   reveal: z.object({ title: z.string(), body: z.string(), buttonLabel: z.string().min(1) }),
   evidence: z.object({
@@ -410,9 +414,33 @@ export class GameService {
     h.ai.lastAt = Date.now();
     this.touch();
     let guess: string | null = null;
-    let source: 'ai' | 'solver' = 'solver';
+    let source: 'ai' | 'solver' | 'script' = 'solver';
     let costUsd: number | null = null;
-    if (opponentLive()) {
+    if (this.config.hack.aiStyle === 'scripted') {
+      // The whole round is written once; later ticks just read the next line.
+      if (!h.ai.plan) {
+        const n = planLength(this.config.hack.aiPlanGuesses, this.config.hack.aiPlanJitter);
+        let plan: string[] | null = null;
+        let planSource: 'ai' | 'generated' = 'generated';
+        if (opponentLive()) {
+          try {
+            const r = await aiOpponentPlan({ model: this.config.hack.aiModel, answer: secret, guesses: n, thinking: this.config.hack.aiThinking, timeoutMs: 120_000 });
+            plan = r.plan;
+            costUsd = r.costUsd;
+            planSource = 'ai';
+          } catch (err) {
+            this.event('ai_error', { where: 'opponent_plan', error: err instanceof Error ? err.message : String(err) });
+          }
+        }
+        plan ??= generatedPlan(this.config.hack.wordBank, secret, n);
+        if (h !== this.state.hack || h.round !== round) return;
+        h.ai.plan = plan;
+        h.ai.planSource = planSource;
+        this.event('hack_ai_plan', { round, guesses: plan.length, asked: n, source: planSource, costUsd, plan });
+      }
+      guess = h.ai.plan[h.ai.guesses.length] ?? null;
+      source = 'script';
+    } else if (opponentLive()) {
       try {
         const r = await aiOpponentGuess({
           model: this.config.hack.aiModel,

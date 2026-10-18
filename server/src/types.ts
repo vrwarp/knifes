@@ -49,7 +49,12 @@ export interface GameConfig {
     lockoutSeconds: number;
     intro: string;
     wordBank: string[];
+    /** Scripted: one model call per round writes the whole guess list. Live: one call per guess. */
+    aiStyle: 'scripted' | 'live';
     aiModel: string;
+    /** Scripted: how many guesses the script should take to reach the key, ± jitter. */
+    aiPlanGuesses: number;
+    aiPlanJitter: number;
     /** Mean seconds between opponent guesses, and the uniform jitter around it. */
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
@@ -125,6 +130,9 @@ export interface HackState {
     solved: boolean;
     /** A guess request is in flight. */
     thinking: boolean;
+    /** Scripted style: the guesses this round will play, written once the round starts. */
+    plan: string[] | null;
+    planSource: 'ai' | 'generated' | null;
     /** When the next opponent guess is due, for the countdown on the phone. */
     nextAt: number | null;
     /** When the opponent last guessed (or the round began); paces the next guess. */
@@ -156,6 +164,7 @@ export type EventType =
   | 'hack_solved'
   | 'hack_round'
   | 'hack_round_lost'
+  | 'hack_ai_plan'
   | 'hack_ai_guess'
   | 'hack_ai_solved'
   | 'evidence_unlock'

@@ -13,7 +13,7 @@ export function initialHack(): HackState {
     roundResult: null,
     lastWord: null,
     lastRound: null,
-    ai: { guesses: [], solved: false, thinking: false, nextAt: null, lastAt: null },
+    ai: { guesses: [], solved: false, thinking: false, plan: null, planSource: null, nextAt: null, lastAt: null },
   };
 }
 

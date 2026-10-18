@@ -83,10 +83,11 @@ test.describe('key race', () => {
     // The adversary's first attempt lands within its interval, letters included.
     const advRow = player.getByRole('img', { name: /^Adversary attempt 1:/ });
     await expect(advRow).toBeVisible({ timeout: 8000 });
-    await expect(advRow).toHaveAttribute('aria-label', /C (placed|misplaced|absent)/);
-    expect(await (await app.gmApi('/api/gm/overview')).json().then((o) => o.state.hack.ai.guesses)).toEqual(['CRANE']);
-    if (key === 'SLATE') {
-      // CRANE missed; Jimmy types the key before the adversary's second attempt.
+    await expect(advRow).toHaveAttribute('aria-label', /[A-Z] (placed|misplaced|absent)/);
+    const first = (await (await app.gmApi('/api/gm/overview')).json()).state.hack.ai.guesses[0] as string | undefined;
+    // With two words the script is [other, key]: the first guess is the miss unless the round already rolled over.
+    if (first === other) {
+      // Jimmy types the key before the adversary's second attempt.
       await typeWord(player, key);
       await player.getByRole('button', { name: /attempt key/i }).click();
       await expect(player.getByText('KEY ACCEPTED')).toBeVisible();

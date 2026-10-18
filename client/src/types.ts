@@ -152,7 +152,7 @@ export interface GameState {
     roundResult: HackRoundResult | null;
     lastWord: string | null;
     lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
-    ai: { guesses: string[]; solved: boolean; thinking: boolean; nextAt: number | null; lastAt: number | null };
+    ai: { guesses: string[]; solved: boolean; thinking: boolean; plan: string[] | null; planSource: 'ai' | 'generated' | null; nextAt: number | null; lastAt: number | null };
   };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
@@ -193,7 +193,10 @@ export interface GameConfig {
     lockoutSeconds: number;
     intro: string;
     wordBank: string[];
+    aiStyle: 'scripted' | 'live';
     aiModel: string;
+    aiPlanGuesses: number;
+    aiPlanJitter: number;
     aiIntervalSeconds: number;
     aiJitterSeconds: number;
     aiSlowdownPerRound: number;

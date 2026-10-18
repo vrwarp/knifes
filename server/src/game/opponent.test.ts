@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { consistentWithHistory, drawWord, opponentDelayMs, opponentPace, solverGuess } from './opponent.js';
+import { consistentWithHistory, drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, solverGuess } from './opponent.js';
+import { scoreGuess } from './wordle.js';
 
 const BANK = ['CRANE', 'SLATE', 'ALPHA', 'PLANT', 'BRICK'];
 
@@ -62,5 +63,36 @@ describe('opponentPace', () => {
   });
   it('caps the interval at ten minutes', () => {
     expect(opponentPace(base, 20).intervalSeconds).toBe(600);
+  });
+});
+
+describe('generatedPlan', () => {
+  const big = ['CRANE', 'SLATE', 'PLANT', 'BRICK', 'STORM', 'QUEST', 'ZEBRA', 'MOUND', 'SHORE', 'SHIRT', 'SHORT', 'STORE', 'SPORE', 'SNORE', 'SWORE', 'SHARE'];
+  it('has the asked length, ends on the answer, never repeats or reveals early', () => {
+    for (const n of [2, 5, 8, 12]) {
+      const p = generatedPlan(big, 'SHORE', n, () => 0.37);
+      expect(p.length).toBe(Math.min(n, big.length));
+      expect(p[p.length - 1]).toBe('SHORE');
+      expect(p.slice(0, -1)).not.toContain('SHORE');
+      expect(new Set(p).size).toBe(p.length);
+    }
+  });
+  it('prefers words that fit the clues so far', () => {
+    const p = generatedPlan(big, 'SHORE', 4, () => 0);
+    // Every word after the first still fits what the previous ones revealed, while such words exist.
+    const rows: { guess: string; scores: ('hit' | 'near' | 'miss')[] }[] = [];
+    for (const g of p.slice(0, -1)) {
+      const consistent = big.filter((w) => w !== 'SHORE' && !p.slice(0, p.indexOf(g)).includes(w) && consistentWithHistory(w, rows));
+      if (consistent.length) expect(consistent).toContain(g);
+      rows.push({ guess: g, scores: scoreGuess(g, 'SHORE').map((x) => x.state) });
+    }
+  });
+});
+
+describe('planLength', () => {
+  it('stays within guesses ± jitter and at least two', () => {
+    expect(planLength(8, 2, () => 0)).toBe(6);
+    expect(planLength(8, 2, () => 1)).toBe(10);
+    expect(planLength(1, 3, () => 0)).toBe(2);
   });
 });
