@@ -78,11 +78,10 @@ test.describe('key race', () => {
     const key = state.hack.secret as string;
     expect(['CRANE', 'SLATE']).toContain(key);
     const other = key === 'CRANE' ? 'SLATE' : 'CRANE';
-    // Jimmy misses once on the on-screen keyboard; his row keeps its letters and the keys take their colours.
+    // Jimmy misses once on the on-screen keyboard; his row keeps its letters.
     await typeWord(player, other);
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByRole('img', { name: new RegExp(`^Attempt 1: ${other[0]} `) })).toBeVisible();
-    await expect(player.getByRole('group', { name: 'Keyboard' }).getByRole('button', { name: new RegExp(`^${other[0]}, `) })).toBeVisible();
     // The adversary's first attempt lands within its interval, letters included.
     const advRow = player.getByRole('img', { name: /^Adversary attempt 1:/ });
     await expect(advRow).toBeVisible({ timeout: 8000 });

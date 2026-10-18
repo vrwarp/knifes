@@ -137,11 +137,9 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .key.filler .filler-right { color: var(--amber); font-variant-numeric: tabular-nums; }
 .key.filler .caret { display: inline-block; width: 6px; height: 11px; margin-left: 4px; background: var(--amber); vertical-align: -1px; animation: blink 1s steps(1) infinite; }
 @media (max-width: 360px) { .key.filler .filler-mid { display: none; } }
-.key.hit { background: var(--tile-hit); border-color: var(--tile-hit-edge); color: #fff; }
-.key.near { background: var(--tile-near); border-color: var(--tile-near-edge); color: #fff; }
-.key.miss { background: var(--tile-miss); border-color: var(--tile-miss-edge); color: var(--tile-miss-ink); }
 .key:disabled { opacity: 0.45; cursor: default; }
-.key:active:not(:disabled) { transform: translateY(1px); filter: brightness(1.2); }
+/* One colour for every key; a press flashes it in the accent, like a console key lighting up. */
+.key:active:not(:disabled), .key.pressed { background: var(--accent); color: #000; border-color: var(--accent); transform: translateY(1px); }
 @media (max-width: 360px) { .key { height: 44px; font-size: 14px; } .key.back { font-size: 22px; } .board.you .tile { font-size: 17px; } }
 .legend { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }

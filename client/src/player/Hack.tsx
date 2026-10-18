@@ -1,28 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { api, errorText } from '../api';
-import type { LetterScore, LetterState, PlayerView } from '../types';
+import type { LetterScore, PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
 
 const STATE_WORD = { hit: 'placed', near: 'misplaced', miss: 'absent' } as const;
 const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
-const RANK: Record<LetterState, number> = { miss: 1, near: 2, hit: 3 };
 
 function describeRow(scored: LetterScore[]): string {
   return scored.map((s) => (s.letter ? `${s.letter} ${STATE_WORD[s.state]}` : STATE_WORD[s.state])).join(', ');
-}
-
-/** Best thing known about each letter from the rows given: placed beats misplaced beats absent. */
-function letterKnowledge(rows: LetterScore[][]): Record<string, LetterState> {
-  const out: Record<string, LetterState> = {};
-  for (const row of rows) {
-    for (const s of row) {
-      if (!s.letter) continue;
-      const cur = out[s.letter];
-      if (!cur || RANK[s.state] > RANK[cur]) out[s.letter] = s.state;
-    }
-  }
-  return out;
 }
 
 export function Hack({ view, setView, refresh }: StageProps) {
@@ -189,7 +175,6 @@ export function Hack({ view, setView, refresh }: StageProps) {
     else aiStatus = { text: 'STANDING BY', cls: 'muted' };
   }
 
-  const known = letterKnowledge(h.rows);
   const last = h.lastRound;
 
   return (
@@ -253,7 +238,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
               <div className="krow" key={r}>
                 {r === 2 ? <div className="key wide spacer" aria-hidden="true" /> : null}
                 {row.split('').map((k) => (
-                  <button type="button" key={k} className={`key ${known[k] ?? ''}`} onClick={() => press(k)} disabled={busy} aria-label={`${k}${known[k] ? `, ${STATE_WORD[known[k]]}` : ''}`}>
+                  <button type="button" key={k} className="key" onClick={() => press(k)} disabled={busy} aria-label={k}>
                     {k}
                   </button>
                 ))}
