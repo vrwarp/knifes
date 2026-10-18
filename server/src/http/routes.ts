@@ -10,18 +10,6 @@ import { HttpError, type GameService } from '../service.js';
 import { STAGE_ORDER, type StageId } from '../types.js';
 import { GM_COOKIE, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
 
-const AUDIO_TYPES: Record<string, string> = {
-  'audio/mpeg': 'mp3',
-  'audio/mp3': 'mp3',
-  'audio/wav': 'wav',
-  'audio/x-wav': 'wav',
-  'audio/wave': 'wav',
-  'audio/mp4': 'm4a',
-  'audio/x-m4a': 'm4a',
-  'audio/aac': 'aac',
-  'audio/ogg': 'ogg',
-  'audio/webm': 'webm',
-};
 const IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -64,13 +52,8 @@ export function playerRouter(service: GameService): Router {
     service.revealContinue();
     res.json(service.view());
   });
-  r.get('/evidence', (_req, res) => res.json(service.evidenceFiles()));
-  r.post('/evidence/unlock', (req, res) => res.json(service.evidenceUnlock(str(req.body?.passcode, 80))));
-  r.get('/audio', (_req, res) => {
-    const id = service.audioPath();
-    if (!id) throw new HttpError(403, 'Intercept sealed');
-    res.sendFile(path.join(env.uploadsDir, path.basename(id)));
-  });
+  r.get('/ledger', (_req, res) => res.json(service.ledgerFiles()));
+  r.post('/ledger/unlock', (req, res) => res.json(service.ledgerUnlock(str(req.body?.passcode, 80))));
   r.get('/archive', (_req, res) => res.json({ messages: service.archiveTranscript() }));
   r.post('/archive', async (req, res) => res.json({ message: await service.archiveSend(str(req.body?.text, 4000)) }));
   r.post('/deduction', async (req, res) => {
@@ -142,6 +125,10 @@ export function gmRouter(service: GameService): Router {
     service.setArchiveLocked(Boolean(req.body?.locked));
     res.json({ ok: true });
   });
+  r.post('/ledger/release', (req, res) => {
+    service.releaseLayer2(req.body?.released === undefined ? true : Boolean(req.body?.released), 'gm');
+    res.json({ ok: true });
+  });
   r.post('/archive/reset', (_req, res) => {
     service.archiveNewSession();
     res.json({ ok: true });
@@ -204,16 +191,15 @@ export function gmRouter(service: GameService): Router {
   });
 
   r.post('/upload', upload.single('file'), (req, res) => {
-    const kind = req.query.kind === 'audio' ? 'audio' : req.query.kind === 'photo' ? 'photo' : null;
-    if (!kind) throw new HttpError(400, 'kind must be audio or photo');
+    if (req.query.kind !== 'photo') throw new HttpError(400, 'kind must be photo');
     const file = req.file;
     if (!file) throw new HttpError(400, 'No file');
-    const ext = (kind === 'audio' ? AUDIO_TYPES : IMAGE_TYPES)[file.mimetype];
-    if (!ext) throw new HttpError(415, `Unsupported ${kind} type ${file.mimetype}`);
-    const id = `${kind}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+    const ext = IMAGE_TYPES[file.mimetype];
+    if (!ext) throw new HttpError(415, `Unsupported photo type ${file.mimetype}`);
+    const id = `photo-${crypto.randomBytes(6).toString('hex')}.${ext}`;
     fs.writeFileSync(path.join(env.uploadsDir, id), file.buffer);
-    service.attachUpload(kind, id);
-    res.json({ id, url: kind === 'photo' ? `/uploads/${id}` : '/api/player/audio' });
+    service.attachUpload('photo', id);
+    res.json({ id, url: `/uploads/${id}` });
   });
   r.delete('/upload/:id', (req, res) => {
     const id = path.basename(String(req.params.id));

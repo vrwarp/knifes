@@ -56,9 +56,9 @@ describe('configuration history', () => {
     edit(svc, (c) => (c.gate.code = 'SECOND22'));
     edit(svc, (c) => (c.gate.code = 'THIRD333'));
     const detail = svc.configVersion(1);
-    expect(detail.diff).toEqual([{ path: 'gate.code', now: '"THIRD333"', then: '"MAGENTA30"' }]);
+    expect(detail.diff).toEqual([{ path: 'gate.code', now: '"THIRD333"', then: '"S30GHOST"' }]);
     svc.restoreConfig(1);
-    expect(svc.config.gate.code).toBe('MAGENTA30');
+    expect(svc.config.gate.code).toBe('S30GHOST');
     expect(svc.config.version).toBe(4);
     expect(db.listConfigVersions()[0]).toMatchObject({ version: 4, source: 'restore', note: 'Restored version 1' });
     svc.restoreConfig(3);
@@ -84,11 +84,11 @@ describe('configuration history', () => {
   it('records uploads and removals as versions', () => {
     const svc = new GameService(db);
     svc.attachUpload('photo', 'photo-a.jpg');
-    svc.attachUpload('audio', 'audio-b.mp3');
+    svc.attachUpload('photo', 'photo-b.jpg');
     svc.detachUpload('photo-a.jpg');
     const notes = db.listConfigVersions().map((v) => v.note);
-    expect(notes.slice(0, 3)).toEqual(['Removed an upload', 'Uploaded the intercept recording', 'Added a field photo']);
-    svc.restoreConfig(3);
+    expect(notes.slice(0, 3)).toEqual(['Removed an upload', 'Added a field photo', 'Added a field photo']);
+    svc.restoreConfig(2);
     expect(svc.config.geo.photos).toEqual(['photo-a.jpg']);
   });
 });
@@ -108,7 +108,7 @@ describe('assistant proposals', () => {
     expect(svc.config.geo.radiusMeters).toBe(DEFAULT_CONFIG.geo.radiusMeters);
     expect(svc.proposals()[0].preview).toEqual([
       { path: 'geo.radiusMeters', now: '200', next: '120' },
-      { path: 'gate.code', now: '"MAGENTA30"', next: '"PHIL2025"' },
+      { path: 'gate.code', now: '"S30GHOST"', next: '"PHIL2025"' },
     ]);
     svc.applyProposal(p.id);
     expect(svc.config.geo.radiusMeters).toBe(120);

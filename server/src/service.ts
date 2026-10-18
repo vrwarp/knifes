@@ -5,16 +5,16 @@ import { draftHint, type HintStrength } from './ai/copilot.js';
 import { SETUP_ALLOWED_TOOLS, SETUP_SYSTEM_PROMPT, createSetupServer, mockSetupReply, type SetupContext } from './ai/setup.js';
 import { gradeDeduction } from './ai/grader.js';
 import { generateReport } from './ai/report.js';
-import { ACCESS_LOG, CAMERA_NOTES, MANIFEST, PENDELTON_NOTE, TOXICOLOGY_REPORT } from './content/evidence.js';
+import { INCIDENT, LAYER_01, LAYER_01_HEADER, LAYER_02, LAYER_02_HEADER } from './content/ledger.js';
 import type { AssistantMessage, ConfigSource, Db, Proposal, ProposalChange } from './db.js';
 import { diffPaths, getPath, preview, setPath } from './game/configPaths.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_CONFIG } from './defaultConfig.js';
+import { DEFAULT_CONFIG, PROP_PLACEHOLDER } from './defaultConfig.js';
 import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
 import { drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
-import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
+import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialLedger, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { aiOpponentGuess, aiOpponentPlan, opponentLive } from './ai/opponent.js';
 import { vocabularyFor } from './content/words.js';
@@ -114,12 +114,13 @@ export const ConfigSchema = z.object({
       if (h.aiPlanJitter >= h.aiPlanGuesses) ctx.addIssue({ code: 'custom', path: ['aiPlanJitter'], message: 'plan jitter must be smaller than the plan length' });
     }),
   reveal: z.object({ title: z.string(), body: z.string(), buttonLabel: z.string().min(1) }),
-  evidence: z.object({
-    gateMode: z.enum(['after_hack', 'passcodes']),
-    passcodes: z.object({ audio: z.string().min(1), toxicology: z.string().min(1) }),
-    audioUploadId: z.string().nullable(),
-    audioNotes: z.string(),
+  ledger: z.object({
+    layer2Passcode: z.string().min(1).max(80),
+    layer2Label: z.string().min(1).max(80),
+    layer2ReleasedText: z.string().max(1000),
+    interrogationWindow: z.string().max(80),
   }),
+  phil: z.object({ challenge: z.string().max(200), response: z.string().max(200), part1: z.string().max(8000), part2: z.string().max(8000) }),
   archive: z.object({ enabled: z.boolean(), maxMessageChars: z.number().int().min(50).max(2000), welcome: z.string() }),
   deduction: z.object({
     prompt: z.string(),
@@ -173,6 +174,10 @@ export class GameService {
       this.config.version = added.length ? db.appendConfig(this.config, 'system', 'Filled in settings added by an update', added) : latest.version;
     }
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
+    // A save from before the two-layer Ledger carries an evidence block instead; the stage it was at decides Layer 01.
+    delete (this.state as unknown as Record<string, unknown>).evidence;
+    this.state.ledger = { ...initialLedger(), ...(this.state.ledger ?? {}) };
+    if (isAtLeast(this.state, 'investigation')) this.state.ledger.layer1 = true;
     this.state.archive.busy = false;
     this.state.hack = normalizeHack(this.state.hack);
     // No request survives a restart; the loop below starts a new one if the race is still on.
@@ -510,43 +515,52 @@ export class GameService {
     this.touch();
   }
 
-  evidenceFiles() {
-    this.requireStage('investigation', 'evidence vault');
-    const u = this.state.evidence.unlocked;
+  /** The Ledger as the phone shows it: Layer 01 once the investigation opens, Layer 02 once released. */
+  ledgerFiles() {
+    this.requireStage('investigation', 'the Ledger');
+    const l = this.state.ledger;
     return {
-      gateMode: this.config.evidence.gateMode,
-      note: PENDELTON_NOTE,
-      logs: u.logs ? { rows: ACCESS_LOG, cameras: CAMERA_NOTES } : null,
-      manifest: u.manifest ? MANIFEST : null,
-      toxicology: u.toxicology ? TOXICOLOGY_REPORT : null,
-      intercept: u.audio ? { notes: this.config.evidence.audioNotes, hasAudio: this.config.evidence.audioUploadId !== null } : null,
-      locked: { logs: !u.logs, manifest: !u.manifest, toxicology: !u.toxicology, audio: !u.audio },
+      interrogationWindow: this.config.ledger.interrogationWindow,
+      layer1: l.layer1 ? { ...LAYER_01_HEADER, entries: LAYER_01 } : null,
+      layer2: l.layer2 ? { ...LAYER_02_HEADER, label: this.config.ledger.layer2Label, incident: INCIDENT, entries: LAYER_02 } : null,
+      layer2Label: this.config.ledger.layer2Label,
+      locked: { layer2: !l.layer2 },
     };
   }
 
-  evidenceUnlock(passcode: string): { unlocked: string[] } {
-    this.requireStage('investigation', 'evidence vault');
-    if (this.config.evidence.gateMode !== 'passcodes') throw new HttpError(400, 'No sealed partitions');
-    const given = normCode(passcode);
-    const unlocked: string[] = [];
-    const u = this.state.evidence.unlocked;
-    if (!u.audio && given === normCode(this.config.evidence.passcodes.audio)) {
-      u.audio = true;
-      unlocked.push('audio');
+  /** Phil reads the passcode out when no GM is at the console. */
+  ledgerUnlock(passcode: string): { released: boolean } {
+    this.requireStage('investigation', 'the Ledger');
+    if (this.state.ledger.layer2) return { released: true };
+    const ok = normCode(passcode) === normCode(this.config.ledger.layer2Passcode);
+    if (!ok) {
+      this.event('ledger_passcode', { passcode: passcode.slice(0, 40), ok: false });
+      this.touch();
+      throw new HttpError(400, 'PASSCODE REJECTED');
     }
-    if (!u.toxicology && given === normCode(this.config.evidence.passcodes.toxicology)) {
-      u.toxicology = true;
-      unlocked.push('toxicology');
-    }
-    this.event('evidence_unlock', { passcode: passcode.slice(0, 40), unlocked });
-    this.touch();
-    if (!unlocked.length) throw new HttpError(400, 'PASSCODE REJECTED');
-    return { unlocked };
+    this.releaseLayer2(true, 'passcode');
+    return { released: true };
   }
 
-  audioPath(): string | null {
-    if (!isAtLeast(this.state, 'investigation') || !this.state.evidence.unlocked.audio) return null;
-    return this.config.evidence.audioUploadId;
+  /** Opens (or, in rehearsal, re-seals) Layer 02. Opening it also pushes the configured transmission to the phone. */
+  releaseLayer2(released: boolean, source: 'gm' | 'passcode' = 'gm'): void {
+    const l = this.state.ledger;
+    if (released === l.layer2) return;
+    if (released) {
+      if (!isAtLeast(this.state, 'investigation')) throw new HttpError(400, 'Layer 02 can only be released once he is investigating');
+      l.layer2 = true;
+      l.layer2ReleasedAt = Date.now();
+      l.layer2Source = source;
+      this.event('ledger_release', { layer: 2, source });
+      this.touch();
+      if (this.config.ledger.layer2ReleasedText.trim()) this.pushHint(this.config.ledger.layer2ReleasedText);
+    } else {
+      l.layer2 = false;
+      l.layer2ReleasedAt = null;
+      l.layer2Source = null;
+      this.event('gm_action', { action: 'ledger_reseal', layer: 2 });
+      this.touch();
+    }
   }
 
   archiveTranscript(): ArchiveMessage[] {
@@ -817,14 +831,18 @@ export class GameService {
     const items: ReadinessItem[] = [];
     const add = (level: ReadinessItem['level'], area: string, text: string) => items.push({ level, area, text });
     if (env.aiMode === 'mock' || !aiLive()) add('warn', 'AI', 'The AI is in mock mode. Link Claude in the Claude link panel so ARCHIVE, hints, grading and this assistant use Opus.');
-    if (c.geo.mode === 'puzzle' && !c.geo.target) add('blocker', 'Location puzzle', 'No target pin is set, so any pin on the map passes. Set the deli location and a radius.');
+    if (c.geo.mode === 'puzzle' && !c.geo.target) add('blocker', 'Location puzzle', 'No target pin is set, so any pin on the map passes. Set the Lake Elizabeth drop point and a radius.');
     if (c.geo.mode !== 'off' && c.geo.photos.length === 0)
-      add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken near the deli.');
+      add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken at the drop point.');
     for (const id of c.geo.photos) if (!fs.existsSync(path.join(env.uploadsDir, id))) add('blocker', 'Location puzzle', `Photo ${id} is listed but its file is missing.`);
-    if (!c.evidence.audioUploadId) add('warn', 'Evidence vault', 'No intercept recording is uploaded. The audio file shows the waveform notes only until the GMs upload theirs.');
-    if (c.evidence.gateMode === 'passcodes') add('info', 'Evidence vault', `Passcode mode is on. Make sure the contacts have ${c.evidence.passcodes.audio} and ${c.evidence.passcodes.toxicology}.`);
     if (c.gate.code === DEFAULT_CONFIG.gate.code) add('info', 'Code gate', `The code is still the default ${c.gate.code}. Fine if that is what Phil will read out.`);
-    for (const s of c.deduction.slots) if (!s.canonical.trim()) add('blocker', 'Deduction', `The ${s.label} blank has no canonical answer.`);
+    if (normCode(c.ledger.layer2Passcode) === normCode(c.gate.code)) add('warn', 'Ledger', 'The Layer 02 passcode is the same as the gate code. Give Phil two different words.');
+    add('info', 'Ledger', `Layer 02 (${c.ledger.layer2Label}) opens from the Release button in the console or with the passcode ${c.ledger.layer2Passcode}. Time it with Phil's second call.`);
+    for (const s of c.deduction.slots) {
+      if (!s.canonical.trim()) add('blocker', 'Deduction', `The ${s.label} blank has no canonical answer.`);
+      else if (s.canonical.trim().startsWith('[GM:') || s.canonical === PROP_PLACEHOLDER)
+        add('blocker', 'Deduction', `The ${s.label} blank is still the placeholder. Decide where the hard copy of the Ledger is hidden at the party and set its canonical answer and accepted phrasings.`);
+    }
     for (const st of ['geo', 'gate', 'hack', 'investigation'] as StageId[]) {
       if (st === 'geo' && c.geo.mode === 'off') continue;
       if (!(c.hints.quick[st] ?? []).some((h) => h.trim())) add('info', 'Hints', `No quick hints for ${st}.`);
@@ -1054,18 +1072,16 @@ export class GameService {
     this.touch();
   }
 
-  attachUpload(kind: 'audio' | 'photo', id: string): void {
+  attachUpload(kind: 'photo', id: string): void {
     const next = structuredClone(this.config);
-    if (kind === 'audio') next.evidence.audioUploadId = id;
-    else if (!next.geo.photos.includes(id)) next.geo.photos.push(id);
+    if (!next.geo.photos.includes(id)) next.geo.photos.push(id);
     this.event('gm_action', { action: 'upload', kind, id });
-    this.commitConfig(next, 'upload', kind === 'audio' ? 'Uploaded the intercept recording' : 'Added a field photo');
+    this.commitConfig(next, 'upload', 'Added a field photo');
   }
 
   /** Takes the file out of the live configuration. The file itself is kept so older versions still restore. */
   detachUpload(id: string): void {
     const next = structuredClone(this.config);
-    if (next.evidence.audioUploadId === id) next.evidence.audioUploadId = null;
     next.geo.photos = next.geo.photos.filter((p) => p !== id);
     this.event('gm_action', { action: 'upload_remove', id });
     this.commitConfig(next, 'upload', 'Removed an upload');

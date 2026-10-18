@@ -212,3 +212,57 @@ describe('prepared scripts and the free pass', () => {
     expect(svc.state.hack.secret).not.toBeNull();
   });
 });
+
+describe('the two-layer Ledger', () => {
+  it('opens Layer 01 with the investigation and keeps Layer 02 sealed', () => {
+    svc.setStage('investigation');
+    expect(svc.state.ledger).toMatchObject({ layer1: true, layer2: false });
+    const files = svc.ledgerFiles();
+    expect(files.layer1?.entries.map((e) => e.name)).toEqual(['Mara Voss', 'Elias Mercer', 'Nina Calder', 'Theo Blackwood', 'Celeste Rowan']);
+    expect(files.layer2).toBeNull();
+    expect(files.locked.layer2).toBe(true);
+    expect(JSON.stringify(svc.view())).not.toContain(svc.config.ledger.layer2Passcode);
+  });
+  it('is not reachable before the investigation', () => {
+    expect(() => svc.ledgerFiles()).toThrow(/not reachable/);
+    expect(() => svc.releaseLayer2(true)).toThrow(/only be released/);
+  });
+  it('a GM release opens Layer 02 and pushes the transmission', () => {
+    svc.setStage('investigation');
+    svc.releaseLayer2(true);
+    expect(svc.state.ledger).toMatchObject({ layer2: true, layer2Source: 'gm' });
+    expect(svc.ledgerFiles().layer2?.incident.timeOfDeath).toBe('2:14 AM');
+    expect(svc.state.hints.at(-1)?.text).toBe(svc.config.ledger.layer2ReleasedText);
+    expect(db.listEvents(20).some((e) => e.type === 'ledger_release')).toBe(true);
+    svc.releaseLayer2(false);
+    expect(svc.state.ledger.layer2).toBe(false);
+    expect(svc.ledgerFiles().layer2).toBeNull();
+  });
+  it('the passcode opens Layer 02 once, ignoring case and dashes, and a wrong one is logged', () => {
+    svc.setStage('investigation');
+    expect(() => svc.ledgerUnlock('nope')).toThrow(/REJECTED/);
+    expect(db.listEvents(20).find((e) => e.type === 'ledger_passcode')?.payload).toMatchObject({ ok: false, passcode: 'nope' });
+    expect(svc.ledgerUnlock('magenta-30')).toEqual({ released: true });
+    expect(svc.state.ledger).toMatchObject({ layer2: true, layer2Source: 'passcode' });
+    expect(svc.ledgerUnlock('anything')).toEqual({ released: true });
+  });
+  it('a reset of the investigation re-seals Layer 02, and a game reset clears it', () => {
+    svc.setStage('investigation');
+    svc.releaseLayer2(true);
+    svc.reset('investigation');
+    expect(svc.state.ledger).toMatchObject({ layer1: true, layer2: false });
+    svc.reset('game');
+    expect(svc.state.ledger).toMatchObject({ layer1: false, layer2: false });
+  });
+  it('a save from before the Ledger existed is migrated by stage', () => {
+    svc.setStage('investigation');
+    const raw = db.getJson<Record<string, unknown>>('state')!;
+    delete raw.ledger;
+    raw.evidence = { unlocked: { logs: true, audio: true, toxicology: true, manifest: true } };
+    db.setJson('state', raw);
+    svc.close();
+    svc = new GameService(db);
+    expect(svc.state.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null, layer2Source: null });
+    expect('evidence' in svc.state).toBe(false);
+  });
+});

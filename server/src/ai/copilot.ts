@@ -14,6 +14,12 @@ const COPILOT_SYSTEM_PROMPT = `You assist the game masters of a live murder-myst
 
 Write one to three sentences. In-world voice: terse intelligence-briefing tone, no emoji, no meta commentary, never mention a game, hints, or game masters. Strength "nudge": point at where to look without naming the answer. Strength "clear": narrow it to one or two possibilities. Strength "strong": state the answer plainly but in character. Return the hint and a one-line rationale for the game master.`;
 
+/** The canonical deduction, read from the configured slots so GM edits carry through. */
+export function solutionLine(config: GameConfig): string {
+  const c = (id: string) => config.deduction.slots.find((s) => s.id === id)?.canonical ?? '?';
+  return `at ${c('time')} ${c('suspect')} killed the Director with ${c('method')} to take ${c('asset')} ${c('motive')}; the hard copy of the Ledger is hidden in ${c('prop')}`;
+}
+
 function describeStage(config: GameConfig, state: GameState): string {
   const lines: string[] = [`Current stage: ${state.stage}`];
   switch (state.stage) {
@@ -21,7 +27,7 @@ function describeStage(config: GameConfig, state: GameState): string {
       lines.push(`Geo puzzle attempts: ${state.geo.attempts}, last distance ${state.geo.lastDistanceM ?? 'n/a'} m, target radius ${config.geo.radiusMeters} m. Reveal text they will see: ${config.geo.revealBody}`);
       break;
     case 'gate':
-      lines.push(`Code gate attempts: ${state.gate.attempts}. The correct code (never reveal verbatim unless strength is strong): ${config.gate.code}. The code comes from a phone call to a friend.`);
+      lines.push(`Code gate attempts: ${state.gate.attempts}. The correct code (never reveal verbatim unless strength is strong): ${config.gate.code}. The code comes from a phone call to Phil, his old code breaker, after he gives the challenge phrase.`);
       break;
     case 'hack':
       lines.push(`Word puzzle: secret is ${currentSecret(config, state)}; guesses so far: ${state.hack.guesses.join(', ') || 'none'}; lockouts: ${state.hack.rounds}.`);
@@ -29,7 +35,7 @@ function describeStage(config: GameConfig, state: GameState): string {
       break;
     case 'investigation':
       lines.push(
-        `Investigation phase. Solution: at 03:45 Agent Vector poisoned the Director's Earl Grey with a neurotoxin to sell the Ledger to a syndicate, and hid Drive 30-ALPHA in the lining of a birthday card envelope on the gift table. Deduction attempts: ${state.deduction.attempts}. Last grading: ${JSON.stringify(state.deduction.lastResult?.slots ?? [])}. ARCHIVE queries so far: ${state.archive.messageCount}.`,
+        `Investigation phase. Solution: ${solutionLine(config)}. Ledger Layer 02 (${config.ledger.layer2Label}) is ${state.ledger.layer2 ? 'released' : 'still sealed, so he only has the agents\u2019 self-reported logs; a hint must not reveal Layer 02 facts'}. Deduction attempts: ${state.deduction.attempts}. Last grading: ${JSON.stringify(state.deduction.lastResult?.slots ?? [])}. ARCHIVE queries so far: ${state.archive.messageCount}.`,
       );
       break;
     default:
