@@ -96,67 +96,76 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .tile.pending { border-color: var(--accent); color: var(--accent); }
 .trow.win .tile { animation: flip 0.5s ease both; animation-delay: calc(var(--i, 0) * 140ms); }
 @keyframes flip { 0% { transform: rotateX(90deg); opacity: 0.3; } 100% { transform: none; opacity: 1; } }
-/* key race: a terminal. Phosphor green on near-black, a full-width board, the adversary as a log. */
-.frame.console { --con: #39ff88; --con-dim: #1f5a3a; --con-ink: #bfffd6; --con-bg: #030604; background: var(--con-bg); border: 1px solid var(--con-dim); border-radius: 3px; padding: 10px 12px 12px; color: var(--con-ink); box-shadow: inset 0 0 48px rgba(57, 255, 136, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.6); position: relative; }
+/* key race: a terminal window in the app's magenta. One monospace size, plain coloured text, no tiles. */
+.frame.console { --term: 14px; background: #06060a; border: 1px solid var(--accent-dim); border-radius: 3px; padding: 10px 12px 12px; color: var(--ink); font-size: var(--term); line-height: 1.5; box-shadow: inset 0 0 40px rgba(255, 43, 214, 0.04); position: relative; }
 .frame.console.danger { border-color: var(--red); }
-.frame.console.success { border-color: var(--con); box-shadow: inset 0 0 48px rgba(57, 255, 136, 0.12); }
-.frame.console > .kicker { color: var(--con); opacity: 0.65; font-size: 10px; letter-spacing: 0.18em; display: flex; align-items: center; gap: 6px; }
-.frame.console > .kicker::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--con); box-shadow: 0 0 8px var(--con); }
-.frame.console > h1 { color: var(--con); font-size: 15px; letter-spacing: 0.14em; margin: 2px 0 6px; text-shadow: 0 0 6px rgba(57, 255, 136, 0.45); }
-.frame.console > h1::before { content: "> "; opacity: 0.6; }
-.con-line { font-size: 12px; line-height: 1.45; color: var(--con-ink); margin: 0 0 6px; }
-.con-line.cmd { color: var(--con); letter-spacing: 0.04em; }
-.con-line.dim { color: var(--dim); }
-.con-line .prompt { color: var(--con); margin-right: 2px; }
-.con-head { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); margin: 8px 0 4px; padding-bottom: 3px; border-bottom: 1px dashed var(--con-dim); }
-.con-head .thinking { animation: blink 1.2s steps(1) infinite; }
-.con-line.sys .tag { color: var(--dim); margin-right: 2px; }
-.con-line.sys .tag.red { color: var(--red); }
-.con-line.round-banner { border: 1px dashed var(--con-dim); padding: 5px 8px; }
-/* The transcript: one monospace line per attempt, both sides interleaved. */
-.transcript { margin-top: 2px; font-size: 14px; line-height: 1.35; }
-.tl { display: flex; align-items: baseline; gap: 10px; padding: 3px 0; white-space: nowrap; border-bottom: 1px solid rgba(31, 90, 58, 0.25); }
-.tl-who { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); min-width: 26px; }
-.tl.you .tl-who { color: var(--con); opacity: 0.8; }
-.tl-n { font-size: 11px; color: var(--dim); min-width: 18px; }
-.tl-word { font-weight: 700; letter-spacing: 0.22em; font-size: 16px; }
-.tl-word .hit { color: #000; background: var(--con); padding: 0 1px; margin-right: 1px; box-shadow: 0 0 6px rgba(57, 255, 136, 0.45); }
-.tl-word .near { color: var(--amber); border-bottom: 2px dashed var(--amber); }
-.tl-word .miss { color: #4b6657; }
-.tl.adv .tl-word { font-weight: 500; color: var(--con-ink); }
-.tl.adv.win .tl-word .hit { background: var(--red); box-shadow: none; }
-.tl-mask { margin-left: auto; color: var(--dim); font-size: 11px; letter-spacing: 0.12em; }
-.tl-word.dim { font-weight: 400; letter-spacing: 0.04em; color: var(--dim); font-size: 13px; }
-.tl.prompt-line { border-bottom: 0; margin-top: 2px; }
-.tl.prompt-line .tl-n { color: var(--con); font-weight: 700; }
+.frame.console.success { border-color: var(--green); }
+.frame.console > .kicker { color: var(--dim); font-size: 11px; letter-spacing: 0; text-transform: none; margin: 0; }
+.frame.console > .kicker::before { content: "● "; color: var(--accent); }
+.frame.console > h1 { color: var(--accent); font-size: var(--term); letter-spacing: 0; text-transform: uppercase; font-weight: 700; margin: 0 0 6px; }
+.frame.console > h1::before { content: "> "; }
+.con-line { margin: 0 0 4px; white-space: pre-wrap; }
+.con-line.cmd { color: var(--ink); display: flex; align-items: center; gap: 0; }
+.con-line .prompt { color: var(--accent); margin-right: 6px; }
+.con-line.sys { color: var(--dim); }
+.con-line.result { margin-top: 10px; }
+.help { margin-left: auto; width: 28px; height: 28px; border: 1px solid var(--line-strong); border-radius: 3px; background: transparent; color: var(--dim); font: inherit; cursor: pointer; }
+/* Two panes, you and the adversary, side by side; each is a plain list of lines. */
+.panes { display: grid; gap: 10px; margin-top: 6px; }
+.panes.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.pane { min-width: 0; border-top: 1px solid var(--line-strong); padding-top: 4px; }
+.pane.adv.won { border-top-color: var(--red); }
+.pane-head { display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; color: var(--dim); font-size: 12px; margin-bottom: 2px; }
+.pane-head .thinking { animation: blink 1.2s steps(1) infinite; }
+.tl { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; white-space: nowrap; }
+.tl-n { color: var(--dim); min-width: 2ch; }
+.tl-n.prompt { color: var(--accent); font-weight: 700; }
+.tl-word { font-weight: 700; letter-spacing: 0.08em; }
+.tl-word .hit { color: var(--green); }
+.tl-word .near { color: var(--amber); }
+.tl-word .miss { color: #5a6a63; }
+.tl-mask { color: #5a6a63; letter-spacing: 0.08em; font-size: 12px; }
+.tl.adv .tl-word { font-weight: 500; }
+.tl.adv.win .tl-word .hit, .tl.adv.win .tl-mask { color: var(--red); }
+.tl-word.dim { font-weight: 400; letter-spacing: 0; color: var(--dim); }
 .tl-word.typing .typed { color: #fff; }
-.tl-word.typing .slot { color: var(--con-dim); }
-.caret { display: inline-block; width: 8px; height: 14px; margin-left: 2px; background: var(--con); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
-.caret.amber { background: var(--amber); width: 7px; height: 12px; }
-.con-line.result { margin-top: 10px; font-size: 13px; letter-spacing: 0.04em; }
+.tl-word.typing .slot { color: var(--line-strong); }
+.caret { display: inline-block; width: 0.6em; height: 1em; margin-left: 2px; background: var(--accent); vertical-align: -0.15em; animation: blink 1s steps(1) infinite; }
+.caret.amber { background: var(--amber); }
+@media (max-width: 360px) { .tl-mask { display: none; } .tl-word { letter-spacing: 0.04em; } }
+/* The briefing: a one-time interstitial over the terminal. */
+.briefing { position: fixed; inset: 0; z-index: 30; background: rgba(5, 5, 7, 0.88); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.briefing-box { width: min(100%, 420px); background: #06060a; border: 1px solid var(--accent); border-radius: 4px; padding: 18px 16px; font-size: 14px; line-height: 1.5; box-shadow: 0 0 40px rgba(255, 43, 214, 0.2); }
+.briefing-box h2 { color: var(--accent); font-size: 15px; letter-spacing: 0; text-transform: uppercase; margin: 2px 0 10px; }
+.briefing-box p { margin: 0 0 10px; }
+.briefing-box .legend-line span { font-weight: 700; margin-right: 2px; }
+.briefing-box .legend-line .hit { color: var(--green); }
+.briefing-box .legend-line .near { color: var(--amber); }
+.briefing-box .legend-line .miss { color: #5a6a63; }
+.briefing-box .btn { margin-top: 6px; }
 .shake { animation: shake 0.4s; }
 /* The keyboard sits at the bottom of the screen like a real one; the frame leaves room for it. */
-.keyboard { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 8px 10px calc(56px + env(safe-area-inset-bottom, 0px)); background: rgba(3, 6, 4, 0.97); border-top: 1px solid #1f5a3a; backdrop-filter: blur(6px); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.keyboard { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 8px 10px calc(56px + env(safe-area-inset-bottom, 0px)); background: rgba(6, 6, 10, 0.97); border-top: 1px solid var(--line); backdrop-filter: blur(6px); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .keyboard-inner { --kgap: 6px; --kw: calc((100% - 9 * var(--kgap)) / 10); display: grid; gap: 6px; max-width: 568px; margin: 0 auto; }
 .frame.hack.with-keyboard { margin-bottom: 0; }
 .shell:has(.frame.hack.with-keyboard) { padding-bottom: calc(284px + env(safe-area-inset-bottom, 0px)); }
 .krow { display: flex; gap: var(--kgap); justify-content: center; }
 /* Every letter key is exactly one tenth of the row, whatever the row holds, so the three rows line up like a real keyboard. */
-.key { flex: 0 0 var(--kw); min-width: 0; height: 48px; padding: 0; font-family: inherit; font-size: 15px; font-weight: 600; color: #bfffd6; background: #061009; border: 1px solid #1f5a3a; border-radius: 3px; cursor: pointer; text-transform: uppercase; }
+.key { flex: 0 0 var(--kw); min-width: 0; height: 48px; padding: 0; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line-strong); border-radius: 3px; cursor: pointer; text-transform: uppercase; }
 .key.wide { flex: 0 0 calc(var(--kw) * 1.5 + var(--kgap) * 0.5); font-size: 11px; letter-spacing: 0.06em; }
 /* Invisible twin of the backspace key at the left of row three, so its letters stay centred and backspace sits flush right, above ENTER. */
 .key.spacer { visibility: hidden; pointer-events: none; }
 .key.back { font-size: 26px; font-weight: 400; line-height: 1; }
-.key.enter { color: var(--green); border-color: #1f5a3a; }
-.key.enter:not(:disabled) { background: var(--green); color: #000; border-color: var(--green); font-weight: 700; box-shadow: 0 0 10px rgba(57, 255, 136, 0.45); }
-.key.filler { flex: 1 1 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: var(--dim); background: #030604; border-style: dashed; cursor: default; overflow: hidden; white-space: nowrap; }
+.key.enter { color: var(--accent); border-color: var(--accent-dim); }
+.key.enter:not(:disabled) { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+.key.filler { flex: 1 1 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: var(--dim); background: #06060a; border-style: dashed; cursor: default; overflow: hidden; white-space: nowrap; }
 .key.filler .filler-mid { color: var(--green); }
 .key.filler .filler-right { color: var(--amber); font-variant-numeric: tabular-nums; }
 .key.filler .caret { display: inline-block; width: 6px; height: 11px; margin-left: 4px; background: var(--amber); vertical-align: -1px; animation: blink 1s steps(1) infinite; }
 @media (max-width: 360px) { .key.filler .filler-mid { display: none; } }
 .key:disabled { opacity: 0.45; cursor: default; }
 /* One colour for every key; a press flashes it in the accent, like a console key lighting up. */
-.key:active:not(:disabled), .key.pressed { background: var(--green); color: #000; border-color: var(--green); transform: translateY(1px); }
+.key:active:not(:disabled), .key.pressed { background: var(--accent); color: #000; border-color: var(--accent); transform: translateY(1px); }
 @media (max-width: 360px) { .key { height: 44px; font-size: 14px; } .key.back { font-size: 22px; } .board.you .tile { font-size: 17px; } }
 .legend { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
@@ -286,7 +295,7 @@ details.section > summary { cursor: pointer; text-transform: uppercase; letter-s
   .md h2, .md h3 { color: #000; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cursor::after, .shake, .trow.win .tile, .con-head .thinking, .caret, .key.filler .caret, .pulse { animation: none !important; }
+  .cursor::after, .shake, .trow.win .tile, .pane-head .thinking, .caret, .key.filler .caret, .pulse { animation: none !important; }
   .key:active:not(:disabled) { transform: none; }
 }
 
