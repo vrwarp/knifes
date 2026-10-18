@@ -24,7 +24,6 @@ export interface PlayerView {
   title: string;
   stage: StageId;
   geoMode: 'puzzle' | 'reveal' | 'off';
-  evidenceGateMode: 'after_hack' | 'passcodes';
   intro: { headline: string; body: string; buttonLabel: string };
   geo: {
     briefing: string;
@@ -71,7 +70,7 @@ export interface PlayerView {
     } | null;
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean }; hasAudio: boolean; audioNotes: string };
+  ledger: { layer1: boolean; layer2: boolean; layer2Label: string; interrogationWindow: string };
   archive: { enabled: boolean; locked: boolean; busy: boolean; welcome: string; maxMessageChars: number; epoch: number };
   deduction: {
     prompt: string;
@@ -91,29 +90,28 @@ export interface PlayerView {
   report: string | null;
 }
 
-export interface AccessLogRow {
-  time: string;
-  badge: string;
+export interface LedgerEntry {
+  id: string;
   name: string;
-  door: string;
-  event: string;
+  position: string;
+  /** Layer 01: the personnel profile. Layer 02: the additional findings. */
+  notes: string;
+  log: { time: string; text: string }[];
+  /** Layer 02 only. */
+  evidence?: string[];
 }
-export interface Dossier {
-  codename: string;
-  badge: string;
-  role: string;
-  clearance: string;
-  relationship: string;
-  publicNotes: string;
+export interface LedgerLayer {
+  title: string;
+  subtitle: string;
+  intro: string;
+  entries: LedgerEntry[];
 }
-export interface EvidenceFiles {
-  gateMode: 'after_hack' | 'passcodes';
-  note: string;
-  logs: { rows: AccessLogRow[]; cameras: string[] } | null;
-  manifest: Dossier[] | null;
-  toxicology: string | null;
-  intercept: { notes: string; hasAudio: boolean } | null;
-  locked: { logs: boolean; manifest: boolean; toxicology: boolean; audio: boolean };
+export interface LedgerFiles {
+  interrogationWindow: string;
+  layer1: LedgerLayer | null;
+  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string } }) | null;
+  layer2Label: string;
+  locked: { layer2: boolean };
 }
 export interface ArchiveMessage {
   id: number;
@@ -162,7 +160,7 @@ export interface GameState {
     ai: { guesses: string[]; guessAt: number[]; solved: boolean; thinking: boolean; plan: string[] | null; planSource: 'ai' | 'generated' | null; nextAt: number | null; lastAt: number | null };
   };
   hackScripts: { key: string; byWord: Record<string, { plan: string[]; source: 'ai' | 'generated'; at: number }>; busy: boolean };
-  evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
+  ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null; layer2Source: 'gm' | 'passcode' | null };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
@@ -213,12 +211,8 @@ export interface GameConfig {
     freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  evidence: {
-    gateMode: 'after_hack' | 'passcodes';
-    passcodes: { audio: string; toxicology: string };
-    audioUploadId: string | null;
-    audioNotes: string;
-  };
+  ledger: { layer2Passcode: string; layer2Label: string; layer2ReleasedText: string; interrogationWindow: string };
+  phil: { challenge: string; response: string; part1: string; part2: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
   deduction: {
     prompt: string;

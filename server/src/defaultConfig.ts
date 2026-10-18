@@ -93,7 +93,7 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     },
   },
   reveal: {
-    title: 'LEDGER DECRYPTED // LAYER 01 RELEASED',
+    title: 'RECOVERY COMPLETE // LEDGER DECRYPTED',
     body: `S30 LEDGER. ACCESS LEVEL: MAGENTA.
 
 Layer 01 is open: the classified personnel records of the five Section 30 agents now held at headquarters, with the activity each of them reported for the night Director Pendelton died.

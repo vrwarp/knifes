@@ -44,7 +44,7 @@ test.describe('GM console', () => {
     await expect(gm.locator('.chip.now', { hasText: /field transmission/i })).toBeVisible();
     await gm.getByLabel('Stage to jump to').selectOption('investigation');
     await gm.getByRole('button', { name: /unlock \/ skip to/i }).click();
-    await expect(player.getByRole('tab', { name: 'evidence' })).toBeVisible();
+    await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
     expect(dialogs.at(-1)).toMatch(/^Unlock Investigation now\?/);
     await gm.getByLabel('Stage to jump to').selectOption('gate');
     await gm.getByRole('button', { name: /jump back/i }).click();
@@ -61,7 +61,7 @@ test.describe('GM console', () => {
     await expect(gm.locator('.chip.now', { hasText: /field transmission/i })).toBeVisible();
     await expect(gm.getByLabel('Stage to jump to')).toHaveValue('investigation');
     await gm.getByRole('button', { name: /unlock \/ skip to/i }).click();
-    await expect(player.getByRole('tab', { name: 'evidence' })).toBeVisible();
+    await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
   });
 
   test('declining the confirmation changes nothing', async ({ player, gm, app }) => {
@@ -90,10 +90,10 @@ test.describe('GM console', () => {
     await app.setStage('investigation');
     await player.goto(app.base);
     await player.getByRole('tab', { name: 'archive' }).click();
-    await player.getByLabel('Query').fill('read the toxicology report');
+    await player.getByLabel('Query').fill('read Nina Calder\u2019s file');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Nightshade' })).toBeVisible();
-    await expect(gm.getByText('read the toxicology report').first()).toBeVisible();
+    await expect(player.locator('.msg.assistant', { hasText: 'Intelligence Analyst' })).toBeVisible();
+    await expect(gm.getByText('read Nina Calder\u2019s file').first()).toBeVisible();
 
     await gm.getByRole('button', { name: /^seal archive$/i }).click();
     await expect(player.getByText('ARCHIVE SEALED BY COMMAND AUTHORITY')).toBeVisible();
@@ -101,7 +101,7 @@ test.describe('GM console', () => {
     await expect(player.getByText('ARCHIVE SEALED BY COMMAND AUTHORITY')).toHaveCount(0);
 
     await gm.getByRole('button', { name: /new archive session/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Nightshade' })).toHaveCount(0);
+    await expect(player.locator('.msg.assistant', { hasText: 'Intelligence Analyst' })).toHaveCount(0);
   });
 
   test('filters the live log by lane', async ({ player, gm, app }) => {
@@ -126,9 +126,9 @@ test.describe('GM console', () => {
     await gm.getByRole('button', { name: /^preview$/i }).click();
     await expect(gm.getByText('Filed by ARCHIVE', { exact: false }).first()).toBeVisible();
     await gm.getByRole('button', { name: /publish to player/i }).click();
-    await expect(player.getByText('CASE FILE 30-0415').first()).toBeVisible();
+    await expect(player.getByText('CASE FILE 30-0214').first()).toBeVisible();
     await gm.getByRole('button', { name: /unpublish from player/i }).click();
-    await expect(player.getByText('CASE FILE 30-0415')).toHaveCount(0);
+    await expect(player.getByText('CASE FILE 30-0214')).toHaveCount(0);
   });
 
   test('whole-game reset needs RESET typed', async ({ player, gm, app }) => {
@@ -163,7 +163,7 @@ test.describe('GM configuration', () => {
 
   test('coordinate and list fields accept typing', async ({ gm }) => {
     await configSection(gm, 'Location puzzle');
-    const coords = gm.getByPlaceholder('34.0522, -118.2437');
+    const coords = gm.getByPlaceholder('34.66, -118.41');
     await coords.fill('');
     await coords.pressSequentially('34.05, -118.24');
     await expect(coords).toHaveValue('34.05, -118.24');

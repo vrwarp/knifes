@@ -8,7 +8,7 @@ const STARTERS = [
   'What is still missing before the party?',
   'Look at the field photos. Is the location puzzle too easy?',
   'Give me three red herrings that fit the case files.',
-  'Draft the drop-point card Jimmy finds at the deli.',
+  'Draft the note Jimmy finds at the Lake Elizabeth drop.',
 ];
 
 /** Opus helping the GMs get the game ready. It proposes edits; a GM applies them, and each becomes a new config version. */

@@ -23,8 +23,8 @@ const STAGE_LABEL: Record<StageId, string> = {
   intro: 'Recovery chain // link 1',
   geo: 'Recovery chain // field transmission',
   gate: 'Recovery chain // secure line',
-  hack: 'Recovery chain // mirror partition',
-  reveal: 'Incident record',
+  hack: 'Recovery chain // ledger key',
+  reveal: 'Ledger decrypted',
   investigation: 'Investigation',
   solved: 'Case closed',
 };

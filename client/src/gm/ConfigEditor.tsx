@@ -98,21 +98,15 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
       img.onerror = () => resolve(file);
       img.src = url;
     });
-  const upload = async (kind: 'audio' | 'photo', file: File) => {
+  const upload = async (kind: 'photo', file: File) => {
     const fd = new FormData();
-    if (kind === 'photo') {
-      const blob = await shrink(file);
-      fd.append('file', blob, blob === file ? file.name : file.name.replace(/\.[^.]+$/, '') + '.jpg');
-    } else fd.append('file', file);
+    const blob = await shrink(file);
+    fd.append('file', blob, blob === file ? file.name : file.name.replace(/\.[^.]+$/, '') + '.jpg');
     setBusy(true);
     setMsg(null);
     try {
       const r = await api<{ id: string }>(`/api/gm/upload?kind=${kind}`, { method: 'POST', body: fd });
-      setDraft((d) =>
-        kind === 'photo'
-          ? { ...d, geo: { ...d.geo, photos: d.geo.photos.includes(r.id) ? d.geo.photos : [...d.geo.photos, r.id] } }
-          : { ...d, evidence: { ...d.evidence, audioUploadId: r.id } },
-      );
+      setDraft((d) => ({ ...d, geo: { ...d.geo, photos: d.geo.photos.includes(r.id) ? d.geo.photos : [...d.geo.photos, r.id] } }));
       setMsg(`Uploaded ${r.id}`);
     } catch (e) {
       setMsg(errorText(e));
@@ -125,11 +119,7 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
     setBusy(true);
     try {
       await api(`/api/gm/upload/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      setDraft((d) => ({
-        ...d,
-        geo: { ...d.geo, photos: d.geo.photos.filter((p) => p !== id) },
-        evidence: { ...d.evidence, audioUploadId: d.evidence.audioUploadId === id ? null : d.evidence.audioUploadId },
-      }));
+      setDraft((d) => ({ ...d, geo: { ...d.geo, photos: d.geo.photos.filter((p) => p !== id) } }));
     } catch (e) {
       setMsg(errorText(e));
     } finally {
@@ -245,7 +235,7 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
           <span>Target coordinates as "lat, lng" (blank = any pin passes; copy from Google Maps)</span>
           <input
             value={raw['geo.target'] ?? (target ? `${target.lat}, ${target.lng}` : '')}
-            placeholder="34.0522, -118.2437"
+            placeholder="34.66, -118.41"
             onChange={(e) => {
               const v = e.target.value;
               setRaw((r) => ({ ...r, 'geo.target': v }));
@@ -315,12 +305,20 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         {T(['geo', 'revealTitle'], 'Reveal title')}
         {A(['geo', 'revealBody'], 'Reveal body (tell him where to go)', 4)}
       </Section>
-      <Section title="Code gate (Phil's code)">
+      <Section title="Code gate (Phil's first call)">
         {A(['gate', 'prompt'], 'Prompt', 3)}
         {T(['gate', 'code'], 'Unlock code (letters/digits, case and dashes ignored)')}
         {T(['gate', 'successText'], 'Success text')}
       </Section>
-      <Section title="Word puzzle (mirror partition)">
+      <Section title="Phil's calls (shown in the console for whoever plays him)">
+        <div className="two">
+          {T(['phil', 'challenge'], 'Challenge phrase Jimmy says')}
+          {T(['phil', 'response'], "Phil's response")}
+        </div>
+        {A(['phil', 'part1'], 'Call 1 script (gives the gate code)', 10)}
+        {A(['phil', 'part2'], 'Call 2 script (releases Layer 02)', 8)}
+      </Section>
+      <Section title="Word puzzle (Ledger key)">
         {S(['hack', 'mode'], 'Mode', [
           ['race', 'Race: Jimmy against an AI opponent, a fresh word from the bank each round'],
           ['solo', 'Solo: one fixed key, classic Wordle'],
@@ -378,37 +376,19 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
           </>
         )}
       </Section>
-      <Section title="Incident reveal (after the puzzle)">
+      <Section title="Ledger decrypted (after the puzzle)">
         {T(['reveal', 'title'], 'Title')}
         {A(['reveal', 'body'], 'Body', 10)}
         {T(['reveal', 'buttonLabel'], 'Button label')}
       </Section>
-      <Section title="Evidence vault">
-        {S(['evidence', 'gateMode'], 'Unlock mode', [
-          ['after_hack', 'Everything opens after the word puzzle'],
-          ['passcodes', 'Audio and toxicology need passcodes (hotline calls)'],
-        ])}
+      <Section title="Ledger Layer 02 (Phil's second call)">
+        <p className="small muted">Layer 01 opens with the investigation. Layer 02 opens from the Release button in the console, or when Jimmy types the passcode Phil reads him.</p>
         <div className="two">
-          {T(['evidence', 'passcodes', 'audio'], 'Audio intercept passcode')}
-          {T(['evidence', 'passcodes', 'toxicology'], 'Toxicology passcode')}
+          {T(['ledger', 'layer2Passcode'], 'Layer 02 passcode (case and dashes ignored)')}
+          {T(['ledger', 'layer2Label'], 'Section name on his phone')}
         </div>
-        <div className="field">
-          <span className="tiny">Audio intercept file</span>
-          <div className="row">
-            {draft.evidence.audioUploadId ? (
-              <>
-                <span className="small green">{draft.evidence.audioUploadId}</span>
-                <button className="btn small danger" onClick={() => void removeUpload(draft.evidence.audioUploadId!)} disabled={busy}>
-                  remove
-                </button>
-              </>
-            ) : (
-              <span className="small muted">none uploaded</span>
-            )}
-            <input type="file" accept="audio/*" style={{ width: 'auto' }} disabled={busy} onChange={(e) => e.target.files?.[0] && void upload('audio', e.target.files[0])} />
-          </div>
-        </div>
-        {A(['evidence', 'audioNotes'], 'Waveform analysis notes', 4)}
+        {T(['ledger', 'interrogationWindow'], 'Interrogation window shown on the Ledger')}
+        {A(['ledger', 'layer2ReleasedText'], 'Transmission pushed to his phone when Layer 02 opens (blank for none)', 4)}
       </Section>
       <Section title="ARCHIVE terminal">
         {B(['archive', 'enabled'], 'ARCHIVE enabled')}

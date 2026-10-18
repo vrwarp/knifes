@@ -7,8 +7,8 @@ export const STAGE_NAME: Record<StageId, string> = {
   intro: 'Link 1 · intro',
   geo: 'Field transmission',
   gate: 'Secure line',
-  hack: 'Mirror partition',
-  reveal: 'Incident record',
+  hack: 'Ledger key',
+  reveal: 'Ledger decrypted',
   investigation: 'Investigation',
   solved: 'Case closed',
 };
@@ -55,8 +55,8 @@ function useAction() {
 const RESET_CONSEQUENCE: Partial<Record<StageId, string>> = {
   geo: 'clears his map attempts and shows the field transmission again',
   gate: 'clears his code attempts and shows the secure line again',
-  hack: 'clears his guesses and any lockout, and sends his phone back to the mirror partition',
-  investigation: 're-seals the evidence per the unlock mode and clears deduction attempts; the ARCHIVE transcript is kept',
+  hack: 'clears his guesses and any lockout, and sends his phone back to the key race',
+  investigation: 're-seals Ledger Layer 02 and clears deduction attempts; the ARCHIVE transcript is kept',
 };
 
 export function ProgressPanel({ state, config, stages }: { state: GameState; config: GameConfig; stages: StageId[] }) {
@@ -183,6 +183,68 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
   );
 }
 
+/** Phil's two calls for whoever plays him, with the codes in large type, and the Layer 02 release that goes with the second call. */
+export function LedgerPanel({ state, config }: { state: GameState; config: GameConfig }) {
+  const { busy, msg, run } = useAction();
+  const [part, setPart] = useState<1 | 2>(state.ledger.layer2 ? 2 : 1);
+  const canRelease = ['investigation', 'solved'].includes(state.stage);
+  const script = part === 1 ? config.phil.part1 : config.phil.part2;
+  return (
+    <div className="panel" data-testid="ledger-panel">
+      <h2>Phil &amp; the Ledger</h2>
+      <dl className="kv">
+        <dt>Challenge</dt>
+        <dd>
+          <b>{config.phil.challenge}</b> <span className="muted">→</span> <b>{config.phil.response}</b>
+        </dd>
+        <dt>Call 1 code</dt>
+        <dd>
+          <b className="amber" style={{ fontSize: 20, letterSpacing: '0.08em' }}>{config.gate.code}</b> <span className="tiny muted">the recovery authorization code he types at the gate</span>
+        </dd>
+        <dt>Call 2 code</dt>
+        <dd>
+          <b className="amber" style={{ fontSize: 20, letterSpacing: '0.08em' }}>{config.ledger.layer2Passcode}</b> <span className="tiny muted">opens Layer 02 if nobody presses Release</span>
+        </dd>
+        <dt>Layer 02</dt>
+        <dd>
+          {state.ledger.layer2 ? (
+            <span className="green">RELEASED{state.ledger.layer2Source === 'passcode' ? ' by passcode' : ''}{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</span>
+          ) : (
+            <span>sealed{canRelease ? '' : ' · opens once he is investigating'}</span>
+          )}
+        </dd>
+      </dl>
+      <div className="row" style={{ marginTop: 8 }}>
+        <button
+          className={`btn small ${state.ledger.layer2 ? 'ghost' : 'primary'}`}
+          disabled={busy || (!state.ledger.layer2 && !canRelease)}
+          onClick={() => {
+            if (!state.ledger.layer2 && !window.confirm(`Release Layer 02 (${config.ledger.layer2Label}) to his phone now? Do this during Phil's second call.`)) return;
+            if (state.ledger.layer2 && !window.confirm('Re-seal Layer 02? Only for rehearsal: his phone loses the section again.')) return;
+            void run(() => api('/api/gm/ledger/release', { json: { released: !state.ledger.layer2 } }), state.ledger.layer2 ? 'Layer 02 re-sealed' : 'Layer 02 released');
+          }}
+        >
+          {state.ledger.layer2 ? 'Re-seal Layer 02' : 'Release Layer 02'}
+        </button>
+        <span className="row" role="group" aria-label="Phil script part" style={{ gap: 4 }}>
+          {([1, 2] as const).map((n) => (
+            <button key={n} className={`btn small ${part === n ? '' : 'ghost'}`} onClick={() => setPart(n)} aria-pressed={part === n}>
+              Call {n}
+            </button>
+          ))}
+        </span>
+        {msg ? <span className="small amber">{msg}</span> : null}
+      </div>
+      <details className="section" style={{ marginTop: 10, marginBottom: 0 }} open>
+        <summary>Phil's script · call {part}</summary>
+        <pre className="typed small" style={{ whiteSpace: 'pre-wrap', maxHeight: 320, overflowY: 'auto' }}>
+          {script}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
 export function PlayerStatus({ state, config, events }: { state: GameState; config: GameConfig; events: GameEvent[] }) {
   const now = useNow(1000);
   const r = state.deduction.lastResult;
@@ -257,11 +319,9 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
             </span>
           </div>
         </dd>
-        <dt>Evidence</dt>
+        <dt>Ledger</dt>
         <dd>
-          {Object.entries(state.evidence.unlocked)
-            .map(([k, v]) => `${k}:${v ? 'open' : 'sealed'}`)
-            .join(' ')}
+          Layer 01 {state.ledger.layer1 ? 'open' : 'sealed'} · Layer 02 {state.ledger.layer2 ? <b className="green">released{state.ledger.layer2Source === 'passcode' ? ' by passcode' : ''}{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</b> : 'sealed'}
         </dd>
         <dt>ARCHIVE</dt>
         <dd>
@@ -439,10 +499,10 @@ function describe(e: GameEvent): { text: string; cls: string } {
       return { text: `race lost (${s('reason') === 'ai' ? 'adversary took' : 'out of attempts on'} ${s('word')}), next key issued`, cls: 'fail' };
     case 'hack_ai_solved':
       return { text: `adversary solved in ${s('attempts')}, Jimmy was at ${s('playerAttempts')}`, cls: 'fail' };
-    case 'evidence_unlock': {
-      const u = Array.isArray(p.unlocked) ? (p.unlocked as string[]) : [];
-      return { text: u.length ? `unlocked ${u.join(', ')}` : `passcode "${s('passcode')}" rejected`, cls: u.length ? 'ok' : 'fail' };
-    }
+    case 'ledger_release':
+      return { text: `Ledger Layer ${s('layer')} released (${s('source') === 'passcode' ? 'passcode' : 'GM'})`, cls: 'ok' };
+    case 'ledger_passcode':
+      return { text: `Layer 02 passcode "${s('passcode')}" rejected`, cls: 'fail' };
     case 'archive_user':
       return { text: `> ${s('text')}`, cls: '' };
     case 'archive_assistant':

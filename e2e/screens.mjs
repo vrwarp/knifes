@@ -55,6 +55,12 @@ const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
 try {
+  {
+    const c = await (await gmApi('/api/gm/overview')).json();
+    const cfg = c.config;
+    Object.assign(cfg.deduction.slots.find((s) => s.id === 'prop'), { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle'] });
+    await gmApi('/api/gm/config', { method: 'PUT', json: cfg });
+  }
   // Two placeholder "field photos" drawn on a canvas, uploaded like a GM would.
   const art = await browser.newPage({ viewport: { width: 800, height: 600 } });
   for (const [name, hue] of [['a', 200], ['b', 30]]) {
@@ -63,7 +69,7 @@ try {
       x.fillStyle='hsl(${hue},30%,70%)';x.fillRect(0,0,800,600);
       x.fillStyle='hsl(${hue},20%,35%)';x.fillRect(0,380,800,220);
       for(let i=0;i<9;i++){x.fillStyle='hsl(${hue},25%,'+(45+i*3)+'%)';x.fillRect(40+i*85,160+(i%3)*30,70,220-(i%3)*30);}
-      x.fillStyle='#eee';x.fillRect(300,300,200,60);x.fillStyle='#222';x.font='bold 28px sans-serif';x.fillText('DELI',365,342);
+      x.fillStyle='#eee';x.fillRect(300,300,200,60);x.fillStyle='#222';x.font='bold 28px sans-serif';x.fillText('LAKE',365,342);
     })();</script>`);
     await art.waitForFunction(() => { const c = document.getElementById('c'); return c && c.getContext('2d').getImageData(1, 1, 1, 1).data[3] === 255; });
     await settle(200);
@@ -104,10 +110,9 @@ try {
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('KEY REJECTED').waitFor();
   await shot(player, 'p05-gate-rejected');
-  await clearWord(player);
-  await typeWord(player, 'MAGENTA30');
+  await player.getByLabel('Recovery key').fill('S30GHOST');
   await player.getByRole('button', { name: /submit key/i }).click();
-  await player.getByText('Recovery key accepted').waitFor();
+  await player.getByText('Recovery authorization accepted').waitFor();
   await shot(player, 'p05b-gate-accepted');
 
   await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
@@ -143,33 +148,41 @@ try {
   await settle(900);
   await shot(player, 'p08b-hack-solved');
 
-  await player.locator('h1', { hasText: 'INCIDENT RECORD' }).waitFor({ timeout: 10_000 });
+  await player.locator('h1', { hasText: 'LEDGER DECRYPTED' }).waitFor({ timeout: 10_000 });
   await finishTyping();
   await shot(player, 'p09-reveal');
-  await player.getByRole('button', { name: /return to base/i }).click();
+  await player.getByRole('button', { name: /return to headquarters/i }).click();
 
-  await player.getByRole('tab', { name: 'evidence' }).waitFor();
-  await player.locator('.file header', { hasText: '00_Directors' }).waitFor();
-  await shot(player, 'p10-evidence-vault');
-  await player.locator('.file header', { hasText: '00_Directors' }).click();
-  await player.locator('.file header', { hasText: '01_Vault' }).click();
-  await player.getByText('03:42').first().waitFor();
-  await shot(player, 'p10b-evidence-logs');
-  await player.locator('.file header', { hasText: '01_Vault' }).click();
-  await player.locator('.file header', { hasText: '03_Toxicology' }).click();
-  await player.getByText('PRELIMINARY TOXICOLOGY').waitFor();
-  await shot(player, 'p11-evidence-toxicology');
+  await player.getByRole('tab', { name: 'ledger' }).waitFor();
+  await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
+  await shot(player, 'p10-ledger-layer1');
+  await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
+  await player.getByText('Working in the archives.').waitFor();
+  await shot(player, 'p10b-ledger-nina');
+  await player.locator('.file header', { hasText: 'LAYER 02' }).click();
+  await player.getByLabel('Passcode').waitFor();
+  await shot(player, 'p11-ledger-layer2-sealed');
 
   await player.getByRole('tab', { name: 'archive' }).click();
-  for (const q of ['who was in the office at 03:45', 'read the toxicology report']) {
+  for (const q of ['where was everyone at 2:14', 'read the classified evidence']) {
     await player.getByLabel('Query').fill(q);
     await player.getByRole('button', { name: /send/i }).click();
     await settle(600);
   }
-  await player.locator('.msg.assistant', { hasText: 'Nightshade' }).waitFor({ timeout: 10_000 });
+  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).waitFor({ timeout: 10_000 });
   await shot(player, 'p12-archive');
 
-  await gmApi('/api/gm/hint', { method: 'POST', json: { text: 'Transmission note: the toxin takes thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.' } });
+  await gmApi('/api/gm/ledger/release', { method: 'POST', json: { released: true } });
+  await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
+  await shot(player, 'p12b-layer2-transmission');
+  await player.getByRole('button', { name: /acknowledge/i }).click();
+  await player.getByRole('tab', { name: 'ledger' }).click();
+  await player.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
+  await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
+  await player.getByText('Silver letter opener').waitFor();
+  await shot(player, 'p12c-ledger-layer2');
+
+  await gmApi('/api/gm/hint', { method: 'POST', json: { text: 'Transmission note: every agent told you where they were. The Ledger now holds what the cameras recorded. Hold the two against each other.' } });
   await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
   await shot(player, 'p13-hint-overlay');
   await player.getByRole('button', { name: /acknowledge/i }).click();
@@ -179,12 +192,12 @@ try {
 
   await player.getByRole('tab', { name: 'deduction' }).click();
   const fill = async (answers) => { for (const [label, value] of Object.entries(answers)) await player.getByLabel(label, { exact: true }).fill(value); };
-  await fill({ TIME: '3:45 am', SUSPECT: 'Agent Cipher', METHOD: 'poisoned tea', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
+  await fill({ TIME: '2:14 am', SUSPECT: 'Mara Voss', METHOD: 'the letter opener', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
   await shot(player, 'p15-deduction-filled');
   await player.getByRole('button', { name: /submit deduction/i }).click();
   await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
   await shot(player, 'p16-deduction-rejected');
-  await fill({ SUSPECT: 'Agent Vector' });
+  await fill({ SUSPECT: 'Nina Calder' });
   await player.getByRole('button', { name: /submit deduction/i }).click();
   await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
   await finishTyping();
@@ -199,7 +212,7 @@ try {
   await shot(player, 'p17b-solved-final');
   await gmApi('/api/gm/report/generate', { method: 'POST' });
   await gmApi('/api/gm/report/publish', { method: 'POST', json: { published: true } });
-  await player.getByText('CASE FILE 30-0415').first().waitFor({ timeout: 10_000 });
+  await player.getByText('CASE FILE 30-0214').first().waitFor({ timeout: 10_000 });
   await finishTyping();
   await shot(player, 'p18-solved-report');
 

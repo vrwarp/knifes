@@ -206,7 +206,23 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .tabs button { flex: 1; background: transparent; color: var(--dim); border: 1px solid var(--line-strong); padding: 10px 4px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.1em; font-size: 12px; cursor: pointer; min-height: 44px; }
 .tabs button.active { color: var(--accent); border-color: var(--accent); font-weight: 700; box-shadow: inset 0 -3px 0 var(--accent); }
 
-/* evidence */
+/* ledger */
+.tabs button { position: relative; }
+.tabs button.fresh { color: var(--amber); border-color: var(--amber); }
+.fresh-dot { position: absolute; top: 6px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.ledger-head { font-size: 12px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 6px; overflow-wrap: anywhere; }
+.ledger-head b { color: var(--accent); }
+.agent { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--panel-2); }
+.agent > header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px; cursor: pointer; }
+.agent > header .name { font-weight: 700; color: var(--accent); letter-spacing: 0.04em; }
+.agent > header .pos { color: var(--dim); font-size: 12px; text-align: right; }
+.agent > .body { padding: 0 12px 12px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }
+.agent h4 { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); margin: 10px 0 4px; }
+.agent .notes { color: var(--ink); }
+.agent ul.items { padding-left: 18px; margin: 0; }
+.agent.l2 > header .name { color: var(--amber); }
+.incident { border: 1px solid var(--amber); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+.incident b { color: var(--amber); }
 .file { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--panel-2); }
 .file > header { position: sticky; top: 0; z-index: 1; background: var(--panel-2); display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; gap: 8px; border-radius: 6px; }
 .file > header .name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; letter-spacing: 0.04em; }

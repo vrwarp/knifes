@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, clearWord, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
+import { RIGHT_ANSWERS, WRONG_SUSPECT, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 test.describe('player journey', () => {
   test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
@@ -29,10 +29,9 @@ test.describe('player journey', () => {
     await typeWord(player, 'WRONGKEY');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.getByText('KEY REJECTED')).toBeVisible();
-    await clearWord(player);
-    await typeWord(player, 'magenta30');
+    await player.getByLabel('Recovery key').fill('s30-ghost');
     await player.getByRole('button', { name: /submit key/i }).click();
-    await expect(player.getByText('Recovery key accepted')).toBeVisible();
+    await expect(player.getByText('Recovery authorization accepted')).toBeVisible();
 
     // Word puzzle.
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
@@ -44,19 +43,20 @@ test.describe('player journey', () => {
     await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
 
     // Reveal.
-    await expect(player.locator('h1', { hasText: 'INCIDENT RECORD' })).toBeVisible();
+    await expect(player.locator('h1', { hasText: 'LEDGER DECRYPTED' })).toBeVisible();
     await finishTyping(player);
     await noHorizontalScroll(player);
-    await player.getByRole('button', { name: /return to base/i }).click();
+    await player.getByRole('button', { name: /return to headquarters/i }).click();
 
     // Investigation.
-    await expect(player.getByRole('tab', { name: 'evidence' })).toBeVisible();
+    await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
+    await expect(player.getByText('Mara Voss')).toBeVisible();
     await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, SUSPECT: 'Agent Cipher' });
+    await fillDeduction(player, { ...RIGHT_ANSWERS, SUSPECT: WRONG_SUSPECT });
     await player.getByRole('button', { name: /submit deduction/i }).click();
     await expect(player.getByText(/DEDUCTION REJECTED/)).toBeVisible({ timeout: 15_000 });
     await expect(player.getByText(/FIELDS VERIFIED/), 'pass/fail mode never says which field is wrong').toHaveCount(0);
-    await fillDeduction(player, { SUSPECT: 'Agent Vector' });
+    await fillDeduction(player, { SUSPECT: 'Nina Calder' });
     await player.getByRole('button', { name: /submit deduction/i }).click();
     await expect(player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first()).toBeVisible({ timeout: 15_000 });
     await finishBeats(player);
@@ -65,7 +65,7 @@ test.describe('player journey', () => {
     // Case file published by the GM.
     await app.gmApi('/api/gm/report/generate', { method: 'POST' });
     await app.gmApi('/api/gm/report/publish', { json: { published: true } });
-    await expect(player.getByText('CASE FILE 30-0415').first()).toBeVisible();
+    await expect(player.getByText('CASE FILE 30-0214').first()).toBeVisible();
     await noHorizontalScroll(player);
   });
 
@@ -86,7 +86,7 @@ test.describe('player journey', () => {
     for (const stage of ['intro', 'gate', 'hack', 'investigation']) {
       await app.setStage(stage);
       const text = await (await request.get(`${app.base}/api/player/state`)).text();
-      for (const secret of ['MAGENTA30', 'CANIS30', '"ALPHA"', 'Agent Vector', 'canonical', 'guidance']) {
+      for (const secret of ['S30GHOST', 'MAGENTA30', '"ALPHA"', 'Nina Calder', 'letter opener', 'Section Thirty', 'canonical', 'guidance']) {
         expect(text, `${secret} leaked at ${stage}`).not.toContain(secret);
       }
       if (stage === 'hack') {

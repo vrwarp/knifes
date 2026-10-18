@@ -10,8 +10,7 @@ test.describe('code gate', () => {
     await expect(player.getByText('KEY REJECTED')).toBeVisible();
     await player.waitForTimeout(1500);
     await expect(player.getByText('KEY REJECTED'), 'the rejection does not vanish on its own').toBeVisible();
-    await clearWord(player);
-    await typeWord(player, 'magenta30');
+    await key.fill('S30-ghost');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
   });

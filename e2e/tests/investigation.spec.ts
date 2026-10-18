@@ -1,67 +1,106 @@
-import { RIGHT_ANSWERS, expect, fillDeduction, noHorizontalScroll, test, clearWord, typeWord } from './fixtures';
+import { RIGHT_ANSWERS, WRONG_SUSPECT, acceptDialogs, expect, fillDeduction, noHorizontalScroll, releaseLayer2, test } from './fixtures';
 
 test.describe('investigation', () => {
   test.beforeEach(async ({ player, app }) => {
     await app.setStage('investigation');
     await player.goto(app.base);
-    await expect(player.getByRole('tab', { name: 'evidence' })).toBeVisible();
+    await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
   });
 
-  test('every evidence file opens and the access log fits the phone', async ({ player }) => {
-    const header = (name: string) => player.locator('.file header', { hasText: name });
-    const file = (name: string) => player.locator('.file', { has: player.locator('header', { hasText: name }) });
-    await expect(player.getByText('To whoever the courier reaches first,')).toBeVisible();
-    await header('00_Directors').click();
-    await header('01_Vault').click();
-    await expect(player.getByText('Rows from 03:30 to 04:00 are marked.')).toBeVisible();
-    await expect(player.getByText(/one card envelope/)).toBeVisible();
+  test('Layer 01 lists the five agents and Layer 02 stays sealed', async ({ player }) => {
+    const section = (name: string) => player.locator('.file header', { hasText: name });
+    await expect(player.getByText(/establish every agent/i)).toBeVisible();
+    await expect(player.getByText('11:00 PM to 4:00 AM')).toBeVisible();
+    for (const name of ['Mara Voss', 'Elias Mercer', 'Nina Calder', 'Theo Blackwood', 'Celeste Rowan']) await expect(player.locator('.agent header', { hasText: name })).toBeVisible();
+    // The first agent opens by default; the others open on tap.
+    await expect(player.getByText(/antique military memorabilia/)).toBeVisible();
+    await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
+    await expect(player.getByText('Working in the archives.')).toBeVisible();
     await noHorizontalScroll(player);
-    await header('01_Vault').click();
-    await header('02_Audio').click();
-    await expect(player.getByText(/Paper rustle/)).toBeVisible();
-    await header('02_Audio').click();
-    await header('03_Toxicology').click();
-    await expect(player.getByText('PRELIMINARY TOXICOLOGY', { exact: false })).toBeVisible();
-    await header('03_Toxicology').click();
-    await header('04_Incident').click();
-    await expect(player.getByText(/TIME OF DEATH: 04:15/).first()).toBeVisible();
+    await expect(section('LAYER 02')).toContainText(/sealed/i);
+    await section('LAYER 02').click();
+    await expect(player.getByLabel('Passcode')).toBeVisible();
+    await expect(player.getByText('Silver letter opener')).toHaveCount(0);
+    await section('LEDGER DECRYPTION RECORD').click();
+    await expect(player.getByText(/Return to headquarters/).first()).toBeVisible();
   });
 
-  test('ARCHIVE answers questions from the case files', async ({ player }) => {
+  test('a GM release opens Layer 02 on the phone with a transmission', async ({ player, gm }) => {
+    acceptDialogs(gm);
+    // He is on another tab when the release lands, so the Ledger tab lights up until he looks.
+    await player.getByRole('tab', { name: 'archive' }).click();
+    await expect(gm.getByTestId('ledger-panel')).toContainText('sealed');
+    await gm.getByRole('button', { name: /^release layer 02$/i }).click();
+    await expect(gm.getByTestId('ledger-panel')).toContainText('RELEASED');
+    const overlay = player.getByRole('dialog', { name: /incoming transmission/i });
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toContainText(/CLASSIFIED EVIDENCE/);
+    await overlay.getByRole('button', { name: /acknowledge/i }).click();
+    const dot = player.getByRole('tab', { name: 'ledger' }).locator('.fresh-dot');
+    await expect(dot).toBeVisible();
+    await player.getByRole('tab', { name: 'ledger' }).click();
+    await expect(dot).toHaveCount(0);
+    await expect(player.getByText('Confirmed time of death:')).toBeVisible();
+    await expect(player.getByText('2:14 AM').first()).toBeVisible();
+    await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
+    await expect(player.getByText('Silver letter opener')).toBeVisible();
+    await expect(player.getByText(/Accessed the Director's Office using her security badge/)).toBeVisible();
+    await noHorizontalScroll(player);
+    // Re-sealing in rehearsal takes it away again.
+    await gm.getByRole('button', { name: /re-seal layer 02/i }).click();
+    await expect(player.getByLabel('Passcode')).toBeVisible();
+  });
+
+  test('the passcode opens Layer 02 and a wrong one is rejected in place', async ({ player }) => {
+    await player.locator('.file header', { hasText: 'LAYER 02' }).click();
+    await player.getByLabel('Passcode').fill('WRONG');
+    await player.getByRole('button', { name: /^unlock$/i }).click();
+    await expect(player.getByRole('alert')).toContainText(/REJECTED/);
+    await player.getByLabel('Passcode').fill('magenta-30');
+    await player.getByRole('button', { name: /^unlock$/i }).click();
+    await expect(player.getByText('Confirmed time of death:')).toBeVisible();
+  });
+
+  test('ARCHIVE answers from Layer 01 and refuses Layer 02 until it is released', async ({ player, app }) => {
     await player.getByRole('tab', { name: 'archive' }).click();
     const integrity = player.getByText(/INTEGRITY \d+%/i);
     const before = Number((await integrity.textContent())!.match(/(\d+)%/)![1]);
-    await player.getByLabel('Query').fill('who was in the office at 03:45');
+    await player.getByLabel('Query').fill('where was everyone at 2:14');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Vector' })).toBeVisible();
-    await player.getByLabel('Query').fill('read the toxicology report');
+    await expect(player.locator('.msg.assistant', { hasText: 'Nina Calder' })).toBeVisible();
+    await player.getByLabel('Query').fill('read the classified evidence');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Nightshade' })).toBeVisible();
+    await expect(player.locator('.msg.assistant', { hasText: 'LAYER SEALED' })).toBeVisible();
     await expect.poll(async () => Number((await integrity.textContent())!.match(/(\d+)%/)![1])).toBeGreaterThan(before);
+    await releaseLayer2(app);
+    await player.getByRole('dialog', { name: /incoming transmission/i }).getByRole('button', { name: /acknowledge/i }).click();
+    await player.getByLabel('Query').fill('read the classified evidence');
+    await player.getByRole('button', { name: /send/i }).click();
+    await expect(player.locator('.msg.assistant', { hasText: 'Confirmed time of death 2:14 AM' })).toBeVisible();
   });
 
   test('ARCHIVE transcript survives switching tabs and reloading', async ({ player }) => {
     await player.getByRole('tab', { name: 'archive' }).click();
-    await player.getByLabel('Query').fill('read the toxicology report');
+    await player.getByLabel('Query').fill('tell me about Theo Blackwood');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Nightshade' })).toBeVisible();
-    await player.getByRole('tab', { name: 'evidence' }).click();
+    await expect(player.locator('.msg.assistant', { hasText: 'Field Operative' })).toBeVisible();
+    await player.getByRole('tab', { name: 'ledger' }).click();
     await player.getByRole('tab', { name: 'archive' }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Nightshade' })).toBeVisible();
+    await expect(player.locator('.msg.assistant', { hasText: 'Field Operative' })).toBeVisible();
     await player.reload();
     await player.getByRole('tab', { name: 'archive' }).click();
-    await expect(player.getByText('read the toxicology report')).toBeVisible();
+    await expect(player.getByText('tell me about Theo Blackwood')).toBeVisible();
   });
 
   test('deduction draft survives tab switches and reloads', async ({ player }) => {
     await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { SUSPECT: 'Agent Vector', METHOD: 'poisoned tea' });
-    await player.getByRole('tab', { name: 'evidence' }).click();
+    await fillDeduction(player, { SUSPECT: 'Nina Calder', METHOD: 'letter opener' });
+    await player.getByRole('tab', { name: 'ledger' }).click();
     await player.getByRole('tab', { name: 'deduction' }).click();
-    await expect(player.getByLabel('SUSPECT', { exact: true })).toHaveValue('Agent Vector');
+    await expect(player.getByLabel('SUSPECT', { exact: true })).toHaveValue('Nina Calder');
     await player.reload();
     await player.getByRole('tab', { name: 'deduction' }).click();
-    await expect(player.getByLabel('METHOD', { exact: true })).toHaveValue('poisoned tea');
+    await expect(player.getByLabel('METHOD', { exact: true })).toHaveValue('letter opener');
   });
 
   test('submit stays disabled until every blank is filled', async ({ player }) => {
@@ -84,41 +123,21 @@ test.describe('investigation', () => {
     await expect(player.getByText('Submissions: 1')).toBeVisible();
   });
 
+  test('poison, the old red herring, fails the method field', async ({ player, app }) => {
+    await app.patch((c) => (c.deduction.feedback = 'count'));
+    await player.reload();
+    await player.getByRole('tab', { name: 'deduction' }).click();
+    await fillDeduction(player, { ...RIGHT_ANSWERS, METHOD: 'poisoned tea' });
+    await player.getByRole('button', { name: /submit deduction/i }).click();
+    await expect(player.getByText('FIELDS VERIFIED: 5 / 6')).toBeVisible({ timeout: 15_000 });
+  });
+
   test('count feedback mode tells the player how many fields verified', async ({ player, app }) => {
     await app.patch((c) => (c.deduction.feedback = 'count'));
     await player.reload();
     await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, SUSPECT: 'Agent Cipher' });
+    await fillDeduction(player, { ...RIGHT_ANSWERS, SUSPECT: WRONG_SUSPECT });
     await player.getByRole('button', { name: /submit deduction/i }).click();
     await expect(player.getByText('FIELDS VERIFIED: 5 / 6')).toBeVisible({ timeout: 15_000 });
-  });
-});
-
-test.describe('evidence vault with passcodes', () => {
-  test('sealed files open with the right passcodes only', async ({ player, app }) => {
-    await app.patch((c) => (c.evidence.gateMode = 'passcodes'));
-    await app.setStage('investigation');
-    await player.goto(app.base);
-    const header = (name: string) => player.locator('.file header', { hasText: name });
-    const file = (name: string) => player.locator('.file', { has: player.locator('header', { hasText: name }) });
-    await expect(header('02_Audio')).toContainText(/sealed/i);
-    await expect(header('03_Toxicology')).toContainText(/sealed/i);
-    await expect(header('03b_Operative')).toBeVisible();
-
-    await header('02_Audio').click();
-    const audioFile = file('02_Audio');
-    await typeWord(player, 'WRONG', audioFile);
-    await audioFile.getByRole('button', { name: /^unlock$/i }).click();
-    await expect(player.getByRole('alert')).toBeVisible();
-    await clearWord(player, audioFile);
-    await typeWord(player, 'canis30', audioFile);
-    await audioFile.getByRole('button', { name: /^unlock$/i }).click();
-    await expect(player.getByText(/Paper rustle/)).toBeVisible();
-
-    await header('03_Toxicology').click();
-    const toxFile = file('03_Toxicology');
-    await typeWord(player, '1996', toxFile);
-    await toxFile.getByRole('button', { name: /^unlock$/i }).click();
-    await expect(player.getByText('PRELIMINARY TOXICOLOGY', { exact: false })).toBeVisible();
   });
 });

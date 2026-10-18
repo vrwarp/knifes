@@ -11,12 +11,13 @@ for (const stage of stages) {
     await finishTyping(player);
     await noHorizontalScroll(player);
     if (stage === 'investigation') {
-      for (const tab of ['evidence', 'archive', 'deduction']) {
+      for (const tab of ['ledger', 'archive', 'deduction']) {
         await player.getByRole('tab', { name: tab }).click();
         await noHorizontalScroll(player);
       }
-      await player.getByRole('tab', { name: 'evidence' }).click();
-      await player.locator('.file header', { hasText: '01_Vault' }).click();
+      await player.getByRole('tab', { name: 'ledger' }).click();
+      await player.locator('.file header', { hasText: 'LAYER 02' }).click();
+      await player.locator('.agent header', { hasText: 'Celeste Rowan' }).click();
       await noHorizontalScroll(player);
     }
     // Text inputs are at least 16px so iOS Safari does not zoom on focus.
