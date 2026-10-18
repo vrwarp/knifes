@@ -1,5 +1,5 @@
 /** The ten keys of the race by default, in the order the GM sees them; each game draws them without repeats. */
-export const DEFAULT_WORD_BANK: string[] = ['VENOM', 'VAULT', 'GHOST', 'DRIVE', 'AGENT', 'TRACE', 'BADGE', 'CRYPT', 'SIREN', 'RADAR'];
+export const DEFAULT_WORD_BANK: string[] = ['VENOM', 'VAULT', 'GHOST', 'DRIVE', 'ALIBI', 'TRACE', 'BADGE', 'TOKEN', 'SIREN', 'RADAR'];
 
 /**
  * Common five-letter English words, used only as the vocabulary for generated (non-model) scripts

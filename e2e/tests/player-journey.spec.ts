@@ -88,7 +88,7 @@ test.describe('player journey', () => {
       if (stage === 'hack') {
         const { state } = await (await app.gmApi('/api/gm/overview')).json();
         expect(state.hack.secret, 'a race word was drawn').toMatch(/^[A-Z]{5}$/);
-        expect(text, 'the drawn key leaked').not.toContain(state.hack.secret);
+        expect(text, `the drawn key ${state.hack.secret} leaked`).not.toContain(state.hack.secret);
         expect(text, 'the word bank leaked').not.toContain('wordBank');
       }
     }
