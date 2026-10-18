@@ -50,7 +50,7 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
    boards clear, and a banner names the lost round and its word. Attempts are unlimited by default, so the boards
    grow and a round ends only on a solve; with a GM-set cap, Jimmy using all his attempts also rolls into the next
    word, while an adversary that uses all of its stalls and Jimmy keeps going. The lockout only applies in solo mode.
-   The bank holds ten keys by default (ALPHA, VAULT, GHOST, DRIVE, AGENT, TRACE, BADGE, CRYPT, SIREN, RADAR). When the
+   The bank holds ten keys by default (VENOM, VAULT, GHOST, DRIVE, AGENT, TRACE, BADGE, CRYPT, SIREN, RADAR). When the
    adversary has taken every key and the free pass is on, the phone shows the configured failsafe text for a few
    seconds and moves on to the reveal; with it off, the keys recycle.
    Input is an on-screen keyboard whose keys take the colours of what Jimmy has learned; the adversary's letters are
