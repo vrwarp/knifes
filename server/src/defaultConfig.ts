@@ -57,6 +57,10 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     aiSlowdownPerRound: 1.5,
     aiShowLetters: true,
     aiThinking: true,
+    freePass: {
+      enabled: true,
+      text: 'ADVERSARY PROCESS OVERHEATED. PARTITION FAILSAFE TRIGGERED. KEY RELEASED TO OPERATOR.',
+    },
   },
   reveal: {
     title: 'PARTITION DECRYPTED // INCIDENT RECORD 30-0415',

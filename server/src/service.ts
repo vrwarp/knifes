@@ -17,7 +17,8 @@ import { drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, sol
 import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { aiOpponentGuess, aiOpponentPlan, opponentLive } from './ai/opponent.js';
-import { SLOT_IDS, STAGE_ORDER, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
+import { COMMON_WORDS } from './content/words.js';
+import { SLOT_IDS, STAGE_ORDER, type HackScript, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
 
 /** Minimum time a deduction verdict takes to come back, so it reads as weighed rather than instant. */
 const VERDICT_FLOOR_MS = 2500;
@@ -101,10 +102,12 @@ export const ConfigSchema = z.object({
       aiSlowdownPerRound: z.number().min(1).max(5),
       aiShowLetters: z.boolean(),
       aiThinking: z.boolean(),
+      freePass: z.object({ enabled: z.boolean(), text: z.string().max(400) }),
     })
     .superRefine((h, ctx) => {
       if (h.mode !== 'race') return;
       if (h.wordBank.length < 2) ctx.addIssue({ code: 'custom', path: ['wordBank'], message: 'race mode needs at least two words in the bank' });
+      if (h.wordBank.length > 50) ctx.addIssue({ code: 'custom', path: ['wordBank'], message: 'keep the bank to 50 words or fewer; ten is the idea' });
       const lengths = new Set(h.wordBank.map((w) => w.length));
       if (lengths.size > 1) ctx.addIssue({ code: 'custom', path: ['wordBank'], message: 'every word in the bank must have the same length' });
       if (h.aiJitterSeconds >= h.aiIntervalSeconds) ctx.addIssue({ code: 'custom', path: ['aiJitterSeconds'], message: 'jitter must be smaller than the interval' });
@@ -175,8 +178,11 @@ export class GameService {
     // No request survives a restart; the loop below starts a new one if the race is still on.
     this.state.hack.ai.thinking = false;
     this.state.hack.ai.nextAt = null;
+    const savedScripts = (this.state as Partial<GameState>).hackScripts;
+    this.state.hackScripts = { key: savedScripts?.key ?? '', byWord: savedScripts?.byWord ?? {}, busy: false };
     this.syncOpponent();
     this.save();
+    void this.prepareScripts();
   }
 
   /** Stops the opponent timer, for tests and shutdown. */
@@ -368,12 +374,28 @@ export class GameService {
 
   private startRound(): void {
     const h = freshRound(this.state.hack);
-    const word = drawWord(this.config.hack.wordBank, h.used);
+    const bank = this.config.hack.wordBank;
+    if (bank.length && h.used.length >= bank.length && this.config.hack.freePass.enabled && h.rounds > 0) {
+      // Every key has been taken by the adversary: the failsafe lets Jimmy through.
+      h.freePass = true;
+      h.solved = true;
+      h.roundResult = 'pass';
+      this.state.hack = h;
+      this.event('hack_free_pass', { rounds: h.rounds, words: h.used.length, text: this.config.hack.freePass.text });
+      if (advanceTo(this.state, 'reveal')) this.event('stage', { stage: 'reveal' });
+      return;
+    }
+    const word = drawWord(bank, h.used);
     if (!word) return; // empty bank: solo secret applies via currentSecret()
     h.secret = word;
     h.used.push(word);
     h.round++;
     h.ai.lastAt = Date.now();
+    const prepared = this.state.hackScripts.key === this.scriptsKey() ? this.state.hackScripts.byWord[word] : undefined;
+    if (prepared && this.config.hack.aiStyle === 'scripted') {
+      h.ai.plan = prepared.plan;
+      h.ai.planSource = prepared.source;
+    }
     this.state.hack = h;
     const pace = opponentPace(this.config.hack, h.rounds);
     this.event('hack_round', { round: h.round, word, used: h.used.length, bank: this.config.hack.wordBank.length, paceSeconds: pace.intervalSeconds, jitterSeconds: pace.jitterSeconds });
@@ -407,7 +429,8 @@ export class GameService {
     const round = h.round;
     const secret = currentSecret(this.config, this.state);
     const history: OpponentHistoryRow[] = h.ai.guesses.map((g) => ({ guess: g, scores: scoreGuess(g, secret).map((x) => x.state) }));
-    const fallback = () => solverGuess(this.config.hack.wordBank, secret.length, history);
+    const vocabulary = [...this.config.hack.wordBank, ...COMMON_WORDS];
+    const fallback = () => solverGuess(vocabulary, secret.length, history);
     h.ai.thinking = true;
     h.ai.nextAt = null;
     // Pace from when the guess is requested, so model latency (2 to 4 s) does not add to the interval.
@@ -432,7 +455,7 @@ export class GameService {
             this.event('ai_error', { where: 'opponent_plan', error: err instanceof Error ? err.message : String(err) });
           }
         }
-        plan ??= generatedPlan(this.config.hack.wordBank, secret, n);
+        plan ??= generatedPlan(vocabulary, secret, n);
         if (h !== this.state.hack || h.round !== round) return;
         h.ai.plan = plan;
         h.ai.planSource = planSource;
@@ -690,7 +713,71 @@ export class GameService {
     this.config = next;
     this.event('gm_action', { action: 'config_update', version: next.version, source, note, changes: changes.slice(0, 12) });
     this.touch();
+    void this.prepareScripts();
     return this.config;
+  }
+
+  // ------------------------------------------------------- prepared scripts
+
+  /** What the prepared scripts depend on; a change here makes them stale. */
+  private scriptsKey(): string {
+    const c = this.config.hack;
+    return JSON.stringify([c.mode, c.aiStyle, [...c.wordBank].sort(), c.aiPlanGuesses, c.aiPlanJitter, c.aiModel, c.aiThinking]);
+  }
+
+  private preparing = false;
+
+  /**
+   * Writes one script per bank word ahead of the party, so a round never waits on the model.
+   * Runs after every configuration change and at boot; words already scripted for these settings
+   * are kept, stale ones dropped. Without a live credential the generated scripts are used.
+   */
+  async prepareScripts(force = false): Promise<void> {
+    const c = this.config.hack;
+    if (c.mode !== 'race' || c.aiStyle !== 'scripted') return;
+    if (this.preparing) return;
+    this.preparing = true;
+    try {
+      const key = this.scriptsKey();
+      const store = this.state.hackScripts;
+      if (store.key !== key || force) {
+        store.key = key;
+        store.byWord = {};
+      }
+      const missing = c.wordBank.filter((w) => !store.byWord[w]);
+      if (!missing.length) return;
+      store.busy = true;
+      this.touch();
+      for (const word of missing) {
+        if (this.scriptsKey() !== key) break; // settings changed under us; the next pass starts over
+        const n = planLength(c.aiPlanGuesses, c.aiPlanJitter);
+        let script: HackScript | null = null;
+        if (opponentLive()) {
+          try {
+            const r = await aiOpponentPlan({ model: c.aiModel, answer: word, guesses: n, thinking: c.aiThinking, timeoutMs: 120_000 });
+            script = { plan: r.plan, source: 'ai', at: Date.now() };
+            this.event('hack_ai_plan', { word, guesses: r.plan.length, asked: n, source: 'ai', costUsd: r.costUsd, plan: r.plan, prepared: true });
+          } catch (err) {
+            this.event('ai_error', { where: 'opponent_plan', word, error: err instanceof Error ? err.message : String(err) });
+          }
+        }
+        script ??= { plan: generatedPlan([...c.wordBank, ...COMMON_WORDS], word, n), source: 'generated', at: Date.now() };
+        if (this.scriptsKey() !== key) break;
+        this.state.hackScripts.byWord[word] = script;
+        this.touch();
+      }
+      this.event('hack_scripts', { ready: Object.keys(this.state.hackScripts.byWord).length, total: c.wordBank.length, live: opponentLive() });
+    } finally {
+      this.preparing = false;
+      this.state.hackScripts.busy = false;
+      this.touch();
+    }
+  }
+
+  /** GM asked for fresh scripts (new ideas, or a credential arrived after the generated ones). */
+  regenerateScripts(): void {
+    this.event('gm_action', { action: 'regenerate_scripts' });
+    void this.prepareScripts(true);
   }
 
   updateConfig(input: unknown, note = 'Saved from the config editor'): GameConfig {
@@ -896,7 +983,8 @@ export class GameService {
 
   reset(scope: 'game' | StageId): void {
     if (scope === 'game') {
-      this.state = initialState();
+      const scripts = this.state.hackScripts;
+      this.state = { ...initialState(), hackScripts: scripts };
       this.db.clearEvents();
       this.db.clearArchive();
       this.event('gm_action', { action: 'reset_game' });

@@ -64,6 +64,9 @@ test.describe('key race', () => {
       c.hack.aiIntervalSeconds = 1.5;
       c.hack.aiJitterSeconds = 0;
       c.hack.wordBank = ['CRANE', 'SLATE'];
+      // Short scripts keep these tests quick: the adversary takes the key on its fourth tick.
+      c.hack.aiPlanGuesses = 4;
+      c.hack.aiPlanJitter = 0;
     });
     await app.setStage('hack');
   });
@@ -84,17 +87,11 @@ test.describe('key race', () => {
     const advRow = player.getByRole('img', { name: /^Adversary attempt 1:/ });
     await expect(advRow).toBeVisible({ timeout: 8000 });
     await expect(advRow).toHaveAttribute('aria-label', /[A-Z] (placed|misplaced|absent)/);
-    const first = (await (await app.gmApi('/api/gm/overview')).json()).state.hack.ai.guesses[0] as string | undefined;
-    // With two words the script is [other, key]: the first guess is the miss unless the round already rolled over.
-    if (first === other) {
-      // Jimmy types the key before the adversary's second attempt.
-      await typeWord(player, key);
-      await player.getByRole('button', { name: /attempt key/i }).click();
-      await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
-      await expect(player.getByText(/BEATEN AT/)).toBeVisible();
-    } else {
-      await expect(player.getByText(/RACE 1 LOST/)).toBeVisible();
-    }
+    // Jimmy types the key before the script reaches it.
+    await typeWord(player, key);
+    await player.getByRole('button', { name: /attempt key/i }).click();
+    await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
+    await expect(player.getByText(/BEATEN AT/)).toBeVisible();
   });
 
   test('hides the adversary letters when the GM turns them off', async ({ player, app }) => {
@@ -109,7 +106,7 @@ test.describe('key race', () => {
     await player.goto(app.base);
     const before = (await (await app.gmApi('/api/gm/overview')).json()).state.hack.secret as string;
     const banner = player.getByRole('status').filter({ hasText: /RACE 1 LOST/ });
-    await expect(banner).toBeVisible({ timeout: 12_000 });
+    await expect(banner).toBeVisible({ timeout: 20_000 });
     await expect(banner).toContainText(`adversary took ${before}`);
     await expect(banner).toContainText('new key issued');
     // Boards are clear and the keyboard is live: no lockout, no button to press.
@@ -121,6 +118,21 @@ test.describe('key race', () => {
     expect(after.secret).not.toBe(before);
     expect(after.rounds).toBe(1);
     expect(after.lockedUntil).toBeNull();
+  });
+
+  test('when the adversary has taken every key, Jimmy gets the free pass and moves on', async ({ player, app }) => {
+    await app.patch((c) => {
+      c.hack.aiPlanGuesses = 2;
+      c.hack.aiPlanJitter = 0;
+      c.hack.freePass = { enabled: true, text: 'FAILSAFE TRIGGERED. KEY RELEASED.' };
+    });
+    await app.setStage('hack');
+    await player.goto(app.base);
+    await expect(player.getByText('FAILSAFE TRIGGERED. KEY RELEASED.')).toBeVisible({ timeout: 25_000 });
+    await expect(player.locator('h1', { hasText: 'INCIDENT RECORD' })).toBeVisible({ timeout: 15_000 });
+    const { state } = await (await app.gmApi('/api/gm/overview')).json();
+    expect(state.hack.freePass).toBe(true);
+    expect(state.hack.rounds).toBe(2);
   });
 
   test('the GM console shows the drawn key and the adversary log', async ({ gm, app }) => {

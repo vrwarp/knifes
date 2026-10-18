@@ -355,7 +355,7 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
             {B(['hack', 'aiThinking'], 'Let the opponent think before each guess (off: quick and fallible)')}
             <label className="field">
               <span>
-                Word bank, one per line ({draft.hack.wordBank.length} words, all the same length). Each round draws a word that has not been used this game.
+                The keys, one per line ({draft.hack.wordBank.length} words, all the same length; ten is the idea). Each round draws one that has not been used this game, and the adversary's script for each is written when you save.
               </span>
               <textarea
                 rows={6}
@@ -372,6 +372,8 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
                 }}
               />
             </label>
+            {B(['hack', 'freePass', 'enabled'], 'Free pass: when the adversary has taken every key, let Jimmy through')}
+            {A(['hack', 'freePass', 'text'], 'Free pass text shown on the phone', 2)}
             {T(['hack', 'secret'], 'Fallback secret word (3 to 8 letters), used only if the bank is empty')}
           </>
         )}

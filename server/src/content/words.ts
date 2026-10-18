@@ -1,9 +1,11 @@
+/** The ten keys of the race by default, in the order the GM sees them; each game draws them without repeats. */
+export const DEFAULT_WORD_BANK: string[] = ['ALPHA', 'VAULT', 'GHOST', 'DRIVE', 'AGENT', 'TRACE', 'BADGE', 'CRYPT', 'SIREN', 'RADAR'];
+
 /**
- * Default word bank for the mirror-partition race: common five-letter English words,
- * no proper nouns, no plurals ending in S, nothing obscure. The GM can replace the list
- * in the configuration panel; each round draws a word that has not been used this game.
+ * Common five-letter English words, used only as the vocabulary for generated (non-model) scripts
+ * and the live-mode fallback solver, so the adversary's wrong turns look like real words.
  */
-export const DEFAULT_WORD_BANK: string[] = `
+export const COMMON_WORDS: string[] = `
 ABOUT ABOVE ABUSE ACTOR ACUTE ADMIT ADOPT ADULT AFTER AGAIN AGENT AGREE AHEAD ALARM ALBUM ALERT ALIKE ALIVE ALLOW ALONE
 ALONG ALTER AMONG ANGER ANGLE ANGRY APART APPLE APPLY ARENA ARGUE ARISE ARMOR ARRAY ASIDE ASSET AUDIO AUDIT AVOID AWAKE
 AWARD AWARE BADGE BADLY BAKER BASIC BATCH BEACH BEGIN BEING BELOW BENCH BERRY BIRTH BLACK BLADE BLAME BLANK BLAST BLAZE

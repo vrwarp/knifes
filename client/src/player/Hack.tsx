@@ -198,7 +198,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
         {h.intro}
         {race ? ' A hostile process is attacking the same key. Beat it to the word or the key rotates.' : ''}
       </p>
-      {last && race && !h.solved ? (
+      {last && race && !h.solved && !h.freePass ? (
         <div className="round-banner" role="status">
           <span className="red">RACE {last.round} LOST</span> · {last.result === 'ai' ? `adversary took ${last.word} in ${last.aiAttempts}` : `${last.word} survived ${last.playerAttempts}`} · <span className="amber">new key issued</span>
         </div>
@@ -227,8 +227,8 @@ export function Hack({ view, setView, refresh }: StageProps) {
         ) : null}
       </div>
       {h.solved ? (
-        <div className="ok center" role="status" style={{ marginTop: 12 }}>
-          KEY ACCEPTED. DECRYPTING PARTITION
+        <div className={`${h.freePass ? 'amber' : 'ok'} center`} role="status" style={{ marginTop: 12, fontSize: 13 }}>
+          {h.freePass ?? 'KEY ACCEPTED. DECRYPTING PARTITION'}
         </div>
       ) : locked && h.lockedUntil ? (
         <div className="center" style={{ marginTop: 12 }} role="status">

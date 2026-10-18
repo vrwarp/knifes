@@ -40,6 +40,8 @@ describe('word race', () => {
   });
 
   it('the opponent guesses on the clock and wins the round, and the next word is drawn at once', async () => {
+    // Live style: the mock solver opens with the first bank word that fits, CRANE.
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, aiStyle: 'live' } });
     svc.setStage('hack');
     const first = svc.state.hack.secret!;
     await settle(2100);
@@ -137,7 +139,8 @@ describe('unlimited attempts', () => {
 
 describe('slowdown per round', () => {
   it('waits longer for the first guess after each lost round', async () => {
-    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, aiIntervalSeconds: 2, aiJitterSeconds: 0, aiSlowdownPerRound: 2, lockoutSeconds: 1, wordBank: ['CRANE', 'SLATE', 'PLANT'] } });
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, aiIntervalSeconds: 2, aiJitterSeconds: 0, aiSlowdownPerRound: 2, lockoutSeconds: 1, wordBank: ['CRANE', 'SLATE', 'PLANT'], aiPlanGuesses: 2, aiPlanJitter: 0 } });
+    await settle(10);
     svc.setStage('hack');
     const h0 = svc.state.hack;
     expect(h0.ai.nextAt! - h0.ai.lastAt!).toBe(2000);
@@ -147,5 +150,65 @@ describe('slowdown per round', () => {
     expect(h1.rounds).toBe(1);
     expect(h1.round).toBe(2);
     expect(h1.ai.nextAt! - h1.ai.lastAt!).toBe(4000);
+  });
+});
+
+describe('prepared scripts and the free pass', () => {
+  it('writes a script for every bank word on save, keeps them across a game reset, and plays them', async () => {
+    await settle(10); // let the constructor's preparation pass finish (generated, mock mode)
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, wordBank: ['CRANE', 'SLATE', 'PLANT'], aiPlanGuesses: 4, aiPlanJitter: 1 } });
+    await settle(10);
+    const scripts = svc.state.hackScripts.byWord;
+    expect(Object.keys(scripts).sort()).toEqual(['CRANE', 'PLANT', 'SLATE']);
+    for (const [word, s] of Object.entries(scripts)) {
+      expect(s.source).toBe('generated');
+      expect(s.plan[s.plan.length - 1]).toBe(word);
+      expect(s.plan.length).toBeGreaterThanOrEqual(3);
+      expect(s.plan.length).toBeLessThanOrEqual(5);
+    }
+    svc.reset('game');
+    expect(Object.keys(svc.state.hackScripts.byWord).length).toBe(3);
+    svc.setStage('hack');
+    const h = svc.state.hack;
+    expect(h.ai.plan).toEqual(scripts[h.secret!].plan);
+    expect(h.ai.planSource).toBe('generated');
+    // The first tick plays the first line of the script, no model call.
+    await settle(2100);
+    expect(svc.state.hack.ai.guesses[0] ?? svc.state.hack.lastRound?.word).toBeDefined();
+  });
+
+  it('a changed bank makes the old scripts stale and rewrites them', async () => {
+    await settle(10);
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, wordBank: ['CRANE', 'SLATE'] } });
+    await settle(10);
+    expect(Object.keys(svc.state.hackScripts.byWord).sort()).toEqual(['CRANE', 'SLATE']);
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, wordBank: ['PLANT', 'BRICK'] } });
+    await settle(10);
+    expect(Object.keys(svc.state.hackScripts.byWord).sort()).toEqual(['BRICK', 'PLANT']);
+  });
+
+  it('lets Jimmy through with the configured text once the adversary has taken every key', async () => {
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, wordBank: ['CRANE', 'SLATE'], aiPlanGuesses: 2, aiPlanJitter: 0, freePass: { enabled: true, text: 'FAILSAFE. KEY RELEASED.' } } });
+    await settle(10);
+    svc.setStage('hack');
+    // Two words, two-guess scripts: the adversary takes each key on its second tick.
+    for (let i = 0; i < 6 && svc.state.stage === 'hack'; i++) await settle(2100);
+    expect(svc.state.stage).toBe('reveal');
+    const h = svc.state.hack;
+    expect(h.freePass).toBe(true);
+    expect(h.solved).toBe(true);
+    expect(h.rounds).toBe(2);
+    expect(svc.view().hack.freePass).toBe('FAILSAFE. KEY RELEASED.');
+    expect(svc.view().hack.wordsLeft).toBe(0);
+  });
+
+  it('without the free pass the bank simply recycles', async () => {
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, wordBank: ['CRANE', 'SLATE'], aiPlanGuesses: 2, aiPlanJitter: 0, freePass: { enabled: false, text: '' } } });
+    await settle(10);
+    svc.setStage('hack');
+    for (let i = 0; i < 6; i++) await settle(2100);
+    expect(svc.state.stage).toBe('hack');
+    expect(svc.state.hack.rounds).toBeGreaterThanOrEqual(2);
+    expect(svc.state.hack.secret).not.toBeNull();
   });
 });
