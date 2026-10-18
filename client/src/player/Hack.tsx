@@ -125,21 +125,26 @@ export function Hack({ view, setView, refresh }: StageProps) {
   const cap = h.maxAttempts === null ? '' : `/${h.maxAttempts}`;
   const MASK = { hit: '#', near: '+', miss: '.' } as const;
 
-  // One terminal line per attempt: index, the word with each letter coloured by its score, and the
-  // pattern in plain ASCII the way a CLI would print it (# placed, + misplaced, . absent).
-  const line = (who: 'you' | 'adv', scored: LetterScore[], n: number, win: boolean) => (
-    <div className={`tl ${who} ${win ? 'win' : ''}`} key={n} role="img" aria-label={`${who === 'adv' ? 'Adversary attempt' : 'Attempt'} ${n}: ${describeRow(scored)}`}>
-      <span className="tl-n">{String(n).padStart(2, '0')}</span>
+  // A CLI prints a transcript: every attempt from either side is one line, in the order it happened,
+  // with the letters coloured by score and the pattern in plain ASCII (# placed, + misplaced, . absent).
+  type Line = { who: 'you' | 'adv'; n: number; at: number; scored: LetterScore[]; win: boolean };
+  const lines: Line[] = h.rows.map((scored, i) => ({ who: 'you', n: i + 1, at: h.guessAt[i] ?? i, scored, win: h.solved && i === h.rows.length - 1 }));
+  if (ai) for (const [i, scored] of ai.rows.entries()) lines.push({ who: 'adv', n: i + 1, at: ai.guessAt[i] ?? i, scored, win: ai.solved && i === ai.rows.length - 1 });
+  lines.sort((a, b) => a.at - b.at || (a.who === 'you' ? -1 : 1));
+  const transcript = lines.map((l) => (
+    <div className={`tl ${l.who} ${l.win ? 'win' : ''}`} key={`${l.who}${l.n}`} role="img" aria-label={`${l.who === 'adv' ? 'Adversary attempt' : 'Attempt'} ${l.n}: ${describeRow(l.scored)}`}>
+      <span className="tl-who">{l.who}</span>
+      <span className="tl-n">{String(l.n).padStart(2, '0')}</span>
       <span className="tl-word">
-        {scored.map((c, j) => (
+        {l.scored.map((c, j) => (
           <span key={j} className={c.state}>
             {c.letter || '#'}
           </span>
         ))}
       </span>
-      <span className="tl-mask">{scored.map((c) => MASK[c.state]).join('')}</span>
+      <span className="tl-mask">{l.scored.map((c) => MASK[c.state]).join('')}</span>
     </div>
-  );
+  ));
 
   // Jimmy never sees the clock: between attempts the adversary is simply thinking.
   let aiStatus: { text: string; cls: string } | null = null;
@@ -184,54 +189,55 @@ export function Hack({ view, setView, refresh }: StageProps) {
           <span className="red">!</span> race {last.round} lost: {last.result === 'ai' ? `adversary took ${last.word} in ${last.aiAttempts}` : `${last.word} survived ${last.playerAttempts}`}. <span className="amber">new key issued.</span>
         </div>
       ) : null}
-      <div className={`panes ${ai ? 'two' : ''}`}>
-        <section className="pane you" aria-label="Your attempts">
-          <div className="pane-head">
-            <span>
-              You · {h.rows.length}
-              {cap}
+      <div className="pane-head">
+        <span>
+          You · {h.rows.length}
+          {cap}
+        </span>
+        {ai ? (
+          <span>
+            Adversary · {ai.attempts}
+            {cap}
+            {aiStatus ? (
+              <>
+                {' '}
+                <span className={aiStatus.cls} role="status" aria-live="polite">
+                  [{aiStatus.text}]
+                </span>
+              </>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+      <div className="transcript" aria-label="Attempts">
+        {transcript}
+        {ai && roundOpen && !ai.solved && !ai.exhausted ? (
+          <div className="tl adv pending" aria-hidden="true">
+            <span className="tl-who">adv</span>
+            <span className="tl-n">{String(ai.attempts + 1).padStart(2, '0')}</span>
+            <span className="tl-word dim">
+              ...<i className="caret amber" />
             </span>
           </div>
-          {h.rows.map((scored, i) => line('you', scored, i + 1, h.solved && i === h.rows.length - 1))}
-          {roundOpen ? (
-            <div className={`tl you prompt-line ${shake ? 'shake' : ''}`} role="img" aria-label="Current attempt">
-              <span className="tl-n prompt">{'>'}</span>
-              <span className="tl-word typing">
-                {typed.map((l, j) => (
-                  <span key={j} className={l.trim() ? 'typed' : 'slot'}>
-                    {l.trim() || '_'}
-                  </span>
-                ))}
-                <i className="caret" />
-              </span>
-            </div>
-          ) : null}
-          {!h.rows.length && !roundOpen ? <div className="tl dim">no attempts</div> : null}
-        </section>
-        {ai ? (
-          <section className={`pane adv ${ai.solved ? 'won' : ''}`} aria-label="Adversary attempts">
-            <div className="pane-head">
-              <span>
-                Adversary · {ai.attempts}
-                {cap}
-              </span>
-              {aiStatus ? (
-                <span className={aiStatus.cls} role="status" aria-live="polite">
-                  {aiStatus.text}
-                </span>
-              ) : null}
-            </div>
-            {ai.rows.map((scored, i) => line('adv', scored, i + 1, ai.solved && i === ai.rows.length - 1))}
-            {roundOpen && !ai.solved && !ai.exhausted ? (
-              <div className="tl adv pending" aria-hidden="true">
-                <span className="tl-n">{String(ai.attempts + 1).padStart(2, '0')}</span>
-                <span className="tl-word dim">
-                  ...<i className="caret amber" />
-                </span>
-              </div>
-            ) : null}
-          </section>
         ) : null}
+        {roundOpen ? (
+          <div className={`tl you prompt-line ${shake ? 'shake' : ''}`} role="img" aria-label="Current attempt">
+            <span className="tl-who">you</span>
+            <span className="tl-n prompt">{'>'}</span>
+            <span className="tl-word typing">
+              {typed.map((l, j) => (
+                <span key={j} className={l.trim() ? 'typed' : 'slot'}>
+                  {l.trim() || '_'}
+                </span>
+              ))}
+              <i className="caret" />
+            </span>
+            <span className="tl-mask">
+              {input.length}/{h.length}
+            </span>
+          </div>
+        ) : null}
+        {!lines.length && !roundOpen ? <div className="tl dim">no attempts</div> : null}
       </div>
       <div ref={endRef} />
       {h.solved ? (
