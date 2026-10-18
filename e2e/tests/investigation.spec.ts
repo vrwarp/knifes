@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, expect, fillDeduction, noHorizontalScroll, test } from './fixtures';
+import { RIGHT_ANSWERS, expect, fillDeduction, noHorizontalScroll, test, clearWord, typeWord } from './fixtures';
 
 test.describe('investigation', () => {
   test.beforeEach(async ({ player, app }) => {
@@ -9,6 +9,7 @@ test.describe('investigation', () => {
 
   test('every evidence file opens and the access log fits the phone', async ({ player }) => {
     const header = (name: string) => player.locator('.file header', { hasText: name });
+    const file = (name: string) => player.locator('.file', { has: player.locator('header', { hasText: name }) });
     await expect(player.getByText('To whoever the courier reaches first,')).toBeVisible();
     await header('00_Directors').click();
     await header('01_Vault').click();
@@ -99,21 +100,25 @@ test.describe('evidence vault with passcodes', () => {
     await app.setStage('investigation');
     await player.goto(app.base);
     const header = (name: string) => player.locator('.file header', { hasText: name });
+    const file = (name: string) => player.locator('.file', { has: player.locator('header', { hasText: name }) });
     await expect(header('02_Audio')).toContainText(/sealed/i);
     await expect(header('03_Toxicology')).toContainText(/sealed/i);
     await expect(header('03b_Operative')).toBeVisible();
 
     await header('02_Audio').click();
-    await player.getByLabel('Passcode').fill('WRONG');
-    await player.getByRole('button', { name: /^unlock$/i }).click();
+    const audioFile = file('02_Audio');
+    await typeWord(player, 'WRONG', audioFile);
+    await audioFile.getByRole('button', { name: /^unlock$/i }).click();
     await expect(player.getByRole('alert')).toBeVisible();
-    await player.getByLabel('Passcode').fill('canis30');
-    await player.getByRole('button', { name: /^unlock$/i }).click();
+    await clearWord(player, audioFile);
+    await typeWord(player, 'canis30', audioFile);
+    await audioFile.getByRole('button', { name: /^unlock$/i }).click();
     await expect(player.getByText(/Paper rustle/)).toBeVisible();
 
     await header('03_Toxicology').click();
-    await player.getByLabel('Passcode').fill('1996');
-    await player.getByRole('button', { name: /^unlock$/i }).click();
+    const toxFile = file('03_Toxicology');
+    await typeWord(player, '1996', toxFile);
+    await toxFile.getByRole('button', { name: /^unlock$/i }).click();
     await expect(player.getByText('PRELIMINARY TOXICOLOGY', { exact: false })).toBeVisible();
   });
 });

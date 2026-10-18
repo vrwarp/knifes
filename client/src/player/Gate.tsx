@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { api, errorText } from '../api';
 import type { StageProps } from './PlayerApp';
 import { Frame, Typewriter } from './common';
+import { Keyboard, PromptLine } from './Keyboard';
+
+const MAX = 16;
 
 export function Gate({ view }: StageProps) {
   const [code, setCode] = useState('');
@@ -11,9 +14,8 @@ export function Gate({ view }: StageProps) {
   const ok = view.gate.passed;
   const [err, setErr] = useState<string | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!code.trim()) return;
+  const submit = async () => {
+    if (!code.trim() || busy) return;
     setBusy(true);
     setErr(null);
     try {
@@ -31,38 +33,50 @@ export function Gate({ view }: StageProps) {
   };
 
   return (
-    <Frame title="Secure line" className={`accent ${shaking ? 'shake' : ''} ${ok ? 'success' : ''}`}>
+    <Frame kicker="sec-30 terminal // tty1" title="Secure line" className={`console ${!ok ? 'with-keyboard' : ''} ${ok ? 'success' : ''}`}>
       <Typewriter text={view.gate.prompt} speed={3} />
       {ok ? (
-        <div className="ok" role="status">
-          {view.gate.successText}
+        <div className="con-line sys result green" role="status">
+          <span className="prompt">$</span> {view.gate.successText}
         </div>
       ) : (
-        <form onSubmit={submit} className="stack" style={{ marginTop: 12 }}>
-          <input
-            value={code}
-            onChange={(e) => {
-              setCode(e.target.value.toUpperCase());
-              setRejected(false);
-            }}
-            placeholder="RECOVERY KEY"
-            autoCapitalize="characters"
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-            inputMode="text"
-            aria-label="Recovery key"
-          />
-          <button className="btn primary block" disabled={busy || !code.trim()}>
-            Submit key
-          </button>
+        <>
+          <div className="con-line cmd" aria-hidden="true">
+            <span className="prompt">$</span> auth --recovery-key
+          </div>
+          <div className="transcript">
+            <PromptLine value={code} maxLength={Math.max(8, code.length)} label="Recovery key" shake={shaking} />
+          </div>
           {rejected ? (
-            <div className="error" role="alert">
-              KEY REJECTED
+            <div className="con-line sys" role="alert">
+              <span className="red">!</span> KEY REJECTED
             </div>
           ) : null}
-          {view.gate.attempts ? <div className="tiny">Attempts: {view.gate.attempts}</div> : null}
-        </form>
+          {view.gate.attempts ? <div className="con-line sys">attempts: {view.gate.attempts}</div> : null}
+          <Keyboard
+            value={code}
+            onChange={(v) => {
+              setCode(v);
+              setRejected(false);
+            }}
+            onEnter={() => void submit()}
+            maxLength={MAX}
+            digits
+            canEnter={code.trim().length > 0}
+            disabled={busy}
+            enterLabel="Submit key"
+            status={
+              <>
+                <span>SECURE LINE</span>
+                <span className="filler-mid">AWAITING KEY</span>
+                <span className="filler-right">
+                  {code.length}
+                  <i className="caret" />
+                </span>
+              </>
+            }
+          />
+        </>
       )}
       {err ? <div className="error">{err}</div> : null}
     </Frame>

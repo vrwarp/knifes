@@ -146,7 +146,13 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .briefing-box .btn { margin-top: 6px; }
 .shake { animation: shake 0.4s; }
 /* The keyboard sits at the bottom of the screen like a real one; the frame leaves room for it. */
-.keyboard { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 8px 10px calc(56px + env(safe-area-inset-bottom, 0px)); background: rgba(6, 6, 10, 0.97); border-top: 1px solid var(--line); backdrop-filter: blur(6px); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.keyboard { user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.keyboard.fixed { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 8px 10px calc(56px + env(safe-area-inset-bottom, 0px)); background: rgba(6, 6, 10, 0.97); border-top: 1px solid var(--line); backdrop-filter: blur(6px); }
+.keyboard.inline { margin-top: 10px; padding: 8px 0 0; border-top: 1px dashed var(--line-strong); }
+/* The gate has a digit row too, so its bar is a key taller than the race's. */
+.frame.console:not(.hack).with-keyboard { margin-bottom: 0; }
+.shell:has(.frame.console:not(.hack).with-keyboard) { padding-bottom: calc(338px + env(safe-area-inset-bottom, 0px)); }
+.passcode .tl-word { letter-spacing: 0.08em; }
 .keyboard-inner { --kgap: 6px; --kw: calc((100% - 9 * var(--kgap)) / 10); display: grid; gap: 6px; max-width: 568px; margin: 0 auto; }
 .frame.hack.with-keyboard { margin-bottom: 0; }
 .shell:has(.frame.hack.with-keyboard) { padding-bottom: calc(284px + env(safe-area-inset-bottom, 0px)); }

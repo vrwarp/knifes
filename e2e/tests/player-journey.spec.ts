@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
+import { RIGHT_ANSWERS, clearWord, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 test.describe('player journey', () => {
   test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
@@ -26,10 +26,11 @@ test.describe('player journey', () => {
 
     // Code gate.
     await expect(player.locator('h1', { hasText: 'Secure line' })).toBeVisible();
-    await player.getByLabel('Recovery key').fill('WRONGKEY');
+    await typeWord(player, 'WRONGKEY');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.getByText('KEY REJECTED')).toBeVisible();
-    await player.getByLabel('Recovery key').fill('magenta-30');
+    await clearWord(player);
+    await typeWord(player, 'magenta30');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.getByText('Recovery key accepted')).toBeVisible();
 

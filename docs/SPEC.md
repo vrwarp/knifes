@@ -41,7 +41,7 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 1. **Intro.** QR code opens the site. Section 30 briefing, one button.
 2. **Geo.** A Street View panorama to look around in (or field photos without a Maps key) and a map. Tap to place a marker, "Triangulate". Within the radius the deli briefing appears.
    Reveal mode skips the map. Off mode skips the stage.
-3. **Gate.** Enter the code Phil gives over the phone. Case, spaces and dashes are ignored.
+3. **Gate.** A terminal window (`$ auth --recovery-key`) with the same on-screen keyboard as the hack, plus a digit row, for the code Phil gives over the phone. Letters and digits only; the server also ignores case, spaces and dashes.
 4. **Hack.** Seven-letter keys in a terminal window in the app's magenta: a one-time briefing dialog (the configured intro, reopenable from a `?` button), a command line, then one transcript with both sides' attempts interleaved in the order they happened (a `you`/`adv` column tells them apart), the adversary's pending line, and Jimmy's prompt line at the bottom; each attempt is one monospace line with letters coloured by score and the pattern in ASCII (`#` placed, `+` misplaced, `.` absent). The on-screen keyboard is pinned to the bottom. In race mode (default) a second, smaller
    board shows the adversary's attempts (letters by default, colours only as an option) and reads THINKING... between
    them; the clock is never shown to the player. The
@@ -53,13 +53,13 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
    The bank holds ten seven-letter keys by default (STEALTH, PHANTOM, DOSSIER, COURIER, NETWORK, SILENCE, MISSION, TRAITOR, CAPTURE, PAYLOAD). When the
    adversary has taken every key and the free pass is on, the phone shows the configured failsafe text for a few
    seconds and moves on to the reveal; with it off, the keys recycle.
-   Input is an on-screen keyboard whose keys take the colours of what Jimmy has learned; the adversary's letters are
-   shown by default (GM toggle for colours only). Both boards sit side by side so the whole race fits a phone screen
-   above the keyboard. GMs can jump past it, push a hint, change the
+   Input is the shared on-screen keyboard (`client/src/player/Keyboard.tsx`): uniform keys in one theme colour, backspace
+   flush right, ENTER beneath it next to a status filler; it also takes a hardware keyboard. The adversary's letters are
+   shown by default (GM toggle for colours only). GMs can jump past it, push a hint, change the
    pace, or switch to solo mode live.
 5. **Reveal.** Incident record with the 03:45 window and the directive to return to base.
 6. **Investigation.** Three tabs.
-   - Evidence: Director's note, access log with camera notes, audio intercept (player plus waveform notes), toxicology report and operative manifest. Sealed files take a passcode in passcode mode.
+   - Evidence: Director's note, access log with camera notes, audio intercept (player plus waveform notes), toxicology report and operative manifest. Sealed files take a passcode in passcode mode, typed on an inline copy of the console keyboard (`$ unseal --passcode`) inside the file.
    - ARCHIVE: chat with the damaged mainframe.
    - Deduction: the sentence with six inputs. "ARCHIVE VERIFYING" while the grader runs.
 7. **Solved.** The big reveal (Vector, envelope on the gift table, happy thirtieth), the case file when published, and the case materials for re-reading.
