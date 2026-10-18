@@ -77,7 +77,7 @@ test.describe('GM console', () => {
     acceptDialogs(gm);
     await app.setStage('hack');
     await player.goto(app.base);
-    await typeWord(player, 'PLANT');
+    await typeWord(player, 'PLANTER');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByRole('img', { name: /Attempt 1:/ })).toBeVisible();
     await gm.getByLabel('Stage to reset').selectOption('hack');
@@ -211,7 +211,7 @@ test.describe('word puzzle mode switch', () => {
     await expect(gm.getByText('Solo mode on')).toBeVisible();
     await expect(player.getByText(/Adversary · /)).toHaveCount(0);
     expect((await app.config()).hack.mode).toBe('solo');
-    await typeWord(player, 'ALPHA');
+    await typeWord(player, 'LANTERN');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
     // Back to race from the GM side while he is already past the puzzle: the config changes, nothing else moves.

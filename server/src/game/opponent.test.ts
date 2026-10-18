@@ -96,3 +96,17 @@ describe('planLength', () => {
     expect(planLength(1, 3, () => 0)).toBe(2);
   });
 });
+
+describe('vocabularyFor', () => {
+  it('matches the key length and includes the bank', async () => {
+    const { vocabularyFor } = await import('../content/words.js');
+    const seven = vocabularyFor(['STEALTH', 'PHANTOM'], 7);
+    expect(seven.every((w) => w.length === 7)).toBe(true);
+    expect(seven.length).toBeGreaterThan(300);
+    expect(seven).toContain('STEALTH');
+    const five = vocabularyFor(['CRANE'], 5);
+    expect(five.every((w) => w.length === 5)).toBe(true);
+    expect(five).toContain('CRANE');
+    expect(vocabularyFor(['ABCDEF'], 6)).toEqual(['ABCDEF']);
+  });
+});

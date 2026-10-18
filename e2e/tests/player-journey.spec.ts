@@ -2,7 +2,10 @@ import { RIGHT_ANSWERS, expect, fillDeduction, finishBeats, finishTyping, noHori
 
 test.describe('player journey', () => {
   test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
-    await app.patch((c) => (c.hack.mode = 'solo'));
+    await app.patch((c) => {
+      c.hack.mode = 'solo';
+      c.hack.secret = 'ALPHA';
+    });
     await player.goto(app.base);
     await expect(player.locator('h1', { hasText: 'MAGENTA CHANNEL' })).toBeVisible();
     const start = player.getByRole('button', { name: /initiate recovery protocol/i });
@@ -69,7 +72,7 @@ test.describe('player journey', () => {
     await startGame(player, app.base);
     await app.setStage('hack');
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
-    await typeWord(player, 'PLANT');
+    await typeWord(player, 'PLANTER');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByRole('img', { name: /Attempt 1:/ })).toBeVisible();
     await player.reload();
@@ -87,7 +90,7 @@ test.describe('player journey', () => {
       }
       if (stage === 'hack') {
         const { state } = await (await app.gmApi('/api/gm/overview')).json();
-        expect(state.hack.secret, 'a race word was drawn').toMatch(/^[A-Z]{5}$/);
+        expect(state.hack.secret, 'a race word was drawn').toMatch(/^[A-Z]{7}$/);
         expect(text, `the drawn key ${state.hack.secret} leaked`).not.toContain(state.hack.secret);
         expect(text, 'the word bank leaked').not.toContain('wordBank');
       }

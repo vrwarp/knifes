@@ -11,6 +11,15 @@ import { chromium } from 'playwright';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 import net from 'node:net';
+
+// Types a word on the puzzle's on-screen keyboard after dismissing the briefing; ENTER is the "Attempt key" button.
+const typeWord = async (page, word) => {
+  const kb = page.getByRole('group', { name: 'Keyboard' });
+  await kb.waitFor();
+  const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
+  if (await engage.count()) await engage.click();
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+};
 const port = Number(process.env.SMOKE_PORT) || (await new Promise((resolve) => {
   const srv = net.createServer();
   srv.listen(0, '127.0.0.1', () => { const p = srv.address().port; srv.close(() => resolve(p)); });
@@ -124,7 +133,7 @@ try {
   });
 
   await step('word race scores a guess, then solves with the drawn key', async () => {
-    await typeWord(player, 'crane');
+    await typeWord(player, 'station');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await player.getByRole('img', { name: /Attempt 1:/ }).waitFor();
     await player.getByText(/Adversary/).first().waitFor();

@@ -88,7 +88,7 @@ describe('word race', () => {
   });
 
   it('solo mode keeps the lockout after a failed round', async () => {
-    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, mode: 'solo', maxAttempts: 2 } });
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, mode: 'solo', maxAttempts: 2, secret: 'ALPHA' } });
     svc.setStage('hack');
     svc.hackGuess('CRANE');
     svc.hackGuess('CRANE');
@@ -110,7 +110,7 @@ describe('word race', () => {
   });
 
   it('solo mode keeps the configured secret and no opponent', async () => {
-    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, mode: 'solo' } });
+    svc.updateConfig({ ...svc.config, hack: { ...svc.config.hack, mode: 'solo', secret: 'ALPHA' } });
     svc.setStage('hack');
     expect(svc.view().hack.ai).toBeNull();
     expect(svc.hackGuess('ALPHA').solved).toBe(true);

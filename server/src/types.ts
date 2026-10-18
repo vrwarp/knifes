@@ -111,6 +111,8 @@ export type HackRoundResult = 'player' | 'ai' | 'exhausted' | 'pass';
 
 export interface HackState {
   guesses: string[];
+  /** When each of Jimmy's guesses landed, for the interleaved transcript on the phone. */
+  guessAt: number[];
   solved: boolean;
   lockedUntil: number | null;
   /** Completed rounds (opponent wins, and lockouts when attempts are capped). */
@@ -131,6 +133,7 @@ export interface HackState {
   lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
   ai: {
     guesses: string[];
+    guessAt: number[];
     solved: boolean;
     /** A guess request is in flight. */
     thinking: boolean;

@@ -10,6 +10,9 @@ import { chromium } from 'playwright';
 // Types a word on the puzzle's on-screen keyboard; the ENTER key is the "Attempt key" button.
 const typeWord = async (page, word) => {
   const kb = page.getByRole('group', { name: 'Keyboard' });
+  await kb.waitFor();
+  const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
+  if (await engage.count()) await engage.click();
   for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
 };
 
@@ -108,6 +111,7 @@ try {
   {
     const c = (await (await gmApi('/api/gm/overview')).json()).config;
     c.hack.mode = 'solo';
+    c.hack.secret = 'ALPHA';
     c.hack.maxAttempts = 6;
     await gmApi('/api/gm/config', { method: 'PUT', json: c });
   }

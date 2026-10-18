@@ -179,9 +179,18 @@ export async function startGame(page: Page, base: string) {
   await start.click();
 }
 
+/** The word puzzle opens with a one-time briefing dialog; press Engage if it is up. */
+export async function dismissBriefing(page: Page) {
+  const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
+  if (await engage.count()) await engage.click();
+}
+
 /** Types a word on the puzzle's on-screen keyboard (ENTER is the "Attempt key" button). */
 export async function typeWord(page: Page, word: string) {
   const kb = page.getByRole('group', { name: 'Keyboard' });
+  // The keyboard and the briefing mount together; wait for the keyboard so the briefing check is not too early.
+  await kb.waitFor();
+  await dismissBriefing(page);
   for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
 }
 

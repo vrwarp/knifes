@@ -16,7 +16,7 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style hacking puzzle, incident reveal, evidence vault, ARCHIVE terminal, deduction grid, final reveal. |
 | Geo puzzle | GeoGuessr-style: an embedded Google Street View panorama (address and road labels hidden, walking optional) plus a map pin on OpenStreetMap, accepted within a configurable radius. Uploaded photos stand in when no Maps key is set. Switchable to reveal-only or off. |
 | Phil call | One-way: Phil gives Jimmy the unlock code. Default `MAGENTA30`, editable. |
-| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5` scripting each round in advance, 8 ± 2 guesses to the key): each round draws a fresh 5-letter word from a GM-editable bank of ten keys, whose scripts are written when the configuration is saved; when the adversary has taken every key, a configurable free pass lets Jimmy through; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins), Jimmy sees its colour feedback and must find the key first. Attempts are unlimited by default (a GM can cap them); when the opponent wins, the next word is drawn at once and a banner names the lost one. Solo mode keeps the fixed secret `ALPHA`. |
+| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5` scripting each round in advance, 8 ± 2 guesses to the key): each round draws a fresh 7-letter word from a GM-editable bank of ten keys, whose scripts are written when the configuration is saved; when the adversary has taken every key, a configurable free pass lets Jimmy through; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins), Jimmy sees its colour feedback and must find the key first. Attempts are unlimited by default (a GM can cap them); when the opponent wins, the next word is drawn at once and a banner names the lost one. Solo mode keeps a fixed secret (`LANTERN`). |
 | Reveal after puzzle | In-world incident record (03:45 window, three office entries) plus the order to return to base. |
 | Evidence unlock | Both modes available: everything opens after the puzzle, or audio and toxicology sit behind `CANIS30` and `1996`. |
 | Murder method | Poisoned tea is canon. The letter opener is a red herring on the desk. |
@@ -42,7 +42,7 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 2. **Geo.** A Street View panorama to look around in (or field photos without a Maps key) and a map. Tap to place a marker, "Triangulate". Within the radius the deli briefing appears.
    Reveal mode skips the map. Off mode skips the stage.
 3. **Gate.** Enter the code Phil gives over the phone. Case, spaces and dashes are ignored.
-4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. In race mode (default) a second, smaller
+4. **Hack.** Seven-letter keys in a terminal window in the app's magenta: a one-time briefing dialog (the configured intro, reopenable from a `?` button), a command line, then one transcript with both sides' attempts interleaved in the order they happened (a `you`/`adv` column tells them apart), the adversary's pending line, and Jimmy's prompt line at the bottom; each attempt is one monospace line with letters coloured by score and the pattern in ASCII (`#` placed, `+` misplaced, `.` absent). The on-screen keyboard is pinned to the bottom. In race mode (default) a second, smaller
    board shows the adversary's attempts (letters by default, colours only as an option) and reads THINKING... between
    them; the clock is never shown to the player. The
    adversary only sees its own feedback; Jimmy sees both boards. Jimmy finds the key first: key accepted, on to the
@@ -50,7 +50,7 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
    boards clear, and a banner names the lost round and its word. Attempts are unlimited by default, so the boards
    grow and a round ends only on a solve; with a GM-set cap, Jimmy using all his attempts also rolls into the next
    word, while an adversary that uses all of its stalls and Jimmy keeps going. The lockout only applies in solo mode.
-   The bank holds ten keys by default (VENOM, VAULT, GHOST, DRIVE, ALIBI, TRACE, BADGE, TOKEN, SIREN, RADAR). When the
+   The bank holds ten seven-letter keys by default (STEALTH, PHANTOM, DOSSIER, COURIER, NETWORK, SILENCE, MISSION, TRAITOR, CAPTURE, PAYLOAD). When the
    adversary has taken every key and the free pass is on, the phone shows the configured failsafe text for a few
    seconds and moves on to the reveal; with it off, the keys recycle.
    Input is an on-screen keyboard whose keys take the colours of what Jimmy has learned; the adversary's letters are

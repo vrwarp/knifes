@@ -10,6 +10,9 @@ import { chromium } from 'playwright';
 // Types a word on the puzzle's on-screen keyboard; the ENTER key is the "Attempt key" button.
 const typeWord = async (page, word) => {
   const kb = page.getByRole('group', { name: 'Keyboard' });
+  await kb.waitFor();
+  const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
+  if (await engage.count()) await engage.click();
   for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
 };
 
@@ -194,7 +197,7 @@ try {
 
   await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   await shot(player, 'Word race', 'Jimmy races a hostile AI process for the same five-letter key. He sees its colour feedback, it sees only its own. This recording switches to the fixed-secret solo mode for the next steps.');
-  await app.patch((c) => { c.hack.mode = 'solo'; });
+  await app.patch((c) => { c.hack.mode = 'solo'; c.hack.secret = 'ALPHA'; });
   await player.getByRole('group', { name: 'Keyboard' }).waitFor();
   for (const w of ['APPLE', 'PLANT']) {
     await typeWord(player, w);
@@ -341,7 +344,7 @@ try {
   // ============================================================================================
   begin('hack', 'Word puzzle lockout and retry', 'Six wrong keys lock the partition for a countdown, then Jimmy can reset it and try again. The GM can also reset it at once. The lockout here is shortened to 8 seconds for the recording.');
   await app.resetGame();
-  await app.patch((c) => { c.hack.lockoutSeconds = 8; c.hack.mode = 'solo'; c.hack.maxAttempts = 6; });
+  await app.patch((c) => { c.hack.lockoutSeconds = 8; c.hack.mode = 'solo'; c.hack.secret = 'ALPHA'; c.hack.maxAttempts = 6; });
   await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'hack' } });
   ctx = await browser.newContext(phoneOpts);
   p = await ctx.newPage();
@@ -374,7 +377,7 @@ try {
   await shot(p, 'Race begins', 'Both boards are empty. The adversary panel counts down to its first attempt.');
   await p.getByRole('img', { name: /Adversary attempt 1:/ }).waitFor({ timeout: 15_000 });
   await shot(p, 'The adversary has guessed', 'Its row shows the word it tried and how it scored; the GM can hide the letters and leave the colours.');
-  await p.getByText(/RACE 1 LOST/).first().waitFor({ timeout: 20_000 });
+  await p.getByText(/race 1 lost/i).first().waitFor({ timeout: 20_000 });
   await shot(p, 'The adversary won the round', 'The banner names the retired key; a new key is issued at once and the next race is already running.');
   await ctx.close();
   await app.patch((c) => { c.hack.aiIntervalSeconds = 10; c.hack.aiJitterSeconds = 5; c.hack.lockoutSeconds = 45; });

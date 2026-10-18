@@ -49,6 +49,7 @@ export interface PlayerView {
     lockoutSeconds: number;
     guesses: string[];
     rows: LetterScore[][];
+    guessAt: number[];
     solved: boolean;
     lockedUntil: number | null;
     rounds: number;
@@ -62,6 +63,7 @@ export interface PlayerView {
     ai: {
       /** Letters are blank unless the GM chose to show them. */
       rows: LetterScore[][];
+      guessAt: number[];
       attempts: number;
       solved: boolean;
       thinking: boolean;
@@ -146,6 +148,7 @@ export interface GameState {
   gate: { attempts: number; passed: boolean };
   hack: {
     guesses: string[];
+    guessAt: number[];
     solved: boolean;
     lockedUntil: number | null;
     rounds: number;
@@ -156,7 +159,7 @@ export interface GameState {
     lastWord: string | null;
     freePass: boolean;
     lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
-    ai: { guesses: string[]; solved: boolean; thinking: boolean; plan: string[] | null; planSource: 'ai' | 'generated' | null; nextAt: number | null; lastAt: number | null };
+    ai: { guesses: string[]; guessAt: number[]; solved: boolean; thinking: boolean; plan: string[] | null; planSource: 'ai' | 'generated' | null; nextAt: number | null; lastAt: number | null };
   };
   hackScripts: { key: string; byWord: Record<string, { plan: string[]; source: 'ai' | 'generated'; at: number }>; busy: boolean };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };

@@ -59,6 +59,7 @@ describe('playerView', () => {
   });
   it('scores guesses for the client without exposing the secret', () => {
     const c = cfg();
+    c.hack.secret = 'ALPHA';
     const s = initialState();
     s.hack.guesses = ['APPLE'];
     const v = playerView(c, s) as unknown as { hack: { rows: { state: string }[][] } };

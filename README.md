@@ -15,7 +15,7 @@ Full requirements and design: [docs/SPEC.md](docs/SPEC.md).
 | `Dockerfile`, `docker-compose.yml` | One container for the NAS. Data lives in `./data`. |
 | `docs/SPEC.md` | Decisions, flow, content, API and test plan. |
 
-The word puzzle is a race by default: each round draws a five-letter word from a bank of ten keys (editable
+The word puzzle is a race by default: each round draws a seven-letter word from a bank of ten keys (editable
 in the GM console, with the adversary's script for each written when you save) and an AI opponent plays the same word on a timer, one attempt every 10 seconds give or take 5,
 slowing by half again after each round it wins. By default `claude-sonnet-5-5` scripts each round in
 advance, 8 ± 2 guesses to the key, so the difficulty is a number; a live turn-by-turn style is available. Jimmy sees the opponent's attempts on a second board and has to find the key first; when the opponent wins, the next word starts at once.
