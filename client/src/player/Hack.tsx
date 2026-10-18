@@ -1,28 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { api, errorText } from '../api';
-import type { LetterScore, LetterState, PlayerView } from '../types';
+import type { LetterScore, PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
 
 const STATE_WORD = { hit: 'placed', near: 'misplaced', miss: 'absent' } as const;
 const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
-const RANK: Record<LetterState, number> = { miss: 1, near: 2, hit: 3 };
 
 function describeRow(scored: LetterScore[]): string {
   return scored.map((s) => (s.letter ? `${s.letter} ${STATE_WORD[s.state]}` : STATE_WORD[s.state])).join(', ');
-}
-
-/** Best thing known about each letter from the rows given: placed beats misplaced beats absent. */
-function letterKnowledge(rows: LetterScore[][]): Record<string, LetterState> {
-  const out: Record<string, LetterState> = {};
-  for (const row of rows) {
-    for (const s of row) {
-      if (!s.letter) continue;
-      const cur = out[s.letter];
-      if (!cur || RANK[s.state] > RANK[cur]) out[s.letter] = s.state;
-    }
-  }
-  return out;
 }
 
 export function Hack({ view, setView, refresh }: StageProps) {
@@ -189,11 +175,10 @@ export function Hack({ view, setView, refresh }: StageProps) {
     else aiStatus = { text: 'STANDING BY', cls: 'muted' };
   }
 
-  const known = letterKnowledge(h.rows);
   const last = h.lastRound;
 
   return (
-    <Frame kicker="Partition 30-BETA" title="Brute-force key" className={`accent hack ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
+    <Frame kicker="Partition 30-BETA" title="Brute-force key" className={`accent hack ${roundOpen ? 'with-keyboard' : ''} ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
       <p className="small muted hack-intro">
         {h.intro}
         {race ? ' A hostile process is attacking the same key. Beat it to the word or the key rotates.' : ''}
@@ -248,25 +233,37 @@ export function Hack({ view, setView, refresh }: StageProps) {
         </button>
       ) : (
         <div className="keyboard" role="group" aria-label="Keyboard">
-          {KEY_ROWS.map((row, r) => (
-            <div className="krow" key={r}>
-              {r === 2 ? (
-                <button type="button" className="key wide" onClick={() => press('ENTER')} disabled={busy || input.length !== h.length} aria-label="Attempt key">
-                  ENTER
-                </button>
-              ) : null}
-              {row.split('').map((k) => (
-                <button type="button" key={k} className={`key ${known[k] ?? ''}`} onClick={() => press(k)} disabled={busy} aria-label={`${k}${known[k] ? `, ${STATE_WORD[known[k]]}` : ''}`}>
-                  {k}
-                </button>
-              ))}
-              {r === 2 ? (
-                <button type="button" className="key wide" onClick={() => press('BACK')} disabled={busy || !input} aria-label="Delete letter">
-                  ⌫
-                </button>
-              ) : null}
+          <div className="keyboard-inner">
+            {KEY_ROWS.map((row, r) => (
+              <div className="krow" key={r}>
+                {r === 2 ? <div className="key wide spacer" aria-hidden="true" /> : null}
+                {row.split('').map((k) => (
+                  <button type="button" key={k} className="key" onClick={() => press(k)} disabled={busy} aria-label={k}>
+                    {k}
+                  </button>
+                ))}
+                {r === 2 ? (
+                  <button type="button" className="key wide back" onClick={() => press('BACK')} disabled={busy || !input} aria-label="Delete letter">
+                    ⌫
+                  </button>
+                ) : null}
+              </div>
+            ))}
+            <div className="krow">
+              {/* The space-bar slot: a dead key dressed as the console's status line. */}
+              <div className="key filler" aria-hidden="true">
+                <span>SEC-30 // 30-BETA</span>
+                <span className="filler-mid">KEYSPACE 26^{h.length}</span>
+                <span className="filler-right">
+                  {input.length}/{h.length}
+                  <i className="caret" />
+                </span>
+              </div>
+              <button type="button" className="key wide enter" onClick={() => press('ENTER')} disabled={busy || input.length !== h.length} aria-label="Attempt key">
+                ENTER
+              </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
       {err ? <div className="error center">{err}</div> : null}
