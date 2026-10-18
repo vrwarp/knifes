@@ -62,9 +62,6 @@ export interface PlayerView {
       attempts: number;
       solved: boolean;
       thinking: boolean;
-      nextAt: number | null;
-      /** When the countdown to nextAt began, for the progress bar. */
-      sinceAt: number | null;
       exhausted: boolean;
     } | null;
   };

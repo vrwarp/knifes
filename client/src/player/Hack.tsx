@@ -25,17 +25,6 @@ function letterKnowledge(rows: LetterScore[][]): Record<string, LetterState> {
   return out;
 }
 
-/** Ticks a few times a second while the opponent's next guess is pending, for the progress bar. */
-function useTick(active: boolean): number {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!active) return;
-    const t = window.setInterval(() => setNow(Date.now()), 200);
-    return () => window.clearInterval(t);
-  }, [active]);
-  return now;
-}
-
 export function Hack({ view, setView, refresh }: StageProps) {
   const h = view.hack;
   const ai = h.ai;
@@ -50,7 +39,6 @@ export function Hack({ view, setView, refresh }: StageProps) {
   const onDone = useCallback(() => setExpired(true), []);
   const rowStyle = { '--n': h.length } as CSSProperties;
   const roundOpen = !locked && !lockPassed && !h.solved;
-  const now = useTick(race && roundOpen && !!ai && !ai.solved && !ai.exhausted);
   // A fresh lockout arrives with a new lockedUntil; forget that the previous one ran out.
   useEffect(() => setExpired(false), [h.lockedUntil]);
   // A new key was issued (the adversary took the last one): whatever he was typing is for a dead word.
@@ -183,7 +171,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
         aiRows.push(
           <div className="trow mini" key={i} style={rowStyle} aria-hidden="true">
             {Array.from({ length: h.length }, (_, j) => (
-              <div key={j} className={`tile ${i === ai.rows.length && roundOpen && ai.thinking ? 'computing' : ''}`} />
+              <div key={j} className={`tile ${i === ai.rows.length && roundOpen ? 'computing' : ''}`} />
             ))}
           </div>,
         );
@@ -191,19 +179,14 @@ export function Hack({ view, setView, refresh }: StageProps) {
     }
   }
 
+  // Jimmy never sees the clock: between attempts the adversary is simply thinking.
   let aiStatus: { text: string; cls: string } | null = null;
-  let aiProgress: number | null = null;
   if (ai) {
     if (h.solved) aiStatus = { text: `BEATEN AT ${ai.attempts}${cap} ATTEMPTS`, cls: 'green' };
     else if (ai.solved) aiStatus = { text: 'RECOVERED THE KEY', cls: 'red' };
     else if (ai.exhausted) aiStatus = { text: 'EXHAUSTED', cls: 'green' };
-    else if (ai.thinking) aiStatus = { text: 'COMPUTING', cls: 'amber' };
-    else if (ai.nextAt !== null) {
-      const left = Math.max(0, ai.nextAt - now);
-      aiStatus = { text: `NEXT IN ${Math.ceil(left / 1000)}s`, cls: 'amber' };
-      const span = Math.max(1000, ai.nextAt - (ai.sinceAt ?? ai.nextAt - 5000));
-      aiProgress = 1 - Math.min(1, left / span);
-    } else aiStatus = { text: 'STANDING BY', cls: 'muted' };
+    else if (roundOpen) aiStatus = { text: 'THINKING...', cls: 'amber thinking' };
+    else aiStatus = { text: 'STANDING BY', cls: 'muted' };
   }
 
   const known = letterKnowledge(h.rows);
@@ -238,9 +221,6 @@ export function Hack({ view, setView, refresh }: StageProps) {
                   {aiStatus.text}
                 </span>
               ) : null}
-            </div>
-            <div className="adv-bar" aria-hidden="true">
-              <i style={{ width: `${aiProgress === null ? 0 : Math.round(aiProgress * 100)}%` }} />
             </div>
             <div className="grid mini">{aiRows}</div>
           </div>

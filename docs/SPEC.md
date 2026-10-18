@@ -43,7 +43,8 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
    Reveal mode skips the map. Off mode skips the stage.
 3. **Gate.** Enter the code Phil gives over the phone. Case, spaces and dashes are ignored.
 4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. In race mode (default) a second, smaller
-   board shows the adversary's attempts as colours (letters optional), with a countdown to its next guess. The
+   board shows the adversary's attempts (letters by default, colours only as an option) and reads THINKING... between
+   them; the clock is never shown to the player. The
    adversary only sees its own feedback; Jimmy sees both boards. Jimmy finds the key first: key accepted, on to the
    reveal. The adversary finds it first: a new key is drawn from the bank at once (no repeats within a game), both
    boards clear, and a banner names the lost round and its word. Attempts are unlimited by default, so the boards
