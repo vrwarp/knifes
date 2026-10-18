@@ -52,8 +52,10 @@ export interface PlayerView {
     solved: boolean;
     lockedUntil: number | null;
     rounds: number;
+    round: number;
     roundResult: HackRoundResult | null;
     lastWord: string | null;
+    lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
     ai: {
       /** Letters are blank unless the GM chose to show them. */
       rows: LetterScore[][];
@@ -152,6 +154,7 @@ export interface GameState {
     round: number;
     roundResult: HackRoundResult | null;
     lastWord: string | null;
+    lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
     ai: { guesses: string[]; solved: boolean; thinking: boolean; nextAt: number | null; lastAt: number | null };
   };
   evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };

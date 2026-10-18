@@ -327,7 +327,7 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         ])}
         <div className="two">
           {N(['hack', 'maxAttempts'], 'Attempts per round, each side (blank = unlimited)', true)}
-          {N(['hack', 'lockoutSeconds'], 'Lockout seconds after a lost round')}
+          {N(['hack', 'lockoutSeconds'], 'Lockout seconds after a lost round (solo mode)')}
         </div>
         {A(['hack', 'intro'], 'Intro text', 4)}
         {draft.hack.mode === 'solo' ? (
@@ -341,6 +341,7 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
             {N(['hack', 'aiSlowdownPerRound'], 'Slowdown multiplier after each round the opponent wins (1 = constant; 1.5 gives 10, 15, 22.5 s…)')}
             {T(['hack', 'aiModel'], 'Opponent model')}
             {B(['hack', 'aiShowLetters'], "Show the opponent's letters on the phone (off: colours only)")}
+            {draft.hack.mode === 'race' ? <div className="small muted">In race mode a lost round rolls straight into the next key; the lockout only applies in solo mode.</div> : null}
             {B(['hack', 'aiThinking'], 'Let the opponent think before each guess (off: quick and fallible)')}
             <label className="field">
               <span>

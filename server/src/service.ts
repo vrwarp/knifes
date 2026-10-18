@@ -375,14 +375,26 @@ export class GameService {
     this.event('hack_round', { round: h.round, word, used: h.used.length, bank: this.config.hack.wordBank.length, paceSeconds: pace.intervalSeconds, jitterSeconds: pace.jitterSeconds });
   }
 
+  /**
+   * A round lost to the opponent (or, with a cap, to running out of attempts). In race mode the next
+   * round starts at once: the word is retired, the banner remembers it, and touch() draws the next one.
+   * Solo mode keeps the classic lockout.
+   */
   private endRound(result: 'ai' | 'exhausted', now = Date.now()): void {
     const h = this.state.hack;
+    const word = currentSecret(this.config, this.state);
     h.roundResult = result;
-    h.lastWord = currentSecret(this.config, this.state);
-    h.lockedUntil = now + this.config.hack.lockoutSeconds * 1000;
+    h.lastWord = word;
     h.rounds++;
     h.ai.nextAt = null;
-    this.event('hack_lockout', { rounds: h.rounds, lockedUntil: h.lockedUntil, reason: result, word: h.lastWord });
+    if (this.config.hack.mode === 'race') {
+      h.lastRound = { result, word, round: h.round, aiAttempts: h.ai.guesses.length, playerAttempts: h.guesses.length };
+      this.event('hack_round_lost', { rounds: h.rounds, reason: result, word, aiAttempts: h.ai.guesses.length, playerAttempts: h.guesses.length });
+      this.state.hack = freshRound(h);
+      return;
+    }
+    h.lockedUntil = now + this.config.hack.lockoutSeconds * 1000;
+    this.event('hack_lockout', { rounds: h.rounds, lockedUntil: h.lockedUntil, reason: result, word });
   }
 
   private async opponentTurn(): Promise<void> {

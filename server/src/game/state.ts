@@ -12,6 +12,7 @@ export function initialHack(): HackState {
     round: 0,
     roundResult: null,
     lastWord: null,
+    lastRound: null,
     ai: { guesses: [], solved: false, thinking: false, nextAt: null, lastAt: null },
   };
 }
@@ -29,7 +30,7 @@ export function currentSecret(config: GameConfig, state: GameState): string {
 
 /** Race rounds keep the words already drawn; everything else about the puzzle starts over. */
 export function freshRound(h: HackState): HackState {
-  return { ...initialHack(), used: h.used, rounds: h.rounds, round: h.round, lastWord: h.lastWord };
+  return { ...initialHack(), used: h.used, rounds: h.rounds, round: h.round, lastWord: h.lastWord, lastRound: h.lastRound };
 }
 
 export function initialState(): GameState {
@@ -140,9 +141,11 @@ function hackView(config: GameConfig, state: GameState) {
     solved: h.solved,
     lockedUntil: h.lockedUntil,
     rounds: h.rounds,
+    round: h.round,
     roundResult: race ? h.roundResult : null,
     // The word is only shown once the round is over and it will never be drawn again.
     lastWord: race && h.roundResult && h.roundResult !== 'player' ? h.lastWord : null,
+    lastRound: race ? h.lastRound : null,
     ai: race
       ? {
           rows: blank(h.ai.guesses.map((g) => scoreGuess(g, secret))),

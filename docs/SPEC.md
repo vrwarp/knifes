@@ -16,7 +16,7 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style hacking puzzle, incident reveal, evidence vault, ARCHIVE terminal, deduction grid, final reveal. |
 | Geo puzzle | GeoGuessr-style: an embedded Google Street View panorama (address and road labels hidden, walking optional) plus a map pin on OpenStreetMap, accepted within a configurable radius. Uploaded photos stand in when no Maps key is set. Switchable to reveal-only or off. |
 | Phil call | One-way: Phil gives Jimmy the unlock code. Default `MAGENTA30`, editable. |
-| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-haiku-5-5`): each round draws a fresh 5-letter word from a GM-editable bank; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins), Jimmy sees its colour feedback and must find the key first. Attempts are unlimited by default (a GM can cap them); when the opponent wins, a short lockout, then a new word. Solo mode keeps the fixed secret `ALPHA`. |
+| Hacking puzzle | Wordle-like key race against an AI opponent (`claude-haiku-5-5`): each round draws a fresh 5-letter word from a GM-editable bank; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins), Jimmy sees its colour feedback and must find the key first. Attempts are unlimited by default (a GM can cap them); when the opponent wins, the next word is drawn at once and a banner names the lost one. Solo mode keeps the fixed secret `ALPHA`. |
 | Reveal after puzzle | In-world incident record (03:45 window, three office entries) plus the order to return to base. |
 | Evidence unlock | Both modes available: everything opens after the puzzle, or audio and toxicology sit behind `CANIS30` and `1996`. |
 | Murder method | Poisoned tea is canon. The letter opener is a red herring on the desk. |
@@ -45,10 +45,13 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 4. **Hack.** 6 by 5 grid. Green placed, amber misplaced, grey absent. In race mode (default) a second, smaller
    board shows the adversary's attempts as colours (letters optional), with a countdown to its next guess. The
    adversary only sees its own feedback; Jimmy sees both boards. Jimmy finds the key first: key accepted, on to the
-   reveal. The adversary finds it first: the retired key is shown, the partition locks for 45 seconds, then a new
-   key is drawn from the bank (no repeats within a game) and the next race starts. Attempts are unlimited by default,
-   so the boards grow and a round ends only on a solve; with a GM-set cap, a side that uses all its attempts is out
-   for the round (Jimmy: lockout and new word; the adversary: it stalls and Jimmy keeps going). GMs can jump past it, push a hint, change the
+   reveal. The adversary finds it first: a new key is drawn from the bank at once (no repeats within a game), both
+   boards clear, and a banner names the lost round and its word. Attempts are unlimited by default, so the boards
+   grow and a round ends only on a solve; with a GM-set cap, Jimmy using all his attempts also rolls into the next
+   word, while an adversary that uses all of its stalls and Jimmy keeps going. The lockout only applies in solo mode.
+   Input is an on-screen keyboard whose keys take the colours of what Jimmy has learned; the adversary's letters are
+   shown by default (GM toggle for colours only). Both boards sit side by side so the whole race fits a phone screen
+   above the keyboard. GMs can jump past it, push a hint, change the
    pace, or switch to solo mode live.
 5. **Reveal.** Incident record with the 03:45 window and the directive to return to base.
 6. **Investigation.** Three tabs.

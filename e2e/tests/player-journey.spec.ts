@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test } from './fixtures';
+import { RIGHT_ANSWERS, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 test.describe('player journey', () => {
   test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
@@ -32,10 +32,10 @@ test.describe('player journey', () => {
 
     // Word puzzle.
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
-    await player.getByLabel('Key attempt').fill('apple');
+    await typeWord(player, 'apple');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByRole('img', { name: /Attempt 1: A placed, P absent, P placed, L misplaced, E absent/ })).toBeVisible();
-    await player.getByLabel('Key attempt').fill('ALPHA');
+    await typeWord(player, 'ALPHA');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
 
@@ -69,13 +69,13 @@ test.describe('player journey', () => {
     await startGame(player, app.base);
     await app.setStage('hack');
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
-    await player.getByLabel('Key attempt').fill('PLANT');
+    await typeWord(player, 'PLANT');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByRole('img', { name: /Attempt 1:/ })).toBeVisible();
     await player.reload();
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
     await expect(player.getByRole('img', { name: /Attempt 1: P/ })).toBeVisible();
-    await expect(player.getByRole('button', { name: /attempt key \(2\)/i })).toBeVisible();
+    await expect(player.getByText(/You · 1/)).toBeVisible();
   });
 
   test('the player API never leaks answers', async ({ app, request }) => {

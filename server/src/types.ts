@@ -106,7 +106,7 @@ export interface HackState {
   guesses: string[];
   solved: boolean;
   lockedUntil: number | null;
-  /** Completed rounds (lockouts and opponent wins). */
+  /** Completed rounds (opponent wins, and lockouts when attempts are capped). */
   rounds: number;
   /** Race mode: the word in play this round. Null until a round starts, and always null in solo mode. */
   secret: string | null;
@@ -118,6 +118,8 @@ export interface HackState {
   roundResult: HackRoundResult | null;
   /** The word of the last finished round, shown to the player once it is retired. */
   lastWord: string | null;
+  /** Race mode: how the previous round ended, kept through the next round for the banner on the phone. */
+  lastRound: { result: HackRoundResult; word: string; round: number; aiAttempts: number; playerAttempts: number } | null;
   ai: {
     guesses: string[];
     solved: boolean;
@@ -153,6 +155,7 @@ export type EventType =
   | 'hack_lockout'
   | 'hack_solved'
   | 'hack_round'
+  | 'hack_round_lost'
   | 'hack_ai_guess'
   | 'hack_ai_solved'
   | 'evidence_unlock'

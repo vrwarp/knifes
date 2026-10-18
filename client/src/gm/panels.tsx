@@ -410,6 +410,8 @@ function describe(e: GameEvent): { text: string; cls: string } {
       const scores = Array.isArray(p.scores) ? (p.scores as string[]).map((x) => (x === 'hit' ? '■' : x === 'near' ? '◪' : '□')).join('') : '';
       return { text: `adversary ${s('guess')} ${scores}${p.solved ? ' SOLVED' : ''}${p.source === 'solver' ? ' (solver)' : ''}`, cls: p.solved ? 'fail' : '' };
     }
+    case 'hack_round_lost':
+      return { text: `race lost (${s('reason') === 'ai' ? 'adversary took' : 'out of attempts on'} ${s('word')}), next key issued`, cls: 'fail' };
     case 'hack_ai_solved':
       return { text: `adversary solved in ${s('attempts')}, Jimmy was at ${s('playerAttempts')}`, cls: 'fail' };
     case 'evidence_unlock': {

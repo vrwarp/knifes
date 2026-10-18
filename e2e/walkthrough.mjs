@@ -7,6 +7,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+// Types a word on the puzzle's on-screen keyboard; the ENTER key is the "Attempt key" button.
+const typeWord = async (page, word) => {
+  const kb = page.getByRole('group', { name: 'Keyboard' });
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+};
+
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -189,15 +195,15 @@ try {
   await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   await shot(player, 'Word race', 'Jimmy races a hostile AI process for the same five-letter key. He sees its colour feedback, it sees only its own. This recording switches to the fixed-secret solo mode for the next steps.');
   await app.patch((c) => { c.hack.mode = 'solo'; });
-  await player.getByLabel('Key attempt').waitFor();
+  await player.getByRole('group', { name: 'Keyboard' }).waitFor();
   for (const w of ['APPLE', 'PLANT']) {
-    await player.getByLabel('Key attempt').fill(w);
+    await typeWord(player, w);
     await player.getByRole('button', { name: /attempt key/i }).click();
     await sleep(500);
   }
   await shot(player, 'Two attempts scored', 'Green is placed, amber is misplaced, dark is absent. Each tile also carries a shape cue for colour-blind players.');
   await shot(gm, 'GM console during the word puzzle', 'Player status shows the secret and every guess. Quick hints for this stage sit at the top of the hints panel.', { device: 'desktop', full: false });
-  await player.getByLabel('Key attempt').fill('ALPHA');
+  await typeWord(player, 'ALPHA');
   await player.getByRole('button', { name: /attempt key/i }).click();
   await player.getByText('KEY ACCEPTED').waitFor();
   await sleep(900);
@@ -342,7 +348,7 @@ try {
   await p.goto(app.base);
   await p.locator('h1', { hasText: 'Brute-force key' }).waitFor();
   for (const w of ['BRICK', 'STORM', 'QUEST', 'ZEBRA', 'MOUND', 'CHILI']) {
-    await p.getByLabel('Key attempt').fill(w);
+    await typeWord(p, w);
     await p.getByRole('button', { name: /attempt key/i }).click();
     await sleep(350);
   }
@@ -351,7 +357,7 @@ try {
   await p.getByRole('button', { name: /reset partition/i }).waitFor({ timeout: 15_000 });
   await shot(p, 'Reset available', 'When the countdown ends Jimmy can reset the board without GM help.');
   await p.getByRole('button', { name: /reset partition/i }).click();
-  await p.getByLabel('Key attempt').waitFor();
+  await p.getByRole('group', { name: 'Keyboard' }).waitFor();
   await shot(p, 'Fresh board', 'A clean board with six attempts. The secret does not change.');
   await ctx.close();
   await app.patch((c) => { c.hack.lockoutSeconds = 45; c.hack.mode = 'race'; c.hack.maxAttempts = null; });
@@ -367,9 +373,9 @@ try {
   await p.locator('h1', { hasText: 'Brute-force key' }).waitFor();
   await shot(p, 'Race begins', 'Both boards are empty. The adversary panel counts down to its first attempt.');
   await p.getByRole('img', { name: /Adversary attempt 1:/ }).waitFor({ timeout: 15_000 });
-  await shot(p, 'The adversary has guessed', 'Its row shows placed, misplaced and absent as colours only; the GM can switch letters on.');
-  await p.getByText(/ADVERSARY RECOVERED THE KEY/).first().waitFor({ timeout: 20_000 });
-  await shot(p, 'The adversary won the round', 'The retired key is shown, the partition locks briefly, then a new key is issued and the next race starts.');
+  await shot(p, 'The adversary has guessed', 'Its row shows the word it tried and how it scored; the GM can hide the letters and leave the colours.');
+  await p.getByText(/RACE 1 LOST/).first().waitFor({ timeout: 20_000 });
+  await shot(p, 'The adversary won the round', 'The banner names the retired key; a new key is issued at once and the next race is already running.');
   await ctx.close();
   await app.patch((c) => { c.hack.aiIntervalSeconds = 10; c.hack.aiJitterSeconds = 5; c.hack.lockoutSeconds = 45; });
 
@@ -426,7 +432,7 @@ try {
   await pp.locator('.map').waitFor();
   await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'hack' } });
   await pp.locator('h1', { hasText: 'Brute-force key' }).waitFor();
-  await pp.getByLabel('Key attempt').fill('APPLE');
+  await typeWord(pp, 'APPLE');
   await pp.getByRole('button', { name: /attempt key/i }).click();
   ctx = await browser.newContext(deskOpts);
   g = await ctx.newPage();
