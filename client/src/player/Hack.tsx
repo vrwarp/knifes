@@ -251,6 +251,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
           <div className="keyboard-inner">
             {KEY_ROWS.map((row, r) => (
               <div className="krow" key={r}>
+                {r === 2 ? <div className="key wide spacer" aria-hidden="true" /> : null}
                 {row.split('').map((k) => (
                   <button type="button" key={k} className={`key ${known[k] ?? ''}`} onClick={() => press(k)} disabled={busy} aria-label={`${k}${known[k] ? `, ${STATE_WORD[known[k]]}` : ''}`}>
                     {k}
