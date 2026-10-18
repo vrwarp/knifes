@@ -48,6 +48,9 @@ test.describe('investigation', () => {
     await noHorizontalScroll(player);
     // Re-sealing in rehearsal takes it away again.
     await gm.getByRole('button', { name: /re-seal layer 02/i }).click();
+    const sealed = player.locator('.file header', { hasText: 'LAYER 02' });
+    await expect(sealed).toContainText(/sealed/i);
+    await sealed.click();
     await expect(player.getByLabel('Passcode')).toBeVisible();
   });
 
