@@ -119,13 +119,14 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .tile.computing { border-color: var(--amber); animation: computing 1.6s ease-in-out infinite; }
 @keyframes computing { 50% { border-color: var(--line-strong); } }
 /* The keyboard sits at the bottom of the screen like a real one; the frame leaves room for it. */
-.keyboard { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); background: rgba(7, 8, 12, 0.96); border-top: 1px solid var(--line); backdrop-filter: blur(6px); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.keyboard { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 8px 10px calc(56px + env(safe-area-inset-bottom, 0px)); background: rgba(7, 8, 12, 0.96); border-top: 1px solid var(--line); backdrop-filter: blur(6px); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .keyboard-inner { display: grid; gap: 6px; max-width: 568px; margin: 0 auto; }
 .frame.hack.with-keyboard { margin-bottom: 0; }
-.shell:has(.frame.hack.with-keyboard) { padding-bottom: calc(232px + env(safe-area-inset-bottom, 0px)); }
+.shell:has(.frame.hack.with-keyboard) { padding-bottom: calc(284px + env(safe-area-inset-bottom, 0px)); }
 .krow { display: flex; gap: 4px; justify-content: center; }
-.key { flex: 1 1 0; min-width: 0; max-width: 40px; height: 44px; padding: 0; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--panel-2, #151823); border: 1px solid var(--line-strong); border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+.key { flex: 1 1 0; min-width: 0; max-width: 40px; height: 48px; padding: 0; font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--panel-2, #151823); border: 1px solid var(--line-strong); border-radius: 4px; cursor: pointer; text-transform: uppercase; }
 .key.wide { flex: 1.6 1 0; max-width: 64px; font-size: 11px; letter-spacing: 0.06em; }
+.key.back { font-size: 26px; font-weight: 400; line-height: 1; }
 .key.enter { color: var(--accent); border-color: var(--accent-dim); }
 .key.enter:not(:disabled) { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
 .key.filler { flex: 1 1 auto; max-width: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: var(--dim); background: #07080c; border-style: dashed; cursor: default; overflow: hidden; white-space: nowrap; }
@@ -138,7 +139,7 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .key.miss { background: var(--tile-miss); border-color: var(--tile-miss-edge); color: var(--tile-miss-ink); }
 .key:disabled { opacity: 0.45; cursor: default; }
 .key:active:not(:disabled) { transform: translateY(1px); filter: brightness(1.2); }
-@media (max-width: 360px) { .key { height: 40px; font-size: 14px; } .board.you .tile { font-size: 17px; } }
+@media (max-width: 360px) { .key { height: 44px; font-size: 14px; } .key.back { font-size: 22px; } .board.you .tile { font-size: 17px; } }
 .legend { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.1em; }
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
 .legend i.hit { background: var(--tile-hit); border: 2px solid var(--tile-hit-edge); }

@@ -257,7 +257,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
                   </button>
                 ))}
                 {r === 2 ? (
-                  <button type="button" className="key wide" onClick={() => press('BACK')} disabled={busy || !input} aria-label="Delete letter">
+                  <button type="button" className="key wide back" onClick={() => press('BACK')} disabled={busy || !input} aria-label="Delete letter">
                     ⌫
                   </button>
                 ) : null}
