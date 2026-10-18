@@ -134,3 +134,92 @@ Each step is one commit on `ccr-95ffbcbc-u7yrlc`. The full run is about a day of
 - Layer 02 passcode text. Default `MAGENTA30`.
 - Whether the Lake Elizabeth note on site is a Section 30 card with the challenge phrase or just Phil's number. The app only needs Phil to say the code either way.
 - The intro letter says safehouse, Layer 02 says Director's Office. The app uses "the Director's Office inside the secure safehouse" everywhere to reconcile them.
+
+## 7. ARCHIVE as cross-reference engine and interrogation notebook
+
+Status: design agreed 18 Oct 2026, not built. Decisions from the ideation session are in 7.1; the rest follows from them.
+
+### 7.1 Decisions
+
+| Topic | Decision |
+| - | - |
+| Pointing out differences | Never. The ARCHIVE lays records side by side and says nothing about them. No "aligned", "differs", "not in statement" labels, and no naming of a contradiction. Jimmy reads the columns. |
+| Filing | Any sentence that places an agent files a statement under that agent ("Mara was in the control room", "Celeste says she left at quarter to one"). Questions are answered as before. |
+| Ambiguous names | "the analyst", "she", a nickname: the ARCHIVE asks once ("File under Nina Calder?") and files nothing until he confirms or names someone. |
+| Filing reply | One line, in character: `FILED. S30-005 Celeste Rowan, statement 2.` |
+| Statement text | Verbatim as typed, plus a parsed time when the sentence carries one (12:45 AM, "quarter to one", "around three"), so it can sit on the timeline. |
+| Before Layer 02 | Side by side shows two blocks per agent: what he was told, what they wrote down (Layer 01). The recorded block appears after the release. |
+| Layout | Stacked per agent, one short list per source, in chat and in the notes section. No multi-column tables on the phone. |
+| Visibility | A DETECTIVE'S NOTES section on the Ledger tab, and the GM console's ARCHIVE panel grouped by agent. |
+| Corrections | Jimmy by asking ("strike Celeste's second statement", "move that to Theo"); GMs can delete or re-assign any entry from the console. |
+| Downstream | The hint copilot sees the notebook (who has not been questioned, what was said). The case report quotes his notes. The grader is unchanged. |
+
+### 7.2 What Jimmy experiences
+
+Welcome line gains one sentence: "Tell me what each agent tells you and I will hold it against the Ledger." The Layer 01 header on the Ledger tab says the same in six words.
+
+Filing:
+
+```
+> celeste says she left at quarter to one for a meeting across town
+FILED. S30-005 Celeste Rowan, statement 1.
+Time read as 12:45 AM.
+```
+
+Reading back:
+
+```
+> what do I have on elias
+S30-002 Elias Mercer. Statements on file:
+1. working from home from about two  (~2:00 AM)
+2. never went near the server room after midnight
+```
+
+Side by side, before the release:
+
+```
+> hold nina against the ledger
+S30-003 NINA CALDER
+Told you:
+  ~2:00 AM  in the archives all night
+Wrote down:
+  1:55 AM   Seen near the Director's Office.
+  2:00–2:30 AM  Working in the archives.
+Layer 02 sealed.
+```
+
+After the release the same request adds a third block, `Recorded:`, with the Layer 02 lines, and `hold everyone against the ledger` prints all five agents in id order. Nothing in the reply says which lines disagree.
+
+Corrections:
+
+```
+> strike elias statement 2
+STRUCK. S30-002 Elias Mercer, statement 2.
+```
+
+The notes section on the Ledger tab lists the five agents with their statements in filing order, each with its parsed time and a tap-to-strike control, and the tab carries the amber dot when a statement is filed from the chat while he is elsewhere.
+
+### 7.3 What the GMs see
+
+The ARCHIVE panel gets a "Notebook" strip above the transcript: five agent chips with a statement count, red for zero. Expanding an agent lists the statements with delete and re-assign controls. The NOW strip adds "notes 3/5 agents" during the investigation. The copilot prompt gains the notebook, so a nudge can be "You have nothing on file for Mara yet" and a strong hint can quote his own note back against the Ledger line.
+
+### 7.4 Mechanics
+
+- **Storage.** A `statements` table: id, agent id, text, parsed time (minutes from 6 PM, nullable), filed at, struck at, source (`player` or `gm`). Cleared on an investigation reset and a game reset. Exposed in the player view as counts, and in the GM state in full.
+- **Routes.** Player: `GET /api/player/notes`, `POST /api/player/notes/:id/strike`. GM: `DELETE /api/gm/notes/:id`, `POST /api/gm/notes/:id/assign { agent }`. The chat is the main way in; the routes back the notes section and the console.
+- **Tools** added to the ARCHIVE server: `file_statement(agent, text, time?)`, `read_statements(agent?)`, `strike_statement(agent, n)`, `compare(agent?)`. `compare` builds the stacked blocks from statements, Layer 01 and, when released, Layer 02, sorted by time within each block. The existing tools stay.
+- **Persona.** Rule 2 gains: "When asked to hold statements against the Ledger, print each source as its own block and add no comment. The words lie, alibi, contradict, match, confirm, suspect and guilty never appear in your output." A filing rule is added: "A message that attributes a location, time or action to an agent is a statement to file, not a question. File it with `file_statement`, reply with the one-line confirmation, and answer nothing else unless the message also asks a question. If the agent is unclear, ask once and file nothing."
+- **Time parsing.** A small deterministic parser on the server, shared with the tool and the mock: `h:mm`, `h am/pm`, "quarter to/past", "half past", "around/about", "midnight", "noon". The ARCHIVE passes `time` when it is sure; the server parses the text otherwise. Unparsed is fine, the statement just has no time.
+- **Mock mode.** Regex filing on the five names and ids plus "says", "said", "told", "claims", "was", "went", "left"; the same stacked formatter for `compare`; "strike" handled by agent and number. Enough to rehearse the whole loop without a credential.
+- **Copilot and report.** Both prompts receive the notebook as `AGENT: statement (time)` lines. The report prompt is told it may quote them.
+
+### 7.5 Tests
+
+- Unit: time parser table; filing, striking and re-assigning; the compare formatter before and after release; player view carries counts only; investigation reset clears the table; the GM delete and assign routes.
+- End to end: file two statements from the chat, see them in the notes section and the GM notebook strip, strike one by chat, re-assign one from the console, ask for the side by side before and after the release and check the third block only appears after; the player API never carries another agent's statements before they are filed; mock ARCHIVE asks when the name is ambiguous.
+
+### 7.6 Open points
+
+- Whether a statement that names two agents ("Theo and Mara were together") files under both or asks.
+- Whether the notes section should let Jimmy type a statement directly, bypassing the chat. Proposed: no, the chat is the interface; the section is for reading and striking.
+- The wording of the single line that tells Jimmy the notebook exists. Proposed above; it is config text either way.
