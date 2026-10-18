@@ -4,6 +4,7 @@ import { scoreGuess } from './wordle.js';
 export function initialHack(): HackState {
   return {
     guesses: [],
+    guessAt: [],
     solved: false,
     lockedUntil: null,
     rounds: 0,
@@ -14,14 +15,18 @@ export function initialHack(): HackState {
     lastWord: null,
     freePass: false,
     lastRound: null,
-    ai: { guesses: [], solved: false, thinking: false, plan: null, planSource: null, nextAt: null, lastAt: null },
+    ai: { guesses: [], guessAt: [], solved: false, thinking: false, plan: null, planSource: null, nextAt: null, lastAt: null },
   };
 }
 
 /** Saved state from an older build lacks the race fields; fill them in. */
 export function normalizeHack(saved: Partial<HackState> | undefined): HackState {
   const base = initialHack();
-  return { ...base, ...(saved ?? {}), ai: { ...base.ai, ...(saved?.ai ?? {}) } };
+  const h = { ...base, ...(saved ?? {}), ai: { ...base.ai, ...(saved?.ai ?? {}) } };
+  // Older saves have no timestamps: give the existing guesses an ascending order so the transcript still sorts.
+  while (h.guessAt.length < h.guesses.length) h.guessAt.push(h.guessAt.length);
+  while (h.ai.guessAt.length < h.ai.guesses.length) h.ai.guessAt.push(h.ai.guessAt.length);
+  return h;
 }
 
 /** The word in play: the drawn word in race mode, the configured one in solo mode. */
@@ -140,6 +145,7 @@ function hackView(config: GameConfig, state: GameState) {
     lockoutSeconds: config.hack.lockoutSeconds,
     guesses: h.guesses,
     rows: h.guesses.map((g) => scoreGuess(g, secret)),
+    guessAt: h.guessAt,
     solved: h.solved,
     lockedUntil: h.lockedUntil,
     rounds: h.rounds,
@@ -153,6 +159,7 @@ function hackView(config: GameConfig, state: GameState) {
     ai: race
       ? {
           rows: blank(h.ai.guesses.map((g) => scoreGuess(g, secret))),
+          guessAt: h.ai.guessAt,
           attempts: h.ai.guesses.length,
           solved: h.ai.solved,
           thinking: h.ai.thinking,

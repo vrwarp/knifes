@@ -22,6 +22,7 @@ test.describe('word puzzle', () => {
     await app.patch((c) => {
       c.hack.lockoutSeconds = 3;
       c.hack.mode = 'solo';
+      c.hack.secret = 'ALPHA';
       c.hack.maxAttempts = 6;
     });
     await app.setStage('hack');
@@ -90,7 +91,7 @@ test.describe('key race', () => {
     await typeWord(player, key);
     await player.getByRole('button', { name: /attempt key/i }).click();
     await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
-    await expect(player.getByText(/BEATEN AT/)).toBeVisible();
+    await expect(player.getByText(/beaten at/i)).toBeVisible();
   });
 
   test('hides the adversary letters when the GM turns them off', async ({ player, app }) => {
@@ -104,7 +105,7 @@ test.describe('key race', () => {
   test('when the adversary wins, the next race starts at once with a banner for the lost one', async ({ player, app }) => {
     await player.goto(app.base);
     const before = (await (await app.gmApi('/api/gm/overview')).json()).state.hack.secret as string;
-    const banner = player.getByRole('status').filter({ hasText: /RACE 1 LOST/ });
+    const banner = player.getByRole('status').filter({ hasText: /race 1 lost/i });
     await expect(banner).toBeVisible({ timeout: 20_000 });
     await expect(banner).toContainText(`adversary took ${before}`);
     await expect(banner).toContainText('new key issued');

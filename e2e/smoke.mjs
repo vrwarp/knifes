@@ -124,7 +124,7 @@ try {
   });
 
   await step('word race scores a guess, then solves with the drawn key', async () => {
-    await typeWord(player, 'crane');
+    await typeWord(player, 'station');
     await player.getByRole('button', { name: /attempt key/i }).click();
     await player.getByRole('img', { name: /Attempt 1:/ }).waitFor();
     await player.getByText(/Adversary/).first().waitFor();

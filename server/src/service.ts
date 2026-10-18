@@ -17,7 +17,7 @@ import { drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, sol
 import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { aiOpponentGuess, aiOpponentPlan, opponentLive } from './ai/opponent.js';
-import { COMMON_WORDS } from './content/words.js';
+import { vocabularyFor } from './content/words.js';
 import { SLOT_IDS, STAGE_ORDER, type HackScript, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
 
 /** Minimum time a deduction verdict takes to come back, so it reads as weighed rather than instant. */
@@ -301,6 +301,7 @@ export class GameService {
     const secret = currentSecret(this.config, this.state);
     if (guess.length !== secret.length) throw new HttpError(400, `Key must be ${secret.length} characters`);
     h.guesses.push(guess);
+    h.guessAt.push(now);
     const scores = scoreGuess(guess, secret);
     const solved = isSolved(scores);
     this.event('hack_guess', { guess, scores: scores.map((s) => s.state), attempt: h.guesses.length, solved });
@@ -324,7 +325,7 @@ export class GameService {
     if (h.solved) return;
     if (h.lockedUntil && h.lockedUntil > Date.now()) throw new HttpError(423, 'Partition still locked');
     // A race draws a new word (touch() starts the round); solo mode keeps the same secret.
-    this.state.hack = this.config.hack.mode === 'race' ? freshRound(h) : { ...h, guesses: [], lockedUntil: null };
+    this.state.hack = this.config.hack.mode === 'race' ? freshRound(h) : { ...h, guesses: [], guessAt: [], lockedUntil: null };
     this.touch();
   }
 
@@ -429,7 +430,7 @@ export class GameService {
     const round = h.round;
     const secret = currentSecret(this.config, this.state);
     const history: OpponentHistoryRow[] = h.ai.guesses.map((g) => ({ guess: g, scores: scoreGuess(g, secret).map((x) => x.state) }));
-    const vocabulary = [...this.config.hack.wordBank, ...COMMON_WORDS];
+    const vocabulary = vocabularyFor(this.config.hack.wordBank, secret.length);
     const fallback = () => solverGuess(vocabulary, secret.length, history);
     h.ai.thinking = true;
     h.ai.nextAt = null;
@@ -488,6 +489,7 @@ export class GameService {
       return;
     }
     h.ai.guesses.push(guess);
+    h.ai.guessAt.push(Date.now());
     const scores = scoreGuess(guess, secret);
     const solved = isSolved(scores);
     this.event('hack_ai_guess', { guess, scores: scores.map((s) => s.state), attempt: h.ai.guesses.length, solved, source, costUsd });
@@ -761,7 +763,7 @@ export class GameService {
             this.event('ai_error', { where: 'opponent_plan', word, error: err instanceof Error ? err.message : String(err) });
           }
         }
-        script ??= { plan: generatedPlan([...c.wordBank, ...COMMON_WORDS], word, n), source: 'generated', at: Date.now() };
+        script ??= { plan: generatedPlan(vocabularyFor(c.wordBank, word.length), word, n), source: 'generated', at: Date.now() };
         if (this.scriptsKey() !== key) break;
         this.state.hackScripts.byWord[word] = script;
         this.touch();
