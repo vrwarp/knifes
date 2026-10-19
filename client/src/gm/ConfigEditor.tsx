@@ -446,11 +446,6 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
           {T(['ledger', 'content', 'incident', 'location'], 'Location')}
           {T(['ledger', 'content', 'incident', 'found'], 'Found')}
         </div>
-        <div className="two">
-          {T(['ledger', 'content', 'dutyLog', 'name'], 'Duty log: name')}
-          {T(['ledger', 'content', 'dutyLog', 'position'], 'Duty log: position')}
-        </div>
-        {Pairs(['ledger', 'content', 'dutyLog', 'lines'], 'Duty log', ['time', 'text'], 'TIME | what was recorded')}
       </Section>
       <Section title="The agents (personnel file and surveillance record for each)">
         <p className="small muted">Times are 12-hour (2:14 AM, or a span such as 2:00–2:30 AM) and must stay in order; the ARCHIVE searches them by window. The personnel side of each card holds the facts and the profile; the surveillance side holds the recorded activity, the confiscated belongings and the findings.</p>

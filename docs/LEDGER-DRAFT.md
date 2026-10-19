@@ -12,8 +12,6 @@ Design rules used:
 
 Incident (Layer 02 header): Murder of Arthur Pendelton. Confirmed time of death 2:14 AM. Location: Director's Office, secure safehouse. Found 4:15 AM by duty officer Hale on the hourly round.
 
-Duty log (Layer 02, no agent): Hale's hourly round at the safehouse inner door at 11:02 PM, 12:04, 1:01, 2:03 and 3:02 AM, all clear, and the 4:15 discovery. With Theo's 2:05 GPS line these are the innocent traces near the scene in the 2:00 to 2:30 window.
-
 Decisions applied 19 Oct after the simulations: full ARCHIVE search over both layers; two innocent traces near the scene; a trace of the syndicate and the hard copy on Nina's drive; the 2:14 line is the dossier's "Confirmed inside the office" (restored 19 Oct after a spell as a camera line). `server/src/content/ledger.ts` is now the source of truth; this file keeps the design notes.
 
 ---

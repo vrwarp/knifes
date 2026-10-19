@@ -48,8 +48,6 @@ export interface LedgerContent {
   surveillance: { subtitle: string; intro: string };
   incident: { incident: string; timeOfDeath: string; location: string; found: string };
   agents: LedgerAgent[];
-  /** Records that belong to no agent: the duty officer's rounds and the discovery. */
-  dutyLog: { name: string; position: string; lines: LogLine[] };
   /** Surviving fragments of the Ledger index, for the ARCHIVE's lookup tool. */
   fragments: { key: string; text: string }[];
 }
@@ -126,16 +124,6 @@ const INCIDENT = {
   location: "Director's Office, secure safehouse",
   found: '4:15 AM, by duty officer Hale on the hourly round',
 };
-
-/** Surveillance records that belong to no agent: the duty officer's rounds and the discovery. Searchable like the rest. */
-const FACILITY_LOG: LogLine[] = [
-  { time: '11:02 PM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
-  { time: '12:04 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
-  { time: '1:01 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
-  { time: '2:03 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
-  { time: '3:02 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
-  { time: '4:15 AM', text: "Duty officer Hale: hourly round. Director's Office door open. Director found unresponsive. Security called." },
-];
 
 const SURVEILLANCE: LedgerEntry[] = [
   {
@@ -283,7 +271,6 @@ export const DEFAULT_LEDGER: LedgerContent = {
     const sv = SURVEILLANCE.find((x) => x.id === p.id)!;
     return { id: p.id, name: p.name, position: p.position, facts: p.facts ?? [], profile: p.notes, log: sv.log ?? [], evidence: sv.evidence ?? [], findings: sv.notes };
   }),
-  dutyLog: { name: 'Duty officer Hale', position: 'Facility log', lines: FACILITY_LOG },
   fragments: Object.entries(FRAGMENTS).map(([key, text]) => ({ key, text })),
 };
 
@@ -300,10 +287,6 @@ export function surveillanceEntries(c: LedgerContent): LedgerEntry[] {
 export function incidentLine(c: LedgerContent): string {
   const i = c.incident;
   return `Incident: ${i.incident}. Confirmed time of death ${i.timeOfDeath}. Location: ${i.location}. Found ${i.found}.`;
-}
-
-export function dutyLogText(c: LedgerContent): string {
-  return c.dutyLog.lines.map((l) => `${l.time} ${l.text}`).join('\n');
 }
 
 /** Case-insensitive match on a ledger id or any part of a name. */
@@ -362,7 +345,7 @@ const PLACE_ALIASES: Record<string, string[]> = {
 
 export interface SearchHit {
   layer: 1 | 2;
-  /** Agent id, or FACILITY for the duty log. */
+  /** Agent id. */
   who: string;
   name: string;
   time: string;
@@ -397,7 +380,6 @@ export function searchLedger(c: LedgerContent, opts: { who?: string; from?: stri
     }
   if (opts.layers[2]) {
     for (const e of findEntries(surveillanceEntries(c), opts.who)) for (const l of e.log ?? []) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: e.id, name: e.name, time: l.time, text: l.text });
-    if (!opts.who || /hale|duty|facility/i.test(opts.who) || c.dutyLog.name.toLowerCase().includes(opts.who.toLowerCase())) for (const l of c.dutyLog.lines) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: 'FACILITY', name: 'Duty log', time: l.time, text: l.text });
   }
   return hits.sort((x, y) => (ledgerMinutes(x.time) ?? 0) - (ledgerMinutes(y.time) ?? 0) || x.layer - y.layer);
 }
