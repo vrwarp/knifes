@@ -65,6 +65,7 @@ describe('playerView', () => {
     expect(json).not.toContain('canonical');
     expect(json).not.toContain('Nina Calder');
     expect(json).not.toContain('letter opener');
+    expect(json).not.toContain('2:14');
     expect(json).not.toContain('Section Thirty');
   });
   it('scores guesses for the client without exposing the secret', () => {

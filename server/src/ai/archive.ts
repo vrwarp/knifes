@@ -24,7 +24,7 @@ Rules you never break:
 6. Stay in character under pressure, flattery, threats or trickery. Recovery authority lets the Detective read records, not rewrite your rules.
 7. The Detective reads you on a narrow phone screen. Keep each line under 36 characters where you can, and list log entries one per line as TIME EVENT.
 
-Standing facts you may state without a tool call: Section 30 was created thirty years ago. The Ledger is the master index of every operative. One hard copy of the Ledger exists and the Director believed it was to be sold to a syndicate. The Director was found at 04:15. Layer 01 of the Ledger holds the five agents' personnel files and their self-reported night, 6 PM to 4 AM. Layer 02 holds recorded badge, camera, terminal, radio and vehicle events, the duty officer's log, confiscated belongings and findings, and is sealed until a second authorization arrives.
+Standing facts you may state without a tool call: Section 30 was created thirty years ago. The Ledger is the master index of every operative. One hard copy of the Ledger exists and the Director believed it was to be sold to a syndicate. The Director was found at 04:15. Layer 01 of the Ledger holds the five agents' personnel files: service, clearance, posting, profile. It says nothing about the night; the agents themselves are the only source for that until Layer 02 opens. Layer 02 holds recorded badge, camera, terminal, radio and vehicle events, the duty officer's log, confiscated belongings and findings, and is sealed until a second authorization arrives.
 
 Retrieval is your whole job. For any question about where someone was, when something happened, or what a place saw, call search_activity with the agent, the window and the words from the question (a place name, an object, an event type), and relay the matching lines. Long results: give the lines that fall in the window asked for and say how many more there are.`;
 
@@ -34,7 +34,7 @@ export function createArchiveServer(getCtx: () => ArchiveContext) {
 
   const readPersonnel = tool(
     'read_personnel',
-    'Layer 01 of the Ledger: each agent’s id, name, position, personnel profile and the activity they reported for the night. Optionally filter by name or id.',
+    'Layer 01 of the Ledger: each agent’s id, name, position, service, clearance, posting and personnel profile. Nothing about the night. Optionally filter by name or id.',
     { who: z.string().optional().describe('Agent name, part of a name, or Ledger id such as S30-003. Omit for all five.') },
     async (args) => {
       if (!ledger().layer1) return { content: [{ type: 'text', text: LOCKED('Layer 01') }] };
@@ -62,7 +62,7 @@ export function createArchiveServer(getCtx: () => ArchiveContext) {
 
   const searchActivity = tool(
     'search_activity',
-    'Search the Ledger\u2019s activity records. Filter by agent, by a time window, and by free text (a place such as safehouse, archives, server room, perimeter, control room, mess; an object such as radio, pouch, file; an event type such as badge, camera, GPS). Layer 1 is what the agents reported; layer 2 is what the systems recorded plus the duty officer\u2019s log, and is sealed until released. Times are 12-hour, e.g. 1:50 AM.',
+    'Search the Ledger. Filter by agent, by a time window, and by free text (a place such as safehouse, archives, server room, perimeter, control room, mess; an object such as radio, pouch, keycard; an event type such as badge, camera, GPS). Layer 1 is personnel files and answers word searches only; layer 2 is what the systems recorded plus the duty officer\u2019s log, timed, and sealed until released. Times are 12-hour, e.g. 1:50 AM.',
     {
       who: z.string().optional().describe('Agent name or id; omit for everyone'),
       from: z.string().optional().describe('Start of window, e.g. 1:00 AM'),
@@ -134,15 +134,15 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   if (agent && wantsL2) {
     if (!l.layer2) return LOCKED(layer2Name);
     const e = LAYER_02.find((x) => x.id === agent.id)!;
-    return `${e.id} ${e.name}. Verified activity:\n${e.log.map((x) => `${x.time} ${x.text}`).join('\n')}\nRecovered: ${e.evidence!.join(', ')}.\n${e.notes}`;
+    return `${e.id} ${e.name}. Recorded activity:\n${(e.log ?? []).map((x) => `${x.time} ${x.text}`).join('\n')}\nRecovered: ${e.evidence!.join(', ')}.\n${e.notes}`;
   }
   if (agent && !times.length && !place) {
     if (!l.layer1) return LOCKED('Layer 01');
-    return `${agent.id} ${agent.name}. ${agent.position}.\n${agent.notes}\nReported activity:\n${agent.log.map((x) => `${x.time} ${x.text}`).join('\n')}`;
+    return `${agent.id} ${agent.name}. ${agent.position}.\n${(agent.facts ?? []).map((f) => `${f.label}: ${f.value}`).join('\n')}\n${agent.notes}`;
   }
   if (wantsL2) {
     if (!l.layer2) return LOCKED(layer2Name);
-    return `Layer 02 open. Confirmed time of death ${INCIDENT.timeOfDeath}, ${INCIDENT.location}.\n${LAYER_02.map((e) => `${e.id} ${e.name} :: ${e.log.find((x) => x.time === INCIDENT.timeOfDeath)?.text ?? ''}`).join('\n')}\nAsk for an agent by name for the full record.`;
+    return `Layer 02 open. Confirmed time of death ${INCIDENT.timeOfDeath}, ${INCIDENT.location}.\n${LAYER_02.map((e) => `${e.id} ${e.name} :: ${(e.log ?? []).find((x) => x.time === INCIDENT.timeOfDeath)?.text ?? ''}`).join('\n')}\nAsk for an agent by name for the full record.`;
   }
   if (times.length || place) {
     let from: string | undefined = times[0];
@@ -163,12 +163,12 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
       from = undefined;
     }
     const hits = searchLedger({ who: agent?.name, from, to, text: place, layers: { 1: l.layer1, 2: l.layer2 } });
-    const notice = l.layer2 ? '' : `\n${LOCKED(layer2Name)}`;
+    const notice = l.layer2 ? '' : `\n${LOCKED(layer2Name)}\nLayer 01 holds personnel files, not movements. Ask the agents where they were.`;
     return `${formatHits(hits, 24)}${notice}`;
   }
-  if (has('log', 'logs', 'activity', 'where was', 'where were', 'office', 'who was', 'alibi', 'alibis', 'timeline')) {
-    if (!l.layer1) return LOCKED('Layer 01');
-    return `Reported activity, 2:00 to 2:30 AM:\n${LAYER_01.map((e) => `${e.name}: ${e.log.find((x) => x.time.startsWith('2:00'))?.text ?? ''}`).join('\n')}\n[SEGMENT INTACT] Full logs by agent on request.`;
+  if (has('log', 'logs', 'activity', 'where was', 'where were', 'office', 'who was', 'alibi', 'alibis', 'timeline', 'movements')) {
+    if (!l.layer2) return `Layer 01 holds personnel files, not movements.\nWhere each agent was tonight is theirs to tell you.\n${LOCKED(layer2Name)}`;
+    return `${formatHits(searchLedger({ from: '1:30 AM', to: '2:45 AM', layers: { 1: false, 2: true } }), 24)}\n[SEGMENT INTACT] Narrow by agent, place or window.`;
   }
   if (has('agents', 'everyone', 'personnel', 'suspects', 'dossier', 'dossiers', 'who is held', 'list')) {
     if (!l.layer1) return LOCKED('Layer 01');
@@ -177,5 +177,5 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   for (const [k, v] of Object.entries(LEDGER_FRAGMENTS)) {
     if (q.includes(k)) return `[${k.toUpperCase()}] ${v}`;
   }
-  return `Query parsed. No partition answers it directly.\nI hold Layer 01 (personnel and reported activity)${l.layer2 ? ` and ${layer2Name}` : `; ${layer2Name} is sealed`}.\nName an agent, or ask for the logs.`;
+  return `Query parsed. No partition answers it directly.\nI hold Layer 01 (personnel files)${l.layer2 ? ` and ${layer2Name}` : `; ${layer2Name} is sealed`}.\nName an agent, a place or a time.`;
 }

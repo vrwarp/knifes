@@ -219,6 +219,10 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .agent > header .name { font-weight: 700; color: var(--accent); letter-spacing: 0.04em; }
 .agent > header .pos { color: var(--dim); font-size: 12px; text-align: right; }
 .agent > .body { padding: 0 12px 12px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }
+.facts { margin: 0 0 4px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+.facts div { display: contents; }
+.facts dt { color: var(--dim); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; padding-top: 2px; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
 .agent h4 { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); margin: 10px 0 4px; }
 .agent .notes { color: var(--ink); }
 .agent ul.items { padding-left: 18px; margin: 0; }

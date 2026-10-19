@@ -158,14 +158,14 @@ try {
   await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
   await shot(player, 'p10-ledger-layer1');
   await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-  await player.getByText('Working in the archives.').waitFor();
+  await player.getByText(/Rarely forgets a conversation/).waitFor();
   await shot(player, 'p10b-ledger-nina');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
   await player.getByLabel('Passcode').waitFor();
   await shot(player, 'p11-ledger-layer2-sealed');
 
   await player.getByRole('tab', { name: 'archive' }).click();
-  for (const q of ['where was everyone at 2:14', 'read the classified evidence']) {
+  for (const q of ['tell me about Nina Calder', 'read the classified evidence']) {
     await player.getByLabel('Query').fill(q);
     await player.getByRole('button', { name: /send/i }).click();
     await settle(600);

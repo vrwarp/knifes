@@ -27,7 +27,7 @@ You'll need to piece everything together and determine who murdered Pendelton. R
 
 export const PHIL_PART_2 = `PHIL: Jimmy... it's Phil. We've got a breakthrough. Our team managed to crack another layer of Pendelton's encryption. Turns out, the Ledger you accessed earlier was only a partial archive.
 
-The original personnel files contained the agents' self-reported activity logs. But Pendelton kept a separate set of records that automatically tracked their actual movements using an advanced biometric tracker. We've managed to recover those records. Additionally, we finished processing their inventory of personal belongings confiscated from each agent when they were brought into headquarters.
+The Ledger you opened earlier was only the personnel layer. But Pendelton kept a separate set of records that automatically tracked the agents' actual movements using an advanced biometric tracker. We've managed to recover those records. Additionally, we finished processing their inventory of personal belongings confiscated from each agent when they were brought into headquarters.
 
 And Jimmy... there are some discrepancies. At least one of the agents wasn't where they claimed to be on the night of the murder. I've uploaded the recovered information to your Ledger. You should have access to a new section labeled CLASSIFIED EVIDENCE. Compare the recovered timestamps against what the agents told you during their interrogations. I think we're getting close.
 
@@ -96,11 +96,11 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     title: 'RECOVERY COMPLETE // LEDGER DECRYPTED',
     body: `S30 LEDGER. ACCESS LEVEL: MAGENTA.
 
-Layer 01 is open: the classified personnel records of the five Section 30 agents now held at headquarters, with the activity each of them reported for the night Director Pendelton died.
+Layer 01 is open: the classified personnel files of the five Section 30 agents now held at headquarters. Who they are, what they hold clearance for, where they are posted. Nothing about tonight: that you will have to get from them.
 
 Pendelton was found at 04:15 in the Director's Office inside the secure safehouse. The killer is one of the five.
 
-DIRECTIVE: Return to headquarters. Question each agent. Establish where every one of them was between 11:00 PM and 4:00 AM, and hold their answers against the Ledger.
+DIRECTIVE: Return to headquarters. Question each agent. Establish where every one of them was between 11:00 PM and 4:00 AM, and write it down. The Ledger may yet have more to say.
 
 Recovery chain complete. The rest is detective work.`,
     buttonLabel: 'RETURN TO HEADQUARTERS',
@@ -122,7 +122,7 @@ Recovery chain complete. The rest is detective work.`,
     enabled: true,
     maxMessageChars: 400,
     welcome:
-      'ARCHIVE ONLINE. Ledger partition mounted. I hold what the failsafe recovered: the personnel layer, the activity logs, and whatever further layers are released to you. Ask. I answer what the records support. I do not guess.',
+      'ARCHIVE ONLINE. Ledger partition mounted. I hold what the failsafe recovered: the personnel layer, and whatever further layers are released to you. Where the agents were tonight is not in my records yet. Ask. I answer what the records support. I do not guess.',
   },
   deduction: {
     prompt: 'Complete the master deduction. Every field must verify against the Ledger.',
@@ -207,7 +207,7 @@ Case closed. Happy thirtieth, Detective.`,
         'Spend the first two attempts on vowels and the common consonants, then narrow.',
       ],
       investigation: [
-        'Every agent told you where they were between 11 PM and 4 AM. The Ledger holds what they wrote down. Hold the two against each other.',
+        'Every agent told you where they were between 11 PM and 4 AM. When the Ledger\u2019s second layer opens, hold what they said against what the systems recorded.',
         'The recovered records put exactly one agent inside the Director’s Office at the time of death. Then look at what was found in that agent’s pockets.',
       ],
       solved: [],

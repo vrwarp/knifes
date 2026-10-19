@@ -1,6 +1,6 @@
 # S30 Ledger, full-night draft
 
-Status: content draft, 19 Oct 2026. Not in the app yet. Replaces the four-line cards with a night's log per agent in the texture of each job, so the decisive lines sit among routine ones.
+Status: content draft, 19 Oct 2026. Superseded in part: Layer 01 in the app is now personnel files only, and the self-reported logs below became the actor briefs (ACTOR-BRIEFS.md). Layer 02 is as drafted. Replaces the four-line cards with a night's log per agent in the texture of each job, so the decisive lines sit among routine ones.
 
 Design rules used:
 

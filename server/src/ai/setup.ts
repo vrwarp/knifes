@@ -16,7 +16,7 @@ import type { GameConfig } from '../types.js';
 
 export const SETUP_SYSTEM_PROMPT = `You are the setup assistant for "Section 30: The Director's Last File", a surprise murder-mystery party for Jimmy's 30th birthday on October 25. You talk with the game masters (Faith, Benji and Victor), never with Jimmy, so you may discuss the solution, the codes and the mechanics openly.
 
-How the night runs: Jimmy receives a letter at church with a magic-square puzzle whose answer opens a book safe; the fake book holds a QR code to this site and Bananagram tiles that anagram to LETTER OPENER (the weapon). The site's location puzzle (Street View or field photos) points him to a drop near Lake Elizabeth, where a note tells him to call Phil, his old code breaker, with the phrase "Who watches the watchers?" / "Section Thirty". Phil reads out the recovery authorization code (the gate code), Jimmy wins a seven-letter word race against an AI opponent, and the Ledger's Layer 01 opens: five agents' personnel files and self-reported activity logs. He returns to headquarters (the party), where five guests play the agents, and interrogates them about 11 PM to 4 AM. Later Phil calls again; a GM presses Release Layer 02 (or Phil reads out the Layer 02 passcode) and the CLASSIFIED EVIDENCE section opens with verified surveillance timestamps and confiscated belongings. Jimmy questions the ARCHIVE terminal (an in-world AI) and submits a free-text master deduction. The GMs watch a live console and push hints. Canon: Nina Calder killed Pendelton in the Director's Office at 2:14 AM with the silver letter opener, to sell the hard copy of the Ledger to the syndicate; the other four agents each hide an unrelated secret.
+How the night runs: Jimmy receives a letter at church with a magic-square puzzle whose answer opens a book safe; the fake book holds a QR code to this site and Bananagram tiles that anagram to LETTER OPENER (the weapon). The site's location puzzle (Street View or field photos) points him to a drop near Lake Elizabeth, where a note tells him to call Phil, his old code breaker, with the phrase "Who watches the watchers?" / "Section Thirty". Phil reads out the recovery authorization code (the gate code), Jimmy wins a seven-letter word race against an AI opponent, and the Ledger's Layer 01 opens: five agents' personnel files (service, clearance, posting, profile; nothing about the night). He returns to headquarters (the party), where five guests play the agents, and interrogates them about 11 PM to 4 AM; their timelines are in docs/ACTOR-BRIEFS.md, not in the app. Later Phil calls again; a GM presses Release Layer 02 (or Phil reads out the Layer 02 passcode) and the CLASSIFIED EVIDENCE section opens with verified surveillance timestamps and confiscated belongings. Jimmy questions the ARCHIVE terminal (an in-world AI) and submits a free-text master deduction. The GMs watch a live console and push hints. Canon: Nina Calder killed Pendelton in the Director's Office at 2:14 AM with the silver letter opener, to sell the hard copy of the Ledger to the syndicate; the other four agents each hide an unrelated secret.
 
 Your job:
 1. Find what is missing or risky. Start with readiness_check whenever someone asks what is left to do.
@@ -42,7 +42,7 @@ export function caseFilesText(): string {
     .map(([k, v]) => `${k}: ${v}`)
     .join('\n');
   return [
-    '## Ledger Layer 01 (personnel and self-reported activity; opens after the word race)',
+    '## Ledger Layer 01 (personnel files; opens after the word race)',
     LAYER_01.map((e) => formatEntry(e, 1)).join('\n\n'),
     `## Ledger Layer 02 (recovered surveillance and belongings; released during Phil's second call)`,
     `Incident: ${INCIDENT.incident}. Confirmed time of death ${INCIDENT.timeOfDeath}. Location: ${INCIDENT.location}.`,
@@ -75,7 +75,7 @@ export function createSetupServer(ctx: SetupContext) {
         },
         { annotations: { readOnlyHint: true } },
       ),
-      tool('get_case_files', 'The full case files: Ledger Layer 01 (personnel and self-reported logs), Layer 02 (verified activity, confiscated belongings, findings) and the ledger fragments.', {}, async () =>
+      tool('get_case_files', 'The full case files: Ledger Layer 01 (personnel files), Layer 02 (recorded activity, duty log, confiscated belongings, findings) and the ledger fragments.', {}, async () =>
         text(caseFilesText()),
       { annotations: { readOnlyHint: true } }),
       tool(

@@ -9,13 +9,14 @@ test.describe('investigation', () => {
 
   test('Layer 01 lists the five agents and Layer 02 stays sealed', async ({ player }) => {
     const section = (name: string) => player.locator('.file header', { hasText: name });
-    await expect(player.getByText(/establish every agent/i)).toBeVisible();
+    await expect(player.getByText(/ask every agent where they were/i)).toBeVisible();
     await expect(player.getByText('11:00 PM to 4:00 AM')).toBeVisible();
     for (const name of ['Mara Voss', 'Elias Mercer', 'Nina Calder', 'Theo Blackwood', 'Celeste Rowan']) await expect(player.locator('.agent header', { hasText: name })).toBeVisible();
     // The first agent opens by default; the others open on tap.
     await expect(player.getByText(/antique military memorabilia/)).toBeVisible();
     await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-    await expect(player.getByText('Working in the archives.')).toBeVisible();
+    await expect(player.getByText(/Rarely forgets a conversation/)).toBeVisible();
+    await expect(player.getByText(/2:00/)).toHaveCount(0);
     await noHorizontalScroll(player);
     await expect(section('LAYER 02')).toContainText(/sealed/i);
     await section('LAYER 02').click();
@@ -71,9 +72,12 @@ test.describe('investigation', () => {
     await player.getByRole('tab', { name: 'archive' }).click();
     const integrity = player.getByText(/INTEGRITY \d+%/i);
     const before = Number((await integrity.textContent())!.match(/(\d+)%/)![1]);
+    await player.getByLabel('Query').fill('tell me about Nina Calder');
+    await player.getByRole('button', { name: /send/i }).click();
+    await expect(player.locator('.msg.assistant', { hasText: 'Intelligence Analyst' })).toBeVisible();
     await player.getByLabel('Query').fill('where was everyone at 2:14');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'Nina Calder' })).toBeVisible();
+    await expect(player.locator('.msg.assistant').last()).toContainText('personnel files, not movements');
     await player.getByLabel('Query').fill('read the classified evidence');
     await player.getByRole('button', { name: /send/i }).click();
     await expect(player.locator('.msg.assistant').last()).toContainText('LAYER SEALED');
