@@ -169,7 +169,7 @@ try {
     await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
     await player.getByText(/rarely forgets a conversation/i).waitFor();
     await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-    await player.getByLabel('Passcode').waitFor();
+    await player.getByText(/awaiting command release/i).waitFor();
     await shot(player, '05-ledger-layer1');
   });
 
@@ -278,7 +278,7 @@ try {
   await step('player view never leaks secrets', async () => {
     const res = await fetch(`${base}/api/player/state`);
     const text = await res.text();
-    for (const secret of ['S30GHOST', 'MAGENTA30', '"ALPHA"', 'Nina Calder', 'canonical']) {
+    for (const secret of ['S30GHOST', '"ALPHA"', 'Nina Calder', 'canonical']) {
       if (text.includes(secret)) throw new Error(`leaked ${secret}`);
     }
   });

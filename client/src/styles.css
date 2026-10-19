@@ -154,7 +154,6 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 /* The gate has a digit row too, so its bar is a key taller than the race's. */
 .frame.console:not(.hack).with-keyboard { margin-bottom: 0; }
 .shell:has(.frame.console:not(.hack).with-keyboard) { padding-bottom: calc(338px + env(safe-area-inset-bottom, 0px)); }
-.passcode .tl-word { letter-spacing: 0.08em; }
 .keyboard-inner { --kgap: 6px; --kw: calc((100% - 9 * var(--kgap)) / 10); display: grid; gap: 6px; max-width: 568px; margin: 0 auto; }
 .frame.hack.with-keyboard { margin-bottom: 0; }
 .shell:has(.frame.hack.with-keyboard) { padding-bottom: calc(284px + env(safe-area-inset-bottom, 0px)); }

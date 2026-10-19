@@ -87,7 +87,7 @@ test.describe('player journey', () => {
     for (const stage of ['intro', 'gate', 'hack', 'investigation']) {
       await app.setStage(stage);
       const text = await (await request.get(`${app.base}/api/player/state`)).text();
-      for (const secret of ['S30GHOST', 'MAGENTA30', '"ALPHA"', 'Nina Calder', 'letter opener', 'Section Thirty', 'canonical', 'guidance']) {
+      for (const secret of ['S30GHOST', '"ALPHA"', 'Nina Calder', 'letter opener', 'Section Thirty', 'canonical', 'guidance']) {
         expect(text, `${secret} leaked at ${stage}`).not.toContain(secret);
       }
       if (stage === 'hack') {

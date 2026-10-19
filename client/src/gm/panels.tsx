@@ -201,14 +201,10 @@ export function LedgerPanel({ state, config }: { state: GameState; config: GameC
         <dd>
           <b className="amber" style={{ fontSize: 20, letterSpacing: '0.08em' }}>{config.gate.code}</b> <span className="tiny muted">the recovery authorization code he types at the gate</span>
         </dd>
-        <dt>Call 2 code</dt>
-        <dd>
-          <b className="amber" style={{ fontSize: 20, letterSpacing: '0.08em' }}>{config.ledger.layer2Passcode}</b> <span className="tiny muted">opens Layer 02 if nobody presses Release</span>
-        </dd>
         <dt>Layer 02</dt>
         <dd>
           {state.ledger.layer2 ? (
-            <span className="green">RELEASED{state.ledger.layer2Source === 'passcode' ? ' by passcode' : ''}{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</span>
+            <span className="green">RELEASED{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</span>
           ) : (
             <span>sealed{canRelease ? '' : ' · opens once he is investigating'}</span>
           )}
@@ -321,7 +317,7 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
         </dd>
         <dt>Ledger</dt>
         <dd>
-          Layer 01 {state.ledger.layer1 ? 'open' : 'sealed'} · Layer 02 {state.ledger.layer2 ? <b className="green">released{state.ledger.layer2Source === 'passcode' ? ' by passcode' : ''}{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</b> : 'sealed'}
+          Layer 01 {state.ledger.layer1 ? 'open' : 'sealed'} · Layer 02 {state.ledger.layer2 ? <b className="green">released{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</b> : 'sealed'}
         </dd>
         <dt>ARCHIVE</dt>
         <dd>
@@ -500,9 +496,7 @@ function describe(e: GameEvent): { text: string; cls: string } {
     case 'hack_ai_solved':
       return { text: `adversary solved in ${s('attempts')}, Jimmy was at ${s('playerAttempts')}`, cls: 'fail' };
     case 'ledger_release':
-      return { text: `Ledger Layer ${s('layer')} released (${s('source') === 'passcode' ? 'passcode' : 'GM'})`, cls: 'ok' };
-    case 'ledger_passcode':
-      return { text: `Layer 02 passcode "${s('passcode')}" rejected`, cls: 'fail' };
+      return { text: `Ledger Layer ${s('layer')} released`, cls: 'ok' };
     case 'archive_user':
       return { text: `> ${s('text')}`, cls: '' };
     case 'archive_assistant':

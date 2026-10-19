@@ -161,7 +161,7 @@ export interface GameState {
     ai: { guesses: string[]; guessAt: number[]; solved: boolean; thinking: boolean; plan: string[] | null; planSource: 'ai' | 'generated' | null; nextAt: number | null; lastAt: number | null };
   };
   hackScripts: { key: string; byWord: Record<string, { plan: string[]; source: 'ai' | 'generated'; at: number }>; busy: boolean };
-  ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null; layer2Source: 'gm' | 'passcode' | null };
+  ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
@@ -212,7 +212,7 @@ export interface GameConfig {
     freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  ledger: { layer2Passcode: string; layer2Label: string; layer2ReleasedText: string; interrogationWindow: string };
+  ledger: { layer2Label: string; layer2ReleasedText: string; interrogationWindow: string };
   phil: { challenge: string; response: string; part1: string; part2: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
   deduction: {

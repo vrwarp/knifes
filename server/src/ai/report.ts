@@ -19,7 +19,7 @@ Started: ${state.startedAt ? fmt(state.startedAt) : 'unknown'}
 Stage times: ${JSON.stringify(state.stageTimes)}
 Geo attempts: ${state.geo.attempts}. Gate attempts: ${state.gate.attempts}. Word puzzle guesses: ${state.hack.guesses.length} (lockouts ${state.hack.rounds}${config.hack.mode === 'race' ? '; he raced a hostile AI process for the same key, see the hack_ai_* and hack_round events' : ''}). Deduction attempts: ${state.deduction.attempts}, passed: ${state.deduction.passed}.
 Final deduction answers: ${JSON.stringify(state.deduction.lastAnswers)}
-Ledger Layer 02 released: ${state.ledger.layer2 ? `yes (${state.ledger.layer2Source})` : 'no'}
+Ledger Layer 02 released: ${state.ledger.layer2 ? 'yes' : 'no'}
 
 Activity log:
 ${timeline || '(none)'}
@@ -38,7 +38,7 @@ export function mockReport(config: GameConfig, state: GameState, events: GameEve
 Detective Jimmy engaged the emergency failsafe recovery protocol${state.startedAt ? ` at ${fmt(state.startedAt)}` : ''}. The code gate fell on attempt ${state.gate.attempts || 1}. The Ledger key yielded after ${state.hack.guesses.length} key attempt${state.hack.guesses.length === 1 ? '' : 's'}${state.hack.rounds ? ` and ${state.hack.rounds} reset${state.hack.rounds === 1 ? '' : 's'}` : ''}.
 
 ## The Interrogation
-${archive.length ? `The Detective put ${state.archive.messageCount} queries to the ARCHIVE.${asked.length ? ` Among them: "${asked.map((m) => m.text).join('" and "')}".` : ''}` : 'The Detective did not consult the ARCHIVE. The records note this with something like admiration.'}${state.ledger.layer2 ? ` Layer 02 was released${state.ledger.layer2Source === 'passcode' ? ' by passcode' : ' by command authority'}.` : ' Layer 02 was never released.'}
+${archive.length ? `The Detective put ${state.archive.messageCount} queries to the ARCHIVE.${asked.length ? ` Among them: "${asked.map((m) => m.text).join('" and "')}".` : ''}` : 'The Detective did not consult the ARCHIVE. The records note this with something like admiration.'}${state.ledger.layer2 ? ` Layer 02 was released by command authority.` : ' Layer 02 was never released.'}
 
 ## The Deduction
 ${state.deduction.passed ? `Verified on attempt ${state.deduction.attempts}.` : 'Not yet verified.'} ${events.length} events were logged across the evening.

@@ -27,7 +27,7 @@ describe('stage flow', () => {
     forceStage(c, s, 'investigation');
     expect(s.gate.passed).toBe(true);
     expect(s.hack.solved).toBe(true);
-    expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null, layer2Source: null });
+    expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null });
     const s2 = initialState();
     forceStage(c, s2, 'solved');
     expect(s2.ledger.layer2).toBe(false);
@@ -38,9 +38,8 @@ describe('stage flow', () => {
     forceStage(c, s, 'investigation');
     s.ledger.layer2 = true;
     s.ledger.layer2ReleasedAt = 5;
-    s.ledger.layer2Source = 'gm';
     resetStage(c, s, 'investigation');
-    expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null, layer2Source: null });
+    expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null });
   });
   it('resetting a stage rewinds the pointer and clears that puzzle', () => {
     const c = cfg();
@@ -61,7 +60,6 @@ describe('playerView', () => {
     const json = JSON.stringify(playerView(c, s));
     expect(json).not.toContain(c.gate.code);
     expect(json).not.toContain('"secret"');
-    expect(json).not.toContain(c.ledger.layer2Passcode);
     expect(json).not.toContain('canonical');
     expect(json).not.toContain('Nina Calder');
     expect(json).not.toContain('letter opener');

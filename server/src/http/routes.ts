@@ -53,7 +53,6 @@ export function playerRouter(service: GameService): Router {
     res.json(service.view());
   });
   r.get('/ledger', (_req, res) => res.json(service.ledgerFiles()));
-  r.post('/ledger/unlock', (req, res) => res.json(service.ledgerUnlock(str(req.body?.passcode, 80))));
   r.get('/archive', (_req, res) => res.json({ messages: service.archiveTranscript() }));
   r.post('/archive', async (req, res) => res.json({ message: await service.archiveSend(str(req.body?.text, 4000)) }));
   r.post('/deduction', async (req, res) => {
@@ -126,7 +125,7 @@ export function gmRouter(service: GameService): Router {
     res.json({ ok: true });
   });
   r.post('/ledger/release', (req, res) => {
-    service.releaseLayer2(req.body?.released === undefined ? true : Boolean(req.body?.released), 'gm');
+    service.releaseLayer2(req.body?.released === undefined ? true : Boolean(req.body?.released));
     res.json({ ok: true });
   });
   r.post('/archive/reset', (_req, res) => {

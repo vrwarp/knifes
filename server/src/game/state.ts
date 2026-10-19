@@ -40,7 +40,7 @@ export function freshRound(h: HackState): HackState {
 }
 
 export function initialLedger(): GameState['ledger'] {
-  return { layer1: false, layer2: false, layer2ReleasedAt: null, layer2Source: null };
+  return { layer1: false, layer2: false, layer2ReleasedAt: null };
 }
 
 export function initialState(): GameState {
@@ -99,7 +99,7 @@ export function forceStage(config: GameConfig, state: GameState, stage: StageId,
   if (state.startedAt === null) state.startedAt = now;
 }
 
-/** Layer 01 opens with the investigation. Layer 02 waits for Phil's second call (a GM release or the passcode). */
+/** Layer 01 opens with the investigation. Layer 02 waits for Phil's second call (a GM presses Release). */
 export function applyInvestigationUnlocks(_config: GameConfig, state: GameState): void {
   state.ledger.layer1 = true;
 }
