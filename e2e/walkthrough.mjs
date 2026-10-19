@@ -240,7 +240,7 @@ try {
     await sleep(700);
     await finishTyping(player);
   }
-  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).waitFor({ timeout: 10_000 });
+  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).last().waitFor({ timeout: 10_000 });
   await finishTyping(player);
   await shot(player, 'ARCHIVE answering questions', 'Integrity rises with every question. These replies come from the scripted mock; on the night they come from Claude on the organizer’s subscription.');
 

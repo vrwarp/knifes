@@ -169,7 +169,7 @@ try {
     await player.getByRole('button', { name: /send/i }).click();
     await settle(600);
   }
-  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).waitFor({ timeout: 10_000 });
+  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).last().waitFor({ timeout: 10_000 });
   await shot(player, 'p12-archive');
 
   await gmApi('/api/gm/ledger/release', { method: 'POST', json: { released: true } });
