@@ -90,20 +90,37 @@ export function Keyboard({ value, onChange, onEnter, maxLength, digits = false, 
   );
 }
 
-/** The prompt line a console shows while a code is being typed: `> MAGEN_____` with a blinking caret. */
-export function PromptLine({ value, maxLength, label, shake = false }: { value: string; maxLength: number; label: string; shake?: boolean }) {
+/** The letters typed so far, then a block cursor on the insertion point, then the empty slots after it. */
+export function PromptSlots({ value, maxLength }: { value: string; maxLength: number }) {
   const slots = Math.max(maxLength, value.length);
-  const typed = value.padEnd(slots).split('');
+  const cells: ReactNode[] = [];
+  for (let j = 0; j < slots; j++) {
+    if (j < value.length)
+      cells.push(
+        <span key={j} className="typed">
+          {value[j]}
+        </span>,
+      );
+    else if (j === value.length) cells.push(<i key={j} className="caret cell" aria-hidden="true" />);
+    else
+      cells.push(
+        <span key={j} className="slot">
+          _
+        </span>,
+      );
+  }
+  // The code fills every slot: the cursor waits after the last letter.
+  if (value.length >= slots) cells.push(<i key="end" className="caret cell" aria-hidden="true" />);
+  return <>{cells}</>;
+}
+
+/** The prompt line a console shows while a code is being typed: `> MAGEN|____` with the cursor on the next slot. */
+export function PromptLine({ value, maxLength, label, shake = false }: { value: string; maxLength: number; label: string; shake?: boolean }) {
   return (
     <div className={`tl you prompt-line ${shake ? 'shake' : ''}`} role="img" aria-label={label}>
       <span className="tl-n prompt">{'>'}</span>
       <span className="tl-word typing">
-        {typed.map((l, j) => (
-          <span key={j} className={l.trim() ? 'typed' : 'slot'}>
-            {l.trim() || '_'}
-          </span>
-        ))}
-        <i className="caret" />
+        <PromptSlots value={value} maxLength={maxLength} />
       </span>
     </div>
   );

@@ -3,7 +3,7 @@ import { api, errorText } from '../api';
 import type { LetterScore, PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
-import { Keyboard } from './Keyboard';
+import { Keyboard, PromptSlots } from './Keyboard';
 
 const STATE_WORD = { hit: 'placed', near: 'misplaced', miss: 'absent' } as const;
 
@@ -137,7 +137,6 @@ export function Hack({ view, setView, refresh }: StageProps) {
   }
 
   const last = h.lastRound;
-  const typed = input.padEnd(h.length).split('');
 
   return (
     <Frame kicker="sec-30 terminal // tty1" title="Brute-force key" className={`console hack ${roundOpen ? 'with-keyboard' : ''} ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
@@ -205,12 +204,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
             <span className="tl-who">you</span>
             <span className="tl-n prompt">{'>'}</span>
             <span className="tl-word typing">
-              {typed.map((l, j) => (
-                <span key={j} className={l.trim() ? 'typed' : 'slot'}>
-                  {l.trim() || '_'}
-                </span>
-              ))}
-              <i className="caret" />
+              <PromptSlots value={input} maxLength={h.length} />
             </span>
             <span className="tl-mask">
               {input.length}/{h.length}
