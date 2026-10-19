@@ -335,3 +335,13 @@ Deduction after 7 queries: 2:14 AM, Nina Calder, the silver letter opener, 70 pe
 - Layer 02 is not searchable by place or window across agents, only readable per agent (the card, or "everything recorded on Theo"). Finding the one agent at the scene means reading five records, which is the intended work.
 - Layer 02 is not in the ARCHIVE at all; it lives on the cards only. The ARCHIVE stays a Layer 01 and index tool.
 - Keep full search and accept that a sharp question ends it. For a party guest the right question is less obvious than for a model told the time of death up front; the time of death is itself a Layer 02 fact, so the query needs two steps.
+
+## Simulations 3 and 4, on the ported content, 19 Oct 2026
+
+Same fast model, no extended thinking, against `ledger.ts` as committed (duty log, Theo's safehouse-road GPS line, camera line at 2:14, syndicate trace on Nina's drive, full ARCHIVE search).
+
+**Cards (Layer 01 then Layer 02).** Layer 01 alone: Theo first (the only hard location near the safehouse, improvised tools, the radio), Mara second. Layer 02: read every line including the duty log, found all five discrepancies, deduced 2:14, Nina, the letter opener, and this time the Ledger as the asset from the index page on her drive. Motive: a mix, "buried the operation that killed her brother" with the syndicate contact cited as support. Settled by her 2:11 to 2:19 badges against the archives claim. Rated 6 of 10; Theo cost the most time; the tiles plus the letter opener in her belongings, and Mara's personnel file tangent, read as author's hand.
+
+**ARCHIVE only, 7 queries.** Before the release: safehouse access 11 PM to 4:15, the book safe and tiles (nothing), Theo and Elias on the Director, Nina and Celeste on archives and pouch, Mara and Celeste near the safehouse before 1 AM. No suspect. After the release: one query, badge / camera / terminal at the office or safehouse 1:30 to 2:30, returned thirteen lines across all five agents and the duty log; Nina's 2:11 in and 2:19 out sat among Mara's terminal, Theo's GPS, Celeste's residence camera and Hale's 2:03 round. One more query for her belongings. Deduction: 2:14, Nina, the letter opener, the Ledger hard copy, 80 percent; motive given as exposure plus the syndicate contact.
+
+**Compared with simulation 2.** The scene query now returns thirteen lines instead of three, so the answer has to be read out of noise rather than handed over. The asset is now recoverable. Motive still blends the brother and the syndicate; the grader accepts "sell" and rejects "brother", so a player who writes both will fail the motive slot. Either accept that, or soften the reject list to fail only a motive that names the brother without the sale.
