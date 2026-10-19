@@ -7,7 +7,7 @@ import { Keyboard, PromptLine } from './Keyboard';
 
 const MAX = 16;
 
-export function Gate({ view }: StageProps) {
+export function Gate({ view, onBack }: StageProps & { onBack?: () => void }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [rejected, setRejected] = useState(false);
@@ -36,6 +36,11 @@ export function Gate({ view }: StageProps) {
 
   return (
     <Frame kicker={t.kicker} title={t.title} className={`console ${!ok ? 'with-keyboard' : ''} ${ok ? 'success' : ''}`}>
+      {onBack ? (
+        <button type="button" className="btn small ghost" onClick={onBack} style={{ marginBottom: 12 }}>
+          ← {t.back}
+        </button>
+      ) : null}
       <Typewriter text={view.gate.prompt} speed={3} />
       {ok ? (
         <div className="con-line sys result green" role="status">

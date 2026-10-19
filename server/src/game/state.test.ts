@@ -84,6 +84,18 @@ describe('playerView', () => {
     expect(json).not.toContain('2:14');
     expect(json).not.toContain('Section Thirty');
   });
+  it('only sends the geo target once the location is confirmed', () => {
+    const c = cfg();
+    c.geo.mode = 'puzzle';
+    c.geo.target = { lat: 1, lng: 2 };
+    const s = initialState();
+    expect(playerView(c, s).geo.target).toBeNull();
+    s.geo.solved = true;
+    expect(playerView(c, s).geo.target).toEqual({ lat: 1, lng: 2 });
+    s.geo.solved = false;
+    c.geo.mode = 'reveal';
+    expect(playerView(c, s).geo.target).toEqual({ lat: 1, lng: 2 });
+  });
   it('scores guesses for the client without exposing the secret', () => {
     const c = cfg();
     c.hack.secret = 'ALPHA';

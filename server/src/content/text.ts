@@ -31,6 +31,8 @@ export interface UiText {
     mapHelpAfterFeed: string;
     triangulate: string;
     proceed: string;
+    openInMaps: string;
+    returnToLine: string;
     unlockMap: string;
     lockMap: string;
     feedNone: string;
@@ -42,7 +44,7 @@ export interface UiText {
     /** {n} is the count. */
     attempts: string;
   };
-  gate: { kicker: string; title: string; command: string; keyLabel: string; rejected: string; submit: string; statusLeft: string; statusMid: string; attempts: string };
+  gate: { kicker: string; title: string; back: string; command: string; keyLabel: string; rejected: string; submit: string; statusLeft: string; statusMid: string; attempts: string };
   hack: {
     kicker: string;
     title: string;
@@ -154,6 +156,8 @@ export const DEFAULT_TEXT: UiText = {
     mapHelpAfterFeed: 'Then unlock the map, find the spot, tap to drop the marker, and triangulate.',
     triangulate: 'Triangulate',
     proceed: 'Proceed',
+    openInMaps: 'Open in Google Maps',
+    returnToLine: 'Return to secure line',
     unlockMap: 'Tap to unlock map',
     lockMap: 'Lock map',
     feedNone: '[FEED OFFLINE: NO STREET-LEVEL IMAGERY AT THE SOURCE]',
@@ -167,6 +171,7 @@ export const DEFAULT_TEXT: UiText = {
   gate: {
     kicker: 'sec-30 terminal // tty1',
     title: 'Secure line',
+    back: 'Back to location',
     command: 'auth --recovery-key',
     keyLabel: 'Recovery key',
     rejected: 'KEY REJECTED',

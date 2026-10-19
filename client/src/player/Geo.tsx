@@ -55,7 +55,8 @@ function MapPicker({ center, zoom, onPick, labels }: { center: LatLng; zoom: num
   );
 }
 
-export function Geo({ view, setView }: StageProps) {
+/** `onReturn` set: the player stepped back from the secure line to look again, so Proceed just returns there. */
+export function Geo({ view, setView, onReturn }: StageProps & { onReturn?: () => void }) {
   const g = view.geo;
   const t = view.text.geo;
   const puzzle = view.geoMode === 'puzzle';
@@ -126,8 +127,19 @@ export function Geo({ view, setView }: StageProps) {
         <div style={{ marginTop: 12 }}>
           <h2 className="green">{g.revealTitle}</h2>
           <pre className="typed">{g.revealBody}</pre>
-          <button className="btn primary block" onClick={proceed} disabled={busy} style={{ marginTop: 12 }}>
-            {t.proceed}
+          {g.target ? (
+            <a
+              className="btn block"
+              href={`https://www.google.com/maps/search/?api=1&query=${g.target.lat},${g.target.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginTop: 12 }}
+            >
+              {t.openInMaps}
+            </a>
+          ) : null}
+          <button className="btn primary block" onClick={onReturn ?? proceed} disabled={busy} style={{ marginTop: 12 }}>
+            {onReturn ? t.returnToLine : t.proceed}
           </button>
         </div>
       )}
