@@ -9,7 +9,7 @@ type Tab = 'ledger' | 'archive' | 'deduction';
 
 export function Investigation({ view, setView, refresh, hold, feed, busy }: StageProps & { feed: ArchiveMessage[]; busy: boolean }) {
   const [tab, setTab] = useState<Tab>('ledger');
-  // A dot on the Ledger tab from the moment Layer 02 opens until he looks at it.
+  // A dot on the Ledger tab from the moment the surveillance records are released until he looks at them.
   const [seenLayer2, setSeenLayer2] = useState(view.ledger.layer2);
   const fresh = view.ledger.layer2 && !seenLayer2;
   const pick = (t: Tab) => {

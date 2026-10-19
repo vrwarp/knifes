@@ -35,7 +35,7 @@ function describeStage(config: GameConfig, state: GameState): string {
       break;
     case 'investigation':
       lines.push(
-        `Investigation phase. Solution: ${solutionLine(config)}. Ledger Layer 02 (${config.ledger.layer2Label}) is ${state.ledger.layer2 ? 'released' : 'still sealed, so he only has the agents\u2019 self-reported logs; a hint must not reveal Layer 02 facts'}. Deduction attempts: ${state.deduction.attempts}. Last grading: ${JSON.stringify(state.deduction.lastResult?.slots ?? [])}. ARCHIVE queries so far: ${state.archive.messageCount}.`,
+        `Investigation phase. Solution: ${solutionLine(config)}. The ${config.ledger.layer2Label} are ${state.ledger.layer2 ? 'released' : 'not yet released and he does not know they exist, so he has only the personnel files and what the agents told him; a hint must not reveal surveillance facts or that more records are coming'}. Deduction attempts: ${state.deduction.attempts}. Last grading: ${JSON.stringify(state.deduction.lastResult?.slots ?? [])}. ARCHIVE queries so far: ${state.archive.messageCount}.`,
       );
       break;
     default:

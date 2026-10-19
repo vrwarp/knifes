@@ -119,7 +119,7 @@ export const ConfigSchema = z.object({
     layer2ReleasedText: z.string().max(1000),
     interrogationWindow: z.string().max(80),
   }),
-  phil: z.object({ challenge: z.string().max(200), response: z.string().max(200), part1: z.string().max(8000), part2: z.string().max(8000) }),
+  phil: z.object({ challenge: z.string().max(200), response: z.string().max(200), part1: z.string().max(8000), part2: z.string().max(8000), secondCaller: z.string().min(1).max(60) }),
   archive: z.object({ enabled: z.boolean(), maxMessageChars: z.number().int().min(50).max(2000), welcome: z.string() }),
   deduction: z.object({
     prompt: z.string(),
@@ -173,7 +173,7 @@ export class GameService {
       this.config.version = added.length ? db.appendConfig(this.config, 'system', 'Filled in settings added by an update', added) : latest.version;
     }
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
-    // A save from before the two-layer Ledger carries an evidence block instead; the stage it was at decides Layer 01.
+    // A save from before the Ledger carries an evidence block instead; the stage it was at decides whether the personnel files are open.
     delete (this.state as unknown as Record<string, unknown>).evidence;
     const { layer1, layer2, layer2ReleasedAt } = { ...initialLedger(), ...(this.state.ledger ?? {}) };
     this.state.ledger = { layer1, layer2, layer2ReleasedAt };
@@ -515,25 +515,25 @@ export class GameService {
     this.touch();
   }
 
-  /** The Ledger as the phone shows it: Layer 01 once the investigation opens, Layer 02 once released. */
+  /** The Ledger as the phone shows it: the personnel files once the investigation opens, the surveillance records once released (absent before). */
   ledgerFiles() {
     this.requireStage('investigation', 'the Ledger');
     const l = this.state.ledger;
     return {
       interrogationWindow: this.config.ledger.interrogationWindow,
       layer1: l.layer1 ? { ...LAYER_01_HEADER, entries: LAYER_01 } : null,
-      layer2: l.layer2 ? { ...LAYER_02_HEADER, label: this.config.ledger.layer2Label, incident: INCIDENT, entries: LAYER_02, facilityLog: FACILITY_LOG } : null,
+      layer2: l.layer2 ? { ...LAYER_02_HEADER, title: `S30 LEDGER // ${this.config.ledger.layer2Label}`, label: this.config.ledger.layer2Label, incident: INCIDENT, entries: LAYER_02, facilityLog: FACILITY_LOG } : null,
       layer2Label: this.config.ledger.layer2Label,
       locked: { layer2: !l.layer2 },
     };
   }
 
-  /** Opens (or, in rehearsal, re-seals) Layer 02. Opening it also pushes the configured transmission to the phone. */
+  /** Releases (or, in rehearsal, hides again) the surveillance records. Releasing also pushes the configured transmission to the phone. */
   releaseLayer2(released: boolean): void {
     const l = this.state.ledger;
     if (released === l.layer2) return;
     if (released) {
-      if (!isAtLeast(this.state, 'investigation')) throw new HttpError(400, 'Layer 02 can only be released once he is investigating');
+      if (!isAtLeast(this.state, 'investigation')) throw new HttpError(400, 'The surveillance records can only be released once he is investigating');
       l.layer2 = true;
       l.layer2ReleasedAt = Date.now();
       this.event('ledger_release', { layer: 2 });
@@ -820,7 +820,7 @@ export class GameService {
       add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken at the drop point.');
     for (const id of c.geo.photos) if (!fs.existsSync(path.join(env.uploadsDir, id))) add('blocker', 'Location puzzle', `Photo ${id} is listed but its file is missing.`);
     if (c.gate.code === DEFAULT_CONFIG.gate.code) add('info', 'Code gate', `The code is still the default ${c.gate.code}. Fine if that is what Phil will read out.`);
-    add('info', 'Ledger', `Layer 02 (${c.ledger.layer2Label}) opens from the Release button in the console. Press it during Phil's second call.`);
+    add('info', 'Ledger', `The ${c.ledger.layer2Label} stay hidden until a GM presses Release records in the console. Time it with ${c.phil.secondCaller}'s call.`);
     for (const s of c.deduction.slots) {
       if (!s.canonical.trim()) add('blocker', 'Deduction', `The ${s.label} blank has no canonical answer.`);
       else if (s.canonical.trim().startsWith('[GM:') || s.canonical === PROP_PLACEHOLDER)

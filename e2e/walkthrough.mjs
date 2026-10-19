@@ -221,41 +221,38 @@ try {
 
   await player.locator('h1', { hasText: 'LEDGER DECRYPTED' }).waitFor({ timeout: 10_000 });
   await finishTyping(player);
-  await shot(player, 'Ledger decrypted', 'Layer 01 of the Ledger is open and Jimmy is ordered back to headquarters, where the five agents are held. RETURN TO HEADQUARTERS scrolls into view once the text finishes.');
+  await shot(player, 'Ledger decrypted', 'The personnel files are open and Jimmy is ordered back to headquarters, where the five agents are held. RETURN TO HEADQUARTERS scrolls into view once the text finishes.');
   await player.getByRole('button', { name: /return to headquarters/i }).click();
 
   await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
-  await shot(player, 'Ledger Layer 01', 'Dinner begins. Investigation has three tabs. The Ledger opens on the five personnel files; the header names the window he must ask each agent about.');
+  await shot(player, 'Personnel files', 'Dinner begins. Investigation has three tabs. The Ledger opens on the five personnel files, name on one line and role on the next; the header names the window he must ask each agent about. Nothing hints that more records exist.');
   await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
   await player.getByText(/rarely forgets a conversation/i).waitFor();
   await shot(player, 'A personnel file', 'Each agent: service, clearance, posting and profile. Nothing about the night; Jimmy gets that from the agents at the table.');
-  await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-  await shot(player, 'Layer 02 sealed', 'The classified evidence waits for Phil\u2019s second call: a GM presses Release.');
-  await player.locator('.file header', { hasText: 'LAYER 02' }).click();
 
   await player.getByRole('tab', { name: 'archive' }).click();
-  await shot(player, 'ARCHIVE terminal', 'An in-world AI that answers from the Ledger through tools. It knows the personnel files, refuses Layer 02 until it is released, and never names the culprit.');
-  for (const q of ['tell me about Nina Calder', 'where was everyone at 2:14', 'read the classified evidence']) {
+  await shot(player, 'ARCHIVE terminal', 'An in-world AI that answers from the Ledger through tools. It knows the personnel files, has no record of the night until the release and never admits one exists, and never names the culprit.');
+  for (const q of ['tell me about Nina Calder', 'where was everyone at 2:14', 'read the surveillance records']) {
     await player.getByLabel('Query').fill(q);
     await player.getByRole('button', { name: /send/i }).click();
     await sleep(700);
     await finishTyping(player);
   }
-  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).last().waitFor({ timeout: 10_000 });
+  await player.locator('.msg.assistant', { hasText: 'NO RECORD' }).last().waitFor({ timeout: 10_000 });
   await finishTyping(player);
   await shot(player, 'ARCHIVE answering questions', 'Integrity rises with every question. These replies come from the scripted mock; on the night they come from Claude on the organizer’s subscription.');
 
-  await shot(gm, 'Phil and the Ledger panel', 'Whoever plays Phil reads from the console: the challenge phrase, both codes in large type, the call scripts, and the Release Layer 02 button for the second call.', { device: 'desktop', full: false });
-  await gm.getByRole('button', { name: /^release layer 02$/i }).click();
+  await shot(gm, 'The calls and the Ledger panel', 'Whoever plays Phil and Matt reads from the console: the challenge phrase, both codes in large type, the call scripts, and the Release records button for Matt\u2019s call.', { device: 'desktop', full: false });
+  await gm.getByRole('button', { name: /^release records$/i }).click();
   await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
   await finishTyping(player);
-  await shot(player, 'Layer 02 released', 'The release lands on the phone as a transmission and the Ledger tab lights up.', { full: false, wait: 0 });
+  await shot(player, 'Records released', 'The release lands on the phone as a transmission and the Ledger tab lights up.', { full: false, wait: 0 });
   await player.getByRole('button', { name: /acknowledge/i }).click();
   await player.getByRole('tab', { name: 'ledger' }).click();
   await player.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
   await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
   await player.getByText('Silver letter opener').waitFor();
-  await shot(player, 'Classified evidence', 'Verified movements, confiscated belongings and findings for every agent. Nina\u2019s badge opened the Director\u2019s Office at 2:11; a silver letter opener was on her.');
+  await shot(player, 'Surveillance records', 'A new section appears: recorded movements from 10 PM, confiscated belongings and findings for every agent. Nina\u2019s badge opened the Director\u2019s Office at 2:11; a silver letter opener was on her.');
 
   await shot(gm, 'GM console during the investigation', 'Live log, ARCHIVE transcript and player status update live.', { device: 'desktop' });
   await gm.getByRole('button', { name: /^draft$/i }).click();
@@ -491,11 +488,11 @@ try {
   const sections = [
     ['Intro (QR landing)', 'Headline, briefing and button label for the QR landing.'],
     ['Location puzzle (geo)', 'Mode, target pin on a map, radius, Street View start, heading, pitch and walking, photos with upload and delete, and the confirmation text.'],
-    ['Code gate (Phil', 'The code Phil reads out, the prompt, and the success line.'],
-    ['Phil\'s calls', 'The challenge phrase and both call scripts, shown in the Phil panel for whoever plays him.'],
+    ['Code gate (Phil', 'The code Phil reads out on the first call, the prompt, and the success line.'],
+    ['The calls', 'The challenge phrase, who makes the second call, and both call scripts, shown in the console for whoever makes them.'],
     ['Word puzzle (Ledger key)', 'The key bank, race pace, attempts and lockout length.'],
     ['Ledger decrypted', 'The notice shown after the puzzle, with the interrogation directive.'],
-    ['Ledger Layer 02', 'The section name on the phone and the transmission pushed when it opens.'],
+    ['Surveillance records', 'The section name on the phone and the transmission pushed when it is released.'],
     ['ARCHIVE terminal', 'Welcome line and the model ARCHIVE runs on.'],
     ['Deduction grid', 'The sentence template, each blank’s canonical answer, accepted and rejected phrasings, grader guidance, attempts and feedback mode.'],
     ['Quick hints per stage', 'The one-tap hints for each stage, one per line.'],

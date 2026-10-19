@@ -56,7 +56,7 @@ function NowStrip({ state, config, events, players, streetViewKeySet }: { state:
       facts.push('reading the Ledger decryption notice');
       break;
     case 'investigation': {
-      facts.push(`Ledger ${state.ledger.layer2 ? 'Layer 02 RELEASED' : 'Layer 01 only'} · ARCHIVE ${plural(state.archive.messageCount, 'query').replace('querys', 'queries')}${state.archive.busy ? ' (answering)' : ''}${state.archive.locked ? ' SEALED' : ''} · ${plural(state.deduction.attempts, 'deduction')}`);
+      facts.push(`Ledger: ${state.ledger.layer2 ? 'surveillance records RELEASED' : 'personnel files only'} · ARCHIVE ${plural(state.archive.messageCount, 'query').replace('querys', 'queries')}${state.archive.busy ? ' (answering)' : ''}${state.archive.locked ? ' SEALED' : ''} · ${plural(state.deduction.attempts, 'deduction')}`);
       break;
     }
     case 'solved':

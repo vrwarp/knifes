@@ -156,26 +156,24 @@ try {
 
   await player.getByRole('tab', { name: 'ledger' }).waitFor();
   await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
-  await shot(player, 'p10-ledger-layer1');
+  await shot(player, 'p10-ledger-personnel');
   await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
   await player.getByText(/rarely forgets a conversation/i).waitFor();
   await shot(player, 'p10b-ledger-nina');
-  await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-  await player.getByText(/awaiting command release/i).waitFor();
-  await shot(player, 'p11-ledger-layer2-sealed');
+  if (await player.getByText(/SURVEILLANCE/).count()) throw new Error('surveillance records visible before release');
 
   await player.getByRole('tab', { name: 'archive' }).click();
-  for (const q of ['tell me about Nina Calder', 'read the classified evidence']) {
+  for (const q of ['tell me about Nina Calder', 'read the surveillance records']) {
     await player.getByLabel('Query').fill(q);
     await player.getByRole('button', { name: /send/i }).click();
     await settle(600);
   }
-  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).last().waitFor({ timeout: 10_000 });
+  await player.locator('.msg.assistant', { hasText: 'NO RECORD' }).last().waitFor({ timeout: 10_000 });
   await shot(player, 'p12-archive');
 
   await gmApi('/api/gm/ledger/release', { method: 'POST', json: { released: true } });
   await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
-  await shot(player, 'p12b-layer2-transmission');
+  await shot(player, 'p12b-records-transmission');
   await player.getByRole('button', { name: /acknowledge/i }).click();
   await player.getByRole('tab', { name: 'ledger' }).click();
   await player.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });

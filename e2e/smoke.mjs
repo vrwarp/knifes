@@ -164,13 +164,12 @@ try {
     await player.getByRole('button', { name: /return to headquarters/i }).click();
   });
 
-  await step('Ledger Layer 01 lists the five agents and Layer 02 is sealed', async () => {
+  await step('Personnel files list the five agents and the surveillance records are not shown', async () => {
     await player.getByRole('tab', { name: 'ledger' }).waitFor();
     await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
     await player.getByText(/rarely forgets a conversation/i).waitFor();
-    await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-    await player.getByText(/awaiting command release/i).waitFor();
-    await shot(player, '05-ledger-layer1');
+    if (await player.getByText(/SURVEILLANCE/).count()) throw new Error('surveillance records visible before release');
+    await shot(player, '05-ledger-personnel');
   });
 
   await step('ARCHIVE answers a personnel question (mock)', async () => {
@@ -191,16 +190,16 @@ try {
     await shot(gm, '07-gm');
   });
 
-  await step('GM releases Ledger Layer 02 and the phone shows the classified evidence', async () => {
+  await step('GM releases the surveillance records and the phone shows them', async () => {
     gm.once('dialog', (d) => d.accept());
-    await gm.getByRole('button', { name: /^release layer 02$/i }).click();
+    await gm.getByRole('button', { name: /^release records$/i }).click();
     await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
     await player.getByRole('button', { name: /acknowledge/i }).click();
     await player.getByRole('tab', { name: 'ledger' }).click();
     await player.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
     await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
     await player.getByText('Silver letter opener').waitFor();
-    await shot(player, '07b-ledger-layer2');
+    await shot(player, '07b-ledger-surveillance');
   });
 
   await step('GM pushes a hint and the player sees the transmission', async () => {

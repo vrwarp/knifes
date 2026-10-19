@@ -22,14 +22,12 @@ function Agent({ e, layer, defaultOpen = false }: { e: LedgerEntry; layer: 1 | 2
   return (
     <div className={`agent ${layer === 2 ? 'l2' : ''} ${open ? 'open' : ''}`}>
       <header onClick={() => setOpen((o) => !o)} role="button" aria-expanded={open} tabIndex={0} onKeyDown={(k) => k.key === 'Enter' && setOpen((o) => !o)}>
-        <span>
-          <span className="tiny">{e.id} · </span>
-          <span className="name">{e.name}</span>
-        </span>
+        <span className="name">{e.name}</span>
         <span className="pos">{e.position}</span>
       </header>
       {open ? (
         <div className="body">
+          <p className="tiny">Ledger id {e.id}</p>
           {layer === 1 ? (
             <>
               <dl className="facts">
@@ -73,20 +71,9 @@ function Section({ name, locked, children, defaultOpen = false }: { name: string
     <div className={`file ${locked ? 'locked' : ''} ${open ? 'open' : ''}`}>
       <header onClick={() => setOpen((o) => !o)} role="button" aria-expanded={open} tabIndex={0} onKeyDown={(k) => k.key === 'Enter' && setOpen((o) => !o)}>
         <span className="name">{name}</span>
-        <span className="tiny">{open ? 'close' : locked ? 'sealed' : 'open'}</span>
+        <span className="tiny">{open ? 'close' : locked ? 'locked' : 'open'}</span>
       </header>
       {open ? <div className="body">{children}</div> : null}
-    </div>
-  );
-}
-
-function Sealed({ label }: { label: string }) {
-  return (
-    <div className="stack">
-      <p className="muted small">[LAYER SEALED] {label} needs a second recovery authorization. It arrives by command release over the secure line.</p>
-      <div className="con-line cmd" aria-hidden="true">
-        <span className="prompt">$</span> unseal --layer 02 <span className="muted">awaiting command release</span>
-      </div>
     </div>
   );
 }
@@ -130,7 +117,7 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
       <p className="ledger-head">
         S30 Ledger · access level magenta · ask every agent where they were, <b>{files.interrogationWindow}</b>
       </p>
-      <Section name="LAYER 01 // PERSONNEL RECORDS" locked={!l1} defaultOpen>
+      <Section name="PERSONNEL FILES" locked={!l1} defaultOpen>
         {l1 ? (
           <>
             <p className="tiny">{l1.subtitle}</p>
@@ -140,11 +127,11 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
             ))}
           </>
         ) : (
-          <p className="muted">Sealed.</p>
+          <p className="muted">Not yet decrypted.</p>
         )}
       </Section>
-      <Section key={l2 ? 'l2-open' : 'l2-sealed'} name={`LAYER 02 // ${files.layer2Label}`} locked={!l2} defaultOpen={Boolean(l2)}>
-        {l2 ? (
+      {l2 ? (
+        <Section name={files.layer2Label} locked={false} defaultOpen>
           <>
             <p className="tiny">{l2.subtitle}</p>
             <p className="small muted">{l2.intro}</p>
@@ -167,10 +154,7 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
             ))}
             <div className="agent l2">
               <header>
-                <span>
-                  <span className="tiny">DUTY · </span>
-                  <span className="name">Duty officer Hale</span>
-                </span>
+                <span className="name">Duty officer Hale</span>
                 <span className="pos">Facility log</span>
               </header>
               <div className="body">
@@ -178,10 +162,8 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
               </div>
             </div>
           </>
-        ) : (
-          <Sealed label={`Layer 02, ${files.layer2Label},`} />
-        )}
-      </Section>
+        </Section>
+      ) : null}
       <Section name="LEDGER DECRYPTION RECORD" locked={false}>
         <pre className="typed small">{view.reveal.body}</pre>
       </Section>

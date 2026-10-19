@@ -99,7 +99,7 @@ export function forceStage(config: GameConfig, state: GameState, stage: StageId,
   if (state.startedAt === null) state.startedAt = now;
 }
 
-/** Layer 01 opens with the investigation. Layer 02 waits for Phil's second call (a GM presses Release). */
+/** The personnel files open with the investigation. The surveillance records wait for the second call (a GM presses Release). */
 export function applyInvestigationUnlocks(_config: GameConfig, state: GameState): void {
   state.ledger.layer1 = true;
 }

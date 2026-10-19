@@ -94,11 +94,11 @@ export interface LedgerEntry {
   id: string;
   name: string;
   position: string;
-  /** Layer 01: the personnel profile. Layer 02: the additional findings. */
+  /** Personnel file: the profile. Surveillance record: the additional findings. */
   notes: string;
   facts?: { label: string; value: string }[];
   log?: { time: string; text: string }[];
-  /** Layer 02 only. */
+  /** Surveillance record only. */
   evidence?: string[];
 }
 export interface LedgerLayer {
@@ -213,7 +213,7 @@ export interface GameConfig {
   };
   reveal: { title: string; body: string; buttonLabel: string };
   ledger: { layer2Label: string; layer2ReleasedText: string; interrogationWindow: string };
-  phil: { challenge: string; response: string; part1: string; part2: string };
+  phil: { challenge: string; response: string; part1: string; part2: string; secondCaller: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
   deduction: {
     prompt: string;
