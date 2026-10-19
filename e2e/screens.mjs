@@ -158,7 +158,7 @@ try {
   await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
   await shot(player, 'p10-ledger-layer1');
   await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-  await player.getByText(/Rarely forgets a conversation/).waitFor();
+  await player.getByText(/rarely forgets a conversation/i).waitFor();
   await shot(player, 'p10b-ledger-nina');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
   await player.getByLabel('Passcode').waitFor();

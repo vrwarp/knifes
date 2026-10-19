@@ -12,15 +12,16 @@ describe('ledger content', () => {
     expect(LAYER_01.map((e) => e.id)).toEqual(LAYER_02.map((e) => e.id));
     for (const e of LAYER_01) {
       expect(e.log ?? []).toEqual([]);
-      expect(e.facts?.length).toBeGreaterThanOrEqual(4);
+      expect(e.facts?.length).toBe(2);
       expect(JSON.stringify(e)).not.toMatch(/\b\d{1,2}:\d{2}\s*(AM|PM)/);
     }
     for (const e of LAYER_02) {
-      expect(e.log!.length).toBeGreaterThanOrEqual(13);
+      expect(e.log!.length).toBeGreaterThanOrEqual(10);
+      expect(ledgerMinutes(e.log![0].time)!).toBeGreaterThanOrEqual(4 * 60);
       expect(e.evidence).toHaveLength(4);
     }
   });
-  it('keeps every Layer 02 log in time order from 6 PM to 4 AM', () => {
+  it('keeps every Layer 02 log in time order from 10 PM to 4 AM', () => {
     for (const e of LAYER_02) {
       const mins = e.log!.map((l) => ledgerMinutes(l.time)!);
       expect(mins.every((m) => m !== null && m >= -5 && m <= 10 * 60 + 30)).toBe(true);

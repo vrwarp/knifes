@@ -38,70 +38,50 @@ export const LAYER_01: LedgerEntry[] = [
     id: 'S30-001',
     name: 'Mara Voss',
     position: 'Security Director',
-    notes:
-      'A veteran of Section 30, Mara has overseen internal security for over 15 years. Known for her strict adherence to protocol, she rarely trusts anyone outside her department. She maintains a collection of antique military memorabilia in her office.',
+    notes: 'Strict about protocol and slow to trust anyone outside her department. Keeps antique military memorabilia in her office.',
     facts: [
-      { label: 'Service', value: '15 years, internal security. Section 30 since the Ledger\'s first decade.' },
-      { label: 'Clearance', value: 'Magenta. Holds the security master keycard.' },
-      { label: 'Posting', value: 'Security Director\'s office, main building. Oversees the control room, the armoury and the perimeter guard.' },
-      { label: 'Reports to', value: 'The Director, weekly security review.' },
-      { label: 'On file', value: 'Keeps antique military memorabilia in her office. Raises a ticket for every fault, however small.' },
+      { label: 'Service', value: '15 years, internal security. Holds the security master keycard.' },
+      { label: 'Posting', value: 'Security Director\'s office; oversees the control room, the armoury and the perimeter guard.' },
     ],
   },
   {
     id: 'S30-002',
     name: 'Elias Mercer',
     position: 'Systems Architect',
-    notes:
-      'Elias helped design the original S30 Ledger infrastructure. Brilliant but absent-minded, he prefers working alone and has a habit of repairing outdated equipment rather than replacing it. He collects vintage fountain pens and mechanical writing instruments.',
+    notes: 'Brilliant and absent-minded; repairs old equipment rather than replacing it. Collects vintage fountain pens.',
     facts: [
-      { label: 'Service', value: '11 years, systems.' },
-      { label: 'Clearance', value: 'Magenta. Server room keycard. Authorised for remote maintenance from his residence.' },
-      { label: 'Posting', value: 'Server room, main building. Designed the original S30 Ledger infrastructure and still maintains the archive node cluster.' },
-      { label: 'Reports to', value: 'The Director, upgrade proposals and maintenance windows.' },
-      { label: 'On file', value: 'Repairs outdated equipment rather than replacing it. Collects vintage fountain pens and mechanical writing instruments.' },
+      { label: 'Service', value: '11 years, systems. Server room keycard; authorised for remote maintenance from home.' },
+      { label: 'Posting', value: 'Server room. Designed the original S30 Ledger infrastructure and still maintains the archive cluster.' },
     ],
   },
   {
     id: 'S30-003',
     name: 'Nina Calder',
     position: 'Intelligence Analyst',
-    notes:
-      "Nina specializes in decoding encrypted communications and analyzing intelligence reports. She joined Section 30 following her brother's death during a classified operation. Quiet and observant, she is known for keeping detailed handwritten notes and rarely forgetting a conversation.",
+    notes: 'Quiet and observant. Keeps detailed handwritten notes and rarely forgets a conversation.',
     facts: [
       { label: 'Service', value: '3 years, analysis. Joined after her brother\'s death on a classified operation.' },
-      { label: 'Clearance', value: 'Magenta. Analysis wing, classified reading room and archives B1.' },
-      { label: 'Posting', value: 'Analysis wing, main building. Decrypt queue and intelligence reports; quarterly audit of classified mission files.' },
-      { label: 'Reports to', value: 'The Director, open investigations.' },
-      { label: 'On file', value: 'Keeps detailed handwritten notes. Rarely forgets a conversation.' },
+      { label: 'Posting', value: 'Analysis wing; access to the classified reading room and archives B1.' },
     ],
   },
   {
     id: 'S30-004',
     name: 'Theo Blackwood',
     position: 'Field Operative',
-    notes:
-      'A decorated field operative, Theo specializes in reconnaissance and extraction missions. He spent two years missing in action before returning to Section 30. He is highly resourceful, skilled with improvised tools, and prefers fieldwork over administrative duties.',
+    notes: 'Decorated, resourceful, skilled with improvised tools. Prefers fieldwork to paperwork.',
     facts: [
-      { label: 'Service', value: '9 years, field operations, of which two listed missing in action.' },
-      { label: 'Clearance', value: 'Magenta. Armoury access, patrol unit 2, body camera on patrol.' },
-      { label: 'Posting', value: 'Field operations. Reconnaissance and extraction; night security patrol of the perimeter.' },
-      { label: 'Reports to', value: 'The Director, mission debriefings.' },
-      { label: 'On file', value: 'Decorated. Resourceful and skilled with improvised tools. Prefers fieldwork to administrative duties.' },
+      { label: 'Service', value: '9 years, field operations, two of them listed missing in action.' },
+      { label: 'Posting', value: 'Field operations; night patrol of the perimeter in unit 2, armoury access.' },
     ],
   },
   {
     id: 'S30-005',
     name: 'Celeste Rowan',
     position: 'Diplomatic Liaison',
-    notes:
-      "Celeste manages Section 30's international intelligence partnerships. Fluent in six languages, she is known for her diplomatic charm and extensive network of contacts. She frequently exchanges handwritten correspondence and keeps a personalized stationery set in her office.",
+    notes: 'Diplomatic charm and a wide network of contacts. Handwritten correspondence on personalised stationery.',
     facts: [
-      { label: 'Service', value: '8 years, liaison.' },
-      { label: 'Clearance', value: 'Magenta. Diplomatic identification; use of car 1 with driver and of the diplomatic residence across town.' },
-      { label: 'Posting', value: 'Liaison office, main building. Manages Section 30\'s international intelligence partnerships; fluent in six languages.' },
-      { label: 'Reports to', value: 'The Director, partner matters.' },
-      { label: 'On file', value: 'Frequently exchanges handwritten correspondence. Keeps a personalised stationery set in her office.' },
+      { label: 'Service', value: '8 years, liaison. Fluent in six languages.' },
+      { label: 'Posting', value: 'Liaison office; use of car 1 with driver and of the diplomatic residence across town.' },
     ],
   },
 ];
@@ -110,7 +90,7 @@ export const LAYER_02_HEADER = {
   title: 'S30 LEDGER // LAYER 02',
   subtitle: 'CLASSIFIED // MAGENTA CHANNEL // RECOVERED SURVEILLANCE & EVIDENCE RECORDS // STATUS: DECRYPTED',
   intro:
-    "The following records were recovered from Section 30's internal surveillance network: badge, camera, terminal, radio and vehicle events, with the belongings confiscated from each agent at headquarters. Some information may contradict previously submitted activity logs.",
+    "The following records were recovered from Section 30's internal surveillance network for 10 PM to 4 AM: badge, camera, terminal, radio and vehicle events, with the belongings confiscated from each agent at headquarters. Some information may contradict what the agents have told you.",
 };
 
 export const INCIDENT = {
@@ -136,11 +116,6 @@ export const LAYER_02: LedgerEntry[] = [
     name: 'Mara Voss',
     position: 'Security Director',
     log: [
-      { time: '6:02 PM', text: 'Badge: security control room, in.' },
-      { time: '6:31 PM', text: "Badge: Director's Office, in. Out 7:04 PM." },
-      { time: '7:12 PM', text: 'Badge: safehouse inner door, in. Out 7:40 PM.' },
-      { time: '9:08 PM', text: 'Badge: mess, in.' },
-      { time: '9:47 PM', text: 'Armoury count countersigned. R-14 out to S30-004 since 6:41 PM.' },
       { time: '10:46 PM', text: 'Control room terminal: camera 7 diagnostic run. Fault logged.' },
       { time: '11:32 PM', text: 'Maintenance window MW-2291 approved, requester S30-002.' },
       { time: '12:03 AM', text: 'Badge: north gate pedestrian door, out. In 12:26 AM.' },
@@ -165,10 +140,6 @@ export const LAYER_02: LedgerEntry[] = [
     name: 'Elias Mercer',
     position: 'Systems Architect',
     log: [
-      { time: '6:18 PM', text: 'Badge: main entrance, in.' },
-      { time: '7:14 PM', text: 'Badge: server room, in.' },
-      { time: '7:31 PM', text: 'Rack 3, bay 6: drive removed. 7:36 PM: drive inserted.' },
-      { time: '8:41 PM', text: 'Array rebuild started, estimated 2 h 50 m.' },
       { time: '10:22 PM', text: 'Document created: Archive Indexer Upgrade Proposal.' },
       { time: '11:28 PM', text: "Badge: Director's Office, in. Out 11:52 PM." },
       { time: '12:09 AM', text: 'Badge: server room, in. Out 12:14 AM.' },
@@ -193,11 +164,6 @@ export const LAYER_02: LedgerEntry[] = [
     name: 'Nina Calder',
     position: 'Intelligence Analyst',
     log: [
-      { time: '6:14 PM', text: 'Badge: analysis wing, in.' },
-      { time: '7:02 PM', text: 'Decrypt terminal: batch DQ-771 opened. Closed 7:48 PM.' },
-      { time: '8:03 PM', text: 'Classified files reading room: 4 files signed out. Returned 8:55 PM.' },
-      { time: '8:58 PM', text: 'Badge: mess, in.' },
-      { time: '9:41 PM', text: 'Decrypt terminal: batch DQ-772 opened. Closed 10:20 PM.' },
       { time: '10:31 PM', text: 'Badge: archives B1, in. 3 files signed out. Out 10:49 PM.' },
       { time: '11:18 PM', text: "Badge: Director's Office, in. Out 11:57 PM." },
       { time: '12:02 AM', text: 'Badge: analysis wing, in.' },
@@ -205,7 +171,7 @@ export const LAYER_02: LedgerEntry[] = [
       { time: '1:31 AM', text: 'Badge: archives B1, in. 3 files returned. Out 1:49 AM.' },
       { time: '1:55 AM', text: 'Camera 3: seen approaching the safehouse inner door.' },
       { time: '2:11 AM', text: "Badge: Director's Office, in." },
-      { time: '2:14 AM', text: 'Camera 3: inner corridor empty.' },
+      { time: '2:14 AM', text: 'Confirmed inside the office.' },
       { time: '2:19 AM', text: "Badge: Director's Office, out. Camera 3: toward the archives stair." },
       { time: '2:22 AM', text: 'Badge: archives B1, in. Out 2:38 AM.' },
       { time: '2:41 AM', text: 'Badge: analysis wing, in.' },
@@ -221,11 +187,6 @@ export const LAYER_02: LedgerEntry[] = [
     name: 'Theo Blackwood',
     position: 'Field Operative',
     log: [
-      { time: '6:08 PM', text: 'Motor pool: unit 2 checked out.' },
-      { time: '6:41 PM', text: 'Armoury log: R-14 issued to S30-004.' },
-      { time: '7:44 PM', text: 'Motor pool: unit 2 in. Mileage 61.' },
-      { time: '8:33 PM', text: 'Document created: Reconnaissance Summary, Ridgeway.' },
-      { time: '9:12 PM', text: 'Badge: mess, in.' },
       { time: '10:14 PM', text: "Badge: Director's Office, in. Out 10:58 PM." },
       { time: '11:06 PM', text: 'Badge: lower level gym, in. Out 11:47 PM.' },
       { time: '12:31 AM', text: 'Radio: check-in with security control, channel 3.' },
@@ -250,10 +211,6 @@ export const LAYER_02: LedgerEntry[] = [
     name: 'Celeste Rowan',
     position: 'Diplomatic Liaison',
     log: [
-      { time: '5:58 PM', text: 'Badge: briefing room, in. Out 6:44 PM.' },
-      { time: '6:52 PM', text: 'Badge: liaison office, in.' },
-      { time: '7:41 PM', text: 'Secure line: outbound, Lisbon, 22 min.' },
-      { time: '9:18 PM', text: 'Badge: mess, in. Out 9:31 PM.' },
       { time: '10:29 PM', text: "Badge: Director's Office, in. Out 11:08 PM." },
       { time: '11:16 PM', text: 'Diplomatic pouch log: pouch DP-3310 sealed, courier 7:00 AM.' },
       { time: '11:52 PM', text: 'Badge: liaison office, out. Residence wing.' },

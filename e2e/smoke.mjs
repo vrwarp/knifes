@@ -167,7 +167,7 @@ try {
   await step('Ledger Layer 01 lists the five agents and Layer 02 is sealed', async () => {
     await player.getByRole('tab', { name: 'ledger' }).waitFor();
     await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-    await player.getByText(/Rarely forgets a conversation/).waitFor();
+    await player.getByText(/rarely forgets a conversation/i).waitFor();
     await player.locator('.file header', { hasText: 'LAYER 02' }).click();
     await player.getByLabel('Passcode').waitFor();
     await shot(player, '05-ledger-layer1');

@@ -3,54 +3,17 @@ import { api, errorText } from '../api';
 import type { LedgerEntry, LedgerFiles, PlayerView } from '../types';
 import { Keyboard, PromptLine } from './Keyboard';
 
-/** Minutes since 6 PM for "2:14 AM" or the start of "2:00–2:30 AM"; null when unreadable. */
-function mins(time: string): number | null {
-  const m = /(\d{1,2}):(\d{2})(?:\s*[–-]\s*\d{1,2}:\d{2})?\s*(AM|PM)/i.exec(time);
-  if (!m) return null;
-  let h = Number(m[1]) % 12;
-  if (m[3].toUpperCase() === 'PM') h += 12;
-  const abs = h * 60 + Number(m[2]);
-  return abs < 12 * 60 ? abs + 24 * 60 - 18 * 60 : abs - 18 * 60;
-}
-
-const BANDS: { label: string; from: number }[] = [
-  { label: 'Evening', from: -Infinity },
-  { label: 'Before midnight', from: 4 * 60 },
-  { label: 'After midnight', from: 6 * 60 },
-  { label: 'After 2 AM', from: 8 * 60 },
-];
-const bandOf = (time: string) => {
-  const t = mins(time);
-  if (t === null) return BANDS[0].label;
-  let b = BANDS[0].label;
-  for (const x of BANDS) if (t >= x.from) b = x.label;
-  return b;
-};
-
-/** A night's log grouped under four time bands so a long card still reads on a phone. */
 function Log({ lines }: { lines: { time: string; text: string }[] }) {
-  const rows: ReactNode[] = [];
-  let last = '';
-  lines.forEach((l, i) => {
-    const b = bandOf(l.time);
-    if (b !== last) {
-      rows.push(
-        <tr key={`b${i}`} className="band">
-          <td colSpan={2}>{b}</td>
-        </tr>,
-      );
-      last = b;
-    }
-    rows.push(
-      <tr key={i}>
-        <td>{l.time}</td>
-        <td>{l.text}</td>
-      </tr>,
-    );
-  });
   return (
     <table className="log">
-      <tbody>{rows}</tbody>
+      <tbody>
+        {lines.map((l, i) => (
+          <tr key={i}>
+            <td>{l.time}</td>
+            <td>{l.text}</td>
+          </tr>
+        ))}
+      </tbody>
     </table>
   );
 }
