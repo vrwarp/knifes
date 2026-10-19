@@ -45,6 +45,8 @@ export interface UiText {
     mapHelpAfterFeed: string;
     triangulate: string;
     proceed: string;
+    openInMaps: string;
+    returnToLine: string;
     unlockMap: string;
     lockMap: string;
     feedNone: string;
@@ -56,7 +58,7 @@ export interface UiText {
     /** {n} is the count. */
     attempts: string;
   };
-  gate: { kicker: string; title: string; command: string; keyLabel: string; rejected: string; submit: string; statusLeft: string; statusMid: string; attempts: string };
+  gate: { kicker: string; title: string; back: string; command: string; keyLabel: string; rejected: string; submit: string; statusLeft: string; statusMid: string; attempts: string };
   hack: {
     kicker: string;
     title: string;
@@ -178,6 +180,8 @@ export interface PlayerView {
     solved: boolean;
     lastDistanceM: number | null;
     targetSet: boolean;
+    /** The answer; only sent once the location is confirmed (solved, or reveal mode). */
+    target: LatLng | null;
   };
   gate: { prompt: string; successText: string; attempts: number; passed: boolean };
   hack: {

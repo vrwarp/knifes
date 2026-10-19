@@ -211,6 +211,7 @@ export function playerView(config: GameConfig, state: GameState, googleMapsApiKe
       solved: state.geo.solved,
       lastDistanceM: state.geo.lastDistanceM,
       targetSet: config.geo.target !== null,
+      target: state.geo.solved || config.geo.mode !== 'puzzle' ? config.geo.target : null,
     },
     gate: { prompt: config.gate.prompt, successText: config.gate.successText, attempts: state.gate.attempts, passed: state.gate.passed },
     hack: hackView(config, state),

@@ -54,6 +54,8 @@ export function PlayerApp() {
   const [everConnected, setEverConnected] = useState(false);
   const [offline, setOffline] = useState(false);
   const [seen, setSeen] = useState(readSeen);
+  /** Looking back at the confirmed location from the secure line; only on this phone, the stage stays put. */
+  const [reviewGeo, setReviewGeo] = useState(false);
 
   const shownStage = useRef<StageId>('intro');
   const archiveEpoch = useRef<number | null>(null);
@@ -100,6 +102,9 @@ export function PlayerApp() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const serverStage = view?.stage;
+  useEffect(() => setReviewGeo(false), [serverStage]);
 
   const connected = useSocket(
     'player',
@@ -207,16 +212,18 @@ export function PlayerApp() {
   shownStage.current = stage;
   const unread = view.hints.filter((h) => h.id > seen).length;
   const t = view.text.app;
+  const geoConfirmed = view.geoMode === 'reveal' || (view.geoMode === 'puzzle' && view.geo.solved);
+  const reviewing = stage === 'gate' && reviewGeo && geoConfirmed;
   let screen;
-  switch (stage) {
+  switch (reviewing ? 'geo' : stage) {
     case 'intro':
       screen = <Intro {...props} />;
       break;
     case 'geo':
-      screen = <Geo {...props} />;
+      screen = <Geo {...props} onReturn={reviewing ? () => setReviewGeo(false) : undefined} />;
       break;
     case 'gate':
-      screen = <Gate {...props} />;
+      screen = <Gate {...props} onBack={geoConfirmed ? () => setReviewGeo(true) : undefined} />;
       break;
     case 'hack':
       screen = <Hack {...props} />;
@@ -235,7 +242,7 @@ export function PlayerApp() {
       <div className="topbar">
         <span>
           <span className={`dot ${connected ? 'on' : ''}`} aria-hidden="true" />
-          {view.text.stageLabels[stage]}
+          {view.text.stageLabels[reviewing ? 'geo' : stage]}
         </span>
         {view.hints.length ? (
           <button className={`btn small ${unread ? 'unread' : 'ghost'}`} onClick={openList}>
