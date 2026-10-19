@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { INCIDENT, LAYER_01, LAYER_02, LEDGER_FRAGMENTS, formatEntry } from '../content/ledger.js';
+import { FACILITY_LOG, INCIDENT, LAYER_01, LAYER_02, LEDGER_FRAGMENTS, formatEntry } from '../content/ledger.js';
 import type { ConfigVersionMeta, Proposal, ProposalChange } from '../db.js';
 import { env } from '../env.js';
 import type { ReadinessItem } from '../service.js';
@@ -47,6 +47,8 @@ export function caseFilesText(): string {
     `## Ledger Layer 02 (recovered surveillance and belongings; released during Phil's second call)`,
     `Incident: ${INCIDENT.incident}. Confirmed time of death ${INCIDENT.timeOfDeath}. Location: ${INCIDENT.location}.`,
     LAYER_02.map((e) => formatEntry(e, 2)).join('\n\n'),
+    '## Duty log (Layer 02)',
+    FACILITY_LOG.map((l) => `${l.time} ${l.text}`).join('\n'),
     '## Ledger fragments',
     ledger,
   ].join('\n\n');

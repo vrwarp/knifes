@@ -109,7 +109,7 @@ export interface LedgerLayer {
 export interface LedgerFiles {
   interrogationWindow: string;
   layer1: LedgerLayer | null;
-  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string } }) | null;
+  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string; found: string }; facilityLog: { time: string; text: string }[] }) | null;
   layer2Label: string;
   locked: { layer2: boolean };
 }

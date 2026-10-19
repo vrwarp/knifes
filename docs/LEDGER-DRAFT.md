@@ -12,6 +12,10 @@ Design rules used:
 
 Incident (Layer 02 header): Murder of Arthur Pendelton. Confirmed time of death 2:14 AM. Location: Director's Office, secure safehouse. Found 4:15 AM by duty officer Hale on the hourly round.
 
+Duty log (Layer 02, no agent): Hale's hourly round at the safehouse inner door at 11:02 PM, 12:04, 1:01, 2:03 and 3:02 AM, all clear, and the 4:15 discovery. With Theo's 2:05 GPS line these are the innocent traces near the scene in the 2:00 to 2:30 window.
+
+Decisions applied 19 Oct after the simulations: full ARCHIVE search over both layers; two innocent traces near the scene; a trace of the syndicate and the hard copy on Nina's drive; the 2:14 line is a camera line. `server/src/content/ledger.ts` is now the source of truth; this file keeps the design notes.
+
 ---
 
 ## S30-001 Mara Voss, Security Director
@@ -161,7 +165,7 @@ Incident (Layer 02 header): Murder of Arthur Pendelton. Confirmed time of death 
 1:31 AM   Badge: archives B1, in. 3 files returned. Out 1:49 AM.
 1:55 AM   Camera 3: seen approaching the safehouse inner door.
 2:11 AM   Badge: Director's Office, in.
-2:14 AM   Confirmed inside the office.
+2:14 AM   Camera 3: inner corridor empty.
 2:19 AM   Badge: Director's Office, out. Camera 3: toward the archives stair.
 2:22 AM   Badge: archives B1, in. Out 2:38 AM.
 2:41 AM   Badge: analysis wing, in.
@@ -171,7 +175,7 @@ Incident (Layer 02 header): Murder of Arthur Pendelton. Confirmed time of death 
 
 **Recovered evidence.** Leather-bound notebook. Encrypted flash drive. Silver letter opener. Photograph of her brother.
 
-**Additional findings.** Nina's personal notebook contains several pages of handwritten notes about a classified operation from three years earlier. The operation was officially closed, but Nina had continued researching it without authorization.
+**Additional findings.** Nina's personal notebook contains several pages of handwritten notes about a classified operation from three years earlier. The operation was officially closed, but Nina had continued researching it without authorization. Her encrypted flash drive holds a scanned index page of the S30 Ledger hard copy and a contact string matching the intermediary named in the syndicate file.
 
 ---
 
@@ -215,7 +219,7 @@ Incident (Layer 02 header): Murder of Arthur Pendelton. Confirmed time of death 
 1:39 AM   GPS: north gate.
 1:47 AM   GPS: stopped, restricted equipment storage facility. Stationary 8 min.
 1:56 AM   GPS: storage road, moving.
-2:05 AM   Vehicle recorded at western perimeter.
+2:05 AM   GPS: safehouse west perimeter road. Vehicle stationary.
 2:14 AM   Body camera recorded an active perimeter inspection, west fence.
 2:33 AM   GPS: west perimeter, moving.
 2:41 AM   Returned to headquarters. Motor pool: unit 2 in. Mileage 67.

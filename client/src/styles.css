@@ -221,6 +221,7 @@ a.btn { text-decoration: none; text-align: center; line-height: 18px; }
 .agent .notes { color: var(--ink); }
 .agent ul.items { padding-left: 18px; margin: 0; }
 .agent.l2 > header .name { color: var(--amber); }
+.log tr.band td { color: var(--dim); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; padding-top: 10px; border-bottom: none; white-space: normal; }
 .incident { border: 1px solid var(--amber); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
 .incident b { color: var(--amber); }
 .file { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--panel-2); }

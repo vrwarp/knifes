@@ -5,7 +5,7 @@ import { draftHint, type HintStrength } from './ai/copilot.js';
 import { SETUP_ALLOWED_TOOLS, SETUP_SYSTEM_PROMPT, createSetupServer, mockSetupReply, type SetupContext } from './ai/setup.js';
 import { gradeDeduction } from './ai/grader.js';
 import { generateReport } from './ai/report.js';
-import { INCIDENT, LAYER_01, LAYER_01_HEADER, LAYER_02, LAYER_02_HEADER } from './content/ledger.js';
+import { FACILITY_LOG, INCIDENT, LAYER_01, LAYER_01_HEADER, LAYER_02, LAYER_02_HEADER } from './content/ledger.js';
 import type { AssistantMessage, ConfigSource, Db, Proposal, ProposalChange } from './db.js';
 import { diffPaths, getPath, preview, setPath } from './game/configPaths.js';
 import fs from 'node:fs';
@@ -522,7 +522,7 @@ export class GameService {
     return {
       interrogationWindow: this.config.ledger.interrogationWindow,
       layer1: l.layer1 ? { ...LAYER_01_HEADER, entries: LAYER_01 } : null,
-      layer2: l.layer2 ? { ...LAYER_02_HEADER, label: this.config.ledger.layer2Label, incident: INCIDENT, entries: LAYER_02 } : null,
+      layer2: l.layer2 ? { ...LAYER_02_HEADER, label: this.config.ledger.layer2Label, incident: INCIDENT, entries: LAYER_02, facilityLog: FACILITY_LOG } : null,
       layer2Label: this.config.ledger.layer2Label,
       locked: { layer2: !l.layer2 },
     };

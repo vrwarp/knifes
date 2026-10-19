@@ -44,7 +44,8 @@ test.describe('investigation', () => {
     await expect(player.getByText('2:14 AM').first()).toBeVisible();
     await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
     await expect(player.getByText('Silver letter opener')).toBeVisible();
-    await expect(player.getByText(/Accessed the Director's Office using her security badge/)).toBeVisible();
+    await expect(player.getByText("Badge: Director's Office, in.", { exact: true })).toBeVisible();
+    await expect(player.getByText(/Duty officer Hale/).first()).toBeVisible();
     await noHorizontalScroll(player);
     // Re-sealing in rehearsal takes it away again.
     await gm.getByRole('button', { name: /re-seal layer 02/i }).click();
@@ -73,7 +74,7 @@ test.describe('investigation', () => {
     await expect(player.locator('.msg.assistant', { hasText: 'Nina Calder' })).toBeVisible();
     await player.getByLabel('Query').fill('read the classified evidence');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant', { hasText: 'LAYER SEALED' })).toBeVisible();
+    await expect(player.locator('.msg.assistant').last()).toContainText('LAYER SEALED');
     await expect.poll(async () => Number((await integrity.textContent())!.match(/(\d+)%/)![1])).toBeGreaterThan(before);
     await releaseLayer2(app);
     await player.getByRole('dialog', { name: /incoming transmission/i }).getByRole('button', { name: /acknowledge/i }).click();
