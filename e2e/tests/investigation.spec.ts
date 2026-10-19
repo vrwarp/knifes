@@ -13,9 +13,9 @@ test.describe('investigation', () => {
     await expect(player.getByText('11:00 PM to 4:00 AM')).toBeVisible();
     for (const name of ['Mara Voss', 'Elias Mercer', 'Nina Calder', 'Theo Blackwood', 'Celeste Rowan']) await expect(player.locator('.agent header', { hasText: name })).toBeVisible();
     // The first agent opens by default; the others open on tap.
-    await expect(player.getByText(/antique military memorabilia/)).toBeVisible();
+    await expect(player.locator('.agent .notes', { hasText: /antique military memorabilia/ })).toBeVisible();
     await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-    await expect(player.getByText(/Rarely forgets a conversation/)).toBeVisible();
+    await expect(player.locator('.agent .notes', { hasText: /rarely forgetting a conversation/ })).toBeVisible();
     await expect(player.getByText(/2:00/)).toHaveCount(0);
     await noHorizontalScroll(player);
     await expect(section('LAYER 02')).toContainText(/sealed/i);
