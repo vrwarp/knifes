@@ -1,4 +1,4 @@
-import { GM_PASSWORD, acceptDialogs, configSection, expect, finishBeats, newGmPage, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
+import { GM_PASSWORD, acceptDialogs, configSection, expect, newGmPage, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 test.describe('GM console', () => {
   test('rejects a wrong password and admits the right one', async ({ page, app }) => {
@@ -116,18 +116,14 @@ test.describe('GM console', () => {
     await expect(gm.locator('.log .ev', { hasText: /hint pushed/i }).first()).toBeVisible();
   });
 
-  test('generates, previews, publishes and unpublishes the case report', async ({ player, gm, app }) => {
-    acceptDialogs(gm);
-    await app.setStage('solved');
+  test('generates and previews the case report for the GMs only', async ({ player, gm, app }) => {
+    await app.setStage('investigation');
     await player.goto(app.base);
-    await finishBeats(player);
     await gm.getByRole('button', { name: /generate with ai/i }).click();
     await expect(gm.getByText(/Generated \d/)).toBeVisible({ timeout: 15_000 });
     await gm.getByRole('button', { name: /^preview$/i }).click();
     await expect(gm.getByText('Filed by ARCHIVE', { exact: false }).first()).toBeVisible();
-    await gm.getByRole('button', { name: /publish to player/i }).click();
-    await expect(player.getByText('CASE FILE 30-0214').first()).toBeVisible();
-    await gm.getByRole('button', { name: /unpublish from player/i }).click();
+    await expect(gm.getByRole('button', { name: /publish to player/i })).toHaveCount(0);
     await expect(player.getByText('CASE FILE 30-0214')).toHaveCount(0);
   });
 
@@ -161,7 +157,7 @@ test.describe('GM configuration', () => {
     expect((await app.config()).gate.prompt).toBe('Call Phil.');
   });
 
-  test('coordinate and list fields accept typing', async ({ gm }) => {
+  test('coordinate fields accept typing', async ({ gm }) => {
     await configSection(gm, 'Location puzzle');
     const coords = gm.getByPlaceholder('34.66, -118.41');
     await coords.fill('');
@@ -170,12 +166,6 @@ test.describe('GM configuration', () => {
     const start = gm.getByPlaceholder('leave blank to use the target');
     await start.pressSequentially('34.06, -118.25');
     await expect(start).toHaveValue('34.06, -118.25');
-    const grid = await configSection(gm, 'Deduction grid');
-    await grid.locator('summary', { hasText: 'time:' }).click();
-    const accept = grid.getByLabel('Accepted phrasings (comma separated)', { exact: true }).first();
-    await accept.fill('');
-    await accept.pressSequentially('03:45, 3:45,');
-    await expect(accept).toHaveValue('03:45, 3:45,');
     await gm.getByRole('button', { name: /discard/i }).click();
   });
 

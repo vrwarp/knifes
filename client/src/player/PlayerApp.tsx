@@ -9,7 +9,6 @@ import { Hack } from './Hack';
 import { Intro } from './Intro';
 import { Investigation } from './Investigation';
 import { Reveal } from './Reveal';
-import { Solved } from './Solved';
 
 export interface StageProps {
   view: PlayerView;
@@ -26,7 +25,6 @@ const STAGE_LABEL: Record<StageId, string> = {
   hack: 'Recovery chain // ledger key',
   reveal: 'Ledger decrypted',
   investigation: 'Investigation',
-  solved: 'Case closed',
 };
 
 const SEEN_KEY = 's30.lastHintId';
@@ -228,9 +226,6 @@ export function PlayerApp() {
       break;
     case 'investigation':
       screen = <Investigation {...props} feed={archiveFeed} busy={archiveBusy} />;
-      break;
-    case 'solved':
-      screen = <Solved {...props} feed={archiveFeed} busy={archiveBusy} />;
       break;
   }
 

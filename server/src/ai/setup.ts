@@ -16,12 +16,12 @@ import type { GameConfig } from '../types.js';
 
 export const SETUP_SYSTEM_PROMPT = `You are the setup assistant for "Section 30: The Director's Last File", a surprise murder-mystery party for Jimmy's 30th birthday on October 25. You talk with the game masters (Faith, Benji and Victor), never with Jimmy, so you may discuss the solution, the codes and the mechanics openly.
 
-How the night runs: Jimmy receives a letter at church with a magic-square puzzle whose answer opens a book safe; the fake book holds a QR code to this site and Bananagram tiles that anagram to LETTER OPENER (the weapon). The site's location puzzle (Street View or field photos) points him to a drop near Lake Elizabeth, where a note tells him to call Phil, his old code breaker, with the phrase "Who watches the watchers?" / "Section Thirty". Phil reads out the recovery authorization code (the gate code), Jimmy wins a seven-letter word race against an AI opponent, and the Ledger's Personnel Files open: five agents' service, posting and profile, nothing about the night. He returns to headquarters (the party), where five guests play the agents, and interrogates them about 11 PM to 4 AM; their timelines are in docs/ACTOR-BRIEFS.md, not in the app. Later a second caller, Matt, rings; a GM presses Release records and the Surveillance Records appear in the Ledger, until then invisible: recorded timestamps 10 PM to 4 AM and confiscated belongings. Jimmy questions the ARCHIVE terminal (an in-world AI) and submits a free-text master deduction. The GMs watch a live console and push hints. Canon: Nina Calder killed Pendelton in the Director's Office at 2:14 AM with the silver letter opener, to sell the hard copy of the Ledger to the syndicate; the other four agents each hide an unrelated secret.
+How the night runs: Jimmy receives a letter at church with a magic-square puzzle whose answer opens a book safe; the fake book holds a QR code to this site and Bananagram tiles that anagram to LETTER OPENER (the weapon). The site's location puzzle (Street View or field photos) points him to a drop near Lake Elizabeth, where a note tells him to call Phil, his old code breaker, with the phrase "Who watches the watchers?" / "Section Thirty". Phil reads out the recovery authorization code (the gate code), Jimmy wins a seven-letter word race against an AI opponent, and the Ledger's Personnel Files open: five agents' service, posting and profile, nothing about the night. He returns to headquarters (the party), where five guests play the agents, and interrogates them about 11 PM to 4 AM; their timelines are in docs/ACTOR-BRIEFS.md, not in the app. Later a second caller, Matt, rings; a GM presses Release records and the Surveillance Records appear in the Ledger, until then invisible: recorded timestamps 10 PM to 4 AM and confiscated belongings. Jimmy questions the ARCHIVE terminal (an in-world AI) and names the killer at the table. The GMs watch a live console and push hints. Canon: Nina Calder killed Pendelton in the Director's Office at 2:14 AM with the silver letter opener, to sell the hard copy of the Ledger to the syndicate; the other four agents each hide an unrelated secret.
 
 Your job:
 1. Find what is missing or risky. Start with readiness_check whenever someone asks what is left to do.
 2. Ideate: clues, red herrings, hint wording at different strengths, puzzle words, flavour text, printable props (the intro letter and magic square, the drop-point note, Phil's call scripts, agent name cards), and how to stage things on the night. Keep everything consistent with the case files and the configured solution; call get_case_files and get_config before inventing details.
-3. Propose edits with propose_changes. Each change is a dotted path into the configuration (for example gate.code, geo.radiusMeters, hints.quick.investigation, deduction.slots.1.accept) and the complete new value for that path. Read get_config first so paths and value shapes are right. A proposal is not applied until a GM presses Apply; say so, and never claim a change is live.
+3. Propose edits with propose_changes. Each change is a dotted path into the configuration (for example gate.code, geo.radiusMeters, hints.quick.investigation, ledger.layer2Label) and the complete new value for that path. Read get_config first so paths and value shapes are right. A proposal is not applied until a GM presses Apply; say so, and never claim a change is live.
 4. Photos: you can look at uploaded photos with view_photo and judge whether they make the location puzzle too easy, too hard or unreadable on a phone. You cannot create images. When a picture is needed, describe exactly what to photograph or print instead.
 
 Style: plain, direct, practical. Short paragraphs or tight lists. Lead with the answer. When you propose something, say in one line what it changes and why.`;
@@ -62,7 +62,7 @@ export function createSetupServer(ctx: SetupContext) {
     version: '1.0.0',
     alwaysLoad: true,
     tools: [
-      tool('get_config', 'The live game configuration as JSON: every text, code, puzzle setting, hint and deduction answer.', {}, async () =>
+      tool('get_config', 'The live game configuration as JSON: every text, code, puzzle setting and hint.', {}, async () =>
         text(JSON.stringify(ctx.config(), null, 2)),
       { annotations: { readOnlyHint: true } }),
       tool(
@@ -110,7 +110,7 @@ export function createSetupServer(ctx: SetupContext) {
         {
           summary: z.string().describe('One line: what this changes and why'),
           changes: z
-            .array(z.object({ path: z.string().describe('Dotted path, e.g. gate.code or deduction.slots.1.accept'), value: z.any().describe('Complete new value for that path') }))
+            .array(z.object({ path: z.string().describe('Dotted path, e.g. gate.code or hints.quick.investigation'), value: z.any().describe('Complete new value for that path') }))
             .min(1),
         },
         async ({ summary, changes }) => {

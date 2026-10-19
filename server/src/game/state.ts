@@ -54,9 +54,8 @@ export function initialState(): GameState {
     hackScripts: { key: '', byWord: {}, busy: false },
     ledger: initialLedger(),
     archive: { sessionId: null, locked: false, messageCount: 0, busy: false, epoch: 0 },
-    deduction: { attempts: 0, passed: false, lastResult: null, lastAnswers: null },
     hints: [],
-    report: { markdown: null, generatedAt: null, published: false },
+    report: { markdown: null, generatedAt: null },
   };
 }
 
@@ -93,7 +92,6 @@ export function forceStage(config: GameConfig, state: GameState, stage: StageId,
   if (target >= stageIndex('hack')) state.gate.passed = true;
   if (target >= stageIndex('reveal')) state.hack.solved = true;
   if (target >= stageIndex('investigation')) applyInvestigationUnlocks(config, state);
-  if (target >= stageIndex('solved')) state.deduction.passed = true;
   state.stage = stage;
   state.stageTimes[stage] = now;
   if (state.startedAt === null) state.startedAt = now;
@@ -118,7 +116,6 @@ export function resetStage(config: GameConfig, state: GameState, stage: StageId)
     case 'investigation':
       state.ledger = initialLedger();
       applyInvestigationUnlocks(config, state);
-      state.deduction = { attempts: 0, passed: false, lastResult: null, lastAnswers: null };
       break;
     default:
       break;
@@ -219,22 +216,7 @@ export function playerView(config: GameConfig, state: GameState, googleMapsApiKe
       welcome: config.archive.welcome,
       maxMessageChars: config.archive.maxMessageChars,
     },
-    deduction: {
-      prompt: config.deduction.prompt,
-      template: config.deduction.template,
-      slots: config.deduction.slots.map((s) => ({ id: s.id, label: s.label, placeholder: s.placeholder })),
-      attempts: state.deduction.attempts,
-      passed: state.deduction.passed,
-      maxAttempts: config.deduction.maxAttempts,
-      feedback: config.deduction.feedback,
-      lastPass: state.deduction.lastResult?.pass ?? null,
-      lastAnswers: state.deduction.lastAnswers,
-      successTitle: state.deduction.passed ? config.deduction.successTitle : null,
-      successBody: state.deduction.passed ? config.deduction.successBody : null,
-      failText: config.deduction.failText,
-    },
     hints: state.hints,
-    report: state.report.published ? state.report.markdown : null,
   };
 }
 

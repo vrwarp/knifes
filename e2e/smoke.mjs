@@ -94,27 +94,6 @@ try {
     for (const el of await page.locator('.typed-stack').all()) { try { await el.click({ timeout: 500 }); } catch {} }
     await new Promise((r) => setTimeout(r, 150));
   };
-  // The verdict lands in beats separated by CONTINUE buttons.
-  const finishBeats = async (page) => {
-    for (let i = 0; i < 6; i++) {
-      await finishTyping(page);
-      const next = page.getByRole('button', { name: /^continue$/i });
-      if (!(await next.count())) break;
-      await next.click();
-    }
-    await finishTyping(page);
-  };
-
-  await step('GM sets the hiding place of the Ledger hard copy (the prop slot ships as a placeholder)', async () => {
-    const login = await fetch(`${base}/api/gm/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'test' }) });
-    const cookie = login.headers.get('set-cookie').split(';')[0];
-    const gmApi = (p, init = {}) => fetch(`${base}${p}`, { ...init, headers: { cookie, ...(init.json ? { 'content-type': 'application/json' } : {}) }, body: init.json ? JSON.stringify(init.json) : undefined });
-    const c = await (await gmApi('/api/gm/overview')).json();
-    const cfg = c.config;
-    Object.assign(cfg.deduction.slots.find((s) => s.id === 'prop'), { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle'] });
-    await gmApi('/api/gm/config', { method: 'PUT', json: cfg });
-  });
-
   await step('player sees the intro', async () => {
     await player.goto(base);
     await player.locator('h1', { hasText: 'MAGENTA CHANNEL' }).waitFor();
@@ -210,30 +189,15 @@ try {
     await player.getByRole('button', { name: /acknowledge/i }).click();
   });
 
-  await step('deduction rejects a wrong suspect and verifies the right answers', async () => {
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    const fill = async (answers) => {
-      for (const [label, value] of Object.entries(answers)) await player.getByLabel(label, { exact: true }).fill(value);
-    };
-    await fill({ TIME: '2:14 am', SUSPECT: 'Mara Voss', METHOD: 'the letter opener', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
-    await fill({ SUSPECT: 'Nina Calder' });
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
-    await finishBeats(player);
-    await shot(player, '09-solved');
-  });
-
-  await step('GM generates and publishes the case report (mock)', async () => {
+  await step('GM generates the case report (mock), which stays off the phone', async () => {
     await gm.getByRole('button', { name: /generate with ai/i }).click();
     await gm.getByText('Report generated').waitFor({ timeout: 15_000 });
-    await gm.getByRole('button', { name: /publish to player/i }).click();
-    await player.getByText('CASE FILE 30-0214').first().waitFor({ timeout: 10_000 });
-    await shot(player, '10-report');
+    if (await player.getByText('CASE FILE 30-0214').count()) throw new Error('the case report reached the phone');
   });
 
   await step('GM config editor keeps focus while typing and saves', async () => {
+    // The editor stays collapsed while a game is running; the investigation is the last stage.
+    await gm.locator('summary', { hasText: 'Game configuration (collapsed' }).click();
     await gm.locator('summary', { hasText: 'Code gate' }).click();
     const code = gm.getByLabel('Unlock code (letters/digits, case and dashes ignored)', { exact: true });
     await code.fill('');
@@ -252,18 +216,12 @@ try {
     await restored;
   });
 
-  await step('GM can type into the coordinate and list fields key by key', async () => {
+  await step('GM can type into the coordinate field key by key', async () => {
     await gm.locator('summary', { hasText: 'Location puzzle' }).click();
     const coords = gm.getByPlaceholder('34.66, -118.41');
     await coords.fill('');
     await coords.pressSequentially('34.05, -118.24');
     if ((await coords.inputValue()) !== '34.05, -118.24') throw new Error(`coordinates lost keystrokes: ${await coords.inputValue()}`);
-    await gm.locator('summary', { hasText: 'Deduction grid' }).click();
-    await gm.locator('summary', { hasText: 'time:' }).click();
-    const accept = gm.getByLabel('Accepted phrasings (comma separated)', { exact: true }).first();
-    await accept.fill('');
-    await accept.pressSequentially('02:14, 2:14,');
-    if ((await accept.inputValue()) !== '02:14, 2:14,') throw new Error(`list field lost keystrokes: ${await accept.inputValue()}`);
     await gm.getByRole('button', { name: /discard/i }).click();
   });
 

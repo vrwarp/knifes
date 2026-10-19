@@ -256,4 +256,19 @@ describe('the two-layer Ledger', () => {
     expect(svc.state.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null });
     expect('evidence' in svc.state).toBe(false);
   });
+  it('a save from a solved game returns to the investigation without the deduction', () => {
+    svc.setStage('investigation');
+    const raw = db.getJson<Record<string, unknown>>('state')!;
+    raw.stage = 'solved';
+    raw.stageTimes = { ...(raw.stageTimes as object), solved: 5 };
+    raw.deduction = { attempts: 1, passed: true, lastResult: null, lastAnswers: null };
+    raw.report = { markdown: '# x', generatedAt: 1, published: true };
+    db.setJson('state', raw);
+    svc.close();
+    svc = new GameService(db);
+    expect(svc.state.stage).toBe('investigation');
+    expect('solved' in svc.state.stageTimes).toBe(false);
+    expect('deduction' in svc.state).toBe(false);
+    expect(svc.state.report).toEqual({ markdown: '# x', generatedAt: 1 });
+  });
 });

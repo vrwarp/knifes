@@ -16,7 +16,7 @@ const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
   none: 'no credential',
 };
 
-const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'archive_user', 'deduction_submit']);
+const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'archive_user']);
 const PUZZLE_STAGES = new Set(['geo', 'gate', 'hack', 'investigation']);
 
 /** The across-the-room strip: where he is, how long since he last did anything, what is happening. */
@@ -56,12 +56,9 @@ function NowStrip({ state, config, events, players, streetViewKeySet }: { state:
       facts.push('reading the Ledger decryption notice');
       break;
     case 'investigation': {
-      facts.push(`Ledger: ${state.ledger.layer2 ? 'surveillance records RELEASED' : 'personnel files only'} · ARCHIVE ${plural(state.archive.messageCount, 'query').replace('querys', 'queries')}${state.archive.busy ? ' (answering)' : ''}${state.archive.locked ? ' SEALED' : ''} · ${plural(state.deduction.attempts, 'deduction')}`);
+      facts.push(`Ledger: ${state.ledger.layer2 ? 'surveillance records RELEASED' : 'personnel files only'} · ARCHIVE ${plural(state.archive.messageCount, 'query').replace('querys', 'queries')}${state.archive.busy ? ' (answering)' : ''}${state.archive.locked ? ' SEALED' : ''}`);
       break;
     }
-    case 'solved':
-      facts.push(`verified on attempt ${state.deduction.attempts}${state.report.published ? ' · case file live' : ''}`);
-      break;
   }
   const geoLive = config.geo.mode === 'puzzle' && (state.stage === 'intro' || state.stage === 'geo');
   const geoWarn = geoLive && !config.geo.target;
@@ -74,7 +71,7 @@ function NowStrip({ state, config, events, players, streetViewKeySet }: { state:
       ) : inStage !== null ? (
         <span className="elapsed" title="time in this stage">{elapsed(inStage)}</span>
       ) : null}
-      {!stuck && idle !== null && idle >= 60_000 && state.stage !== 'solved' ? <span className="fact">idle <b>{elapsed(idle)}</b></span> : null}
+      {!stuck && idle !== null && idle >= 60_000 ? <span className="fact">idle <b>{elapsed(idle)}</b></span> : null}
       {facts.map((f, i) => (
         <span key={i} className="fact">
           {f}
@@ -206,7 +203,7 @@ export function GmApp() {
   }
 
   const { state, config } = data;
-  const running = state.startedAt !== null && state.stage !== 'solved';
+  const running = state.startedAt !== null;
   return (
     <div className="shell wide">
       <div className="no-print">

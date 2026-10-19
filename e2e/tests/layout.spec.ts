@@ -1,7 +1,7 @@
 import { expect, finishTyping, noHorizontalScroll, test } from './fixtures';
 
 // Every player screen must fit the device with no sideways scroll and readable, tappable controls.
-const stages = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'] as const;
+const stages = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation'] as const;
 
 for (const stage of stages) {
   test(`${stage} screen fits the viewport`, async ({ player, app }) => {
@@ -11,7 +11,7 @@ for (const stage of stages) {
     await finishTyping(player);
     await noHorizontalScroll(player);
     if (stage === 'investigation') {
-      for (const tab of ['ledger', 'archive', 'deduction']) {
+      for (const tab of ['ledger', 'archive']) {
         await player.getByRole('tab', { name: tab }).click();
         await noHorizontalScroll(player);
       }

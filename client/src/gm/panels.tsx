@@ -10,7 +10,6 @@ export const STAGE_NAME: Record<StageId, string> = {
   hack: 'Ledger key',
   reveal: 'Ledger decrypted',
   investigation: 'Investigation',
-  solved: 'Case closed',
 };
 
 export function useNow(ms: number): number {
@@ -56,7 +55,7 @@ const RESET_CONSEQUENCE: Partial<Record<StageId, string>> = {
   geo: 'clears his map attempts and shows the field transmission again',
   gate: 'clears his code attempts and shows the secure line again',
   hack: 'clears his guesses and any lockout, and sends his phone back to the key race',
-  investigation: 'hides the surveillance records again and clears deduction attempts; the ARCHIVE transcript is kept',
+  investigation: 'hides the surveillance records again; the ARCHIVE transcript is kept',
 };
 
 export function ProgressPanel({ state, config, stages }: { state: GameState; config: GameConfig; stages: StageId[] }) {
@@ -187,7 +186,7 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
 export function LedgerPanel({ state, config }: { state: GameState; config: GameConfig }) {
   const { busy, msg, run } = useAction();
   const [part, setPart] = useState<1 | 2>(state.ledger.layer2 ? 2 : 1);
-  const canRelease = ['investigation', 'solved'].includes(state.stage);
+  const canRelease = state.stage === 'investigation';
   const script = part === 1 ? config.phil.part1 : config.phil.part2;
   return (
     <div className="panel" data-testid="ledger-panel">
@@ -247,7 +246,6 @@ export function LedgerPanel({ state, config }: { state: GameState; config: GameC
 
 export function PlayerStatus({ state, config, events }: { state: GameState; config: GameConfig; events: GameEvent[] }) {
   const now = useNow(1000);
-  const r = state.deduction.lastResult;
   const lockLeft = state.hack.lockedUntil && state.hack.lockedUntil > now ? Math.ceil((state.hack.lockedUntil - now) / 1000) : 0;
   const lastBadCode = [...events].reverse().find((e) => e.type === 'gate_attempt' && e.payload.ok === false)?.payload.code;
   const mode = useAction();
@@ -329,32 +327,7 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
           {state.archive.busy ? ', answering' : ''}
           {state.archive.locked ? ', SEALED' : ''}
         </dd>
-        <dt>Deduction</dt>
-        <dd>
-          {plural(state.deduction.attempts, 'submission')}
-          {state.deduction.passed ? ', VERIFIED' : ''}
-        </dd>
       </dl>
-      {state.deduction.lastAnswers ? (
-        <div style={{ marginTop: 10 }}>
-          <h3>Last submission {r ? `(${r.source === 'ai' ? 'AI grader' : 'keyword grader'}, ${r.pass ? 'pass' : 'fail'})` : ''}</h3>
-          <dl className="kv">
-            {Object.entries(state.deduction.lastAnswers).map(([k, v]) => {
-              const g = r?.slots.find((s) => s.id === k);
-              return (
-                <div key={k} style={{ display: 'contents' }}>
-                  <dt className={g ? (g.pass ? 'green' : 'red') : ''}>{k}</dt>
-                  <dd>
-                    {v || <span className="muted">(empty)</span>}
-                    {g && !g.pass ? <div className="muted small">{g.reason}</div> : null}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-          {r?.note ? <div className="small amber">{r.note}</div> : null}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -507,8 +480,6 @@ function describe(e: GameEvent): { text: string; cls: string } {
       return { text: `${s('text').slice(0, 160)}${s('text').length > 160 ? '…' : ''}`, cls: '' };
     case 'archive_tool':
       return { text: `tool ${s('name')}`, cls: '' };
-    case 'deduction_submit':
-      return { text: `attempt ${s('attempt')} ${p.pass ? 'PASS' : 'FAIL'} · ${s('slots')} (${s('source') === 'ai' ? 'AI' : 'keywords'})`, cls: p.pass ? 'ok' : 'fail' };
     case 'hint_pushed':
       return { text: `hint: ${s('text').slice(0, 100)}${s('text').length > 100 ? '…' : ''}`, cls: '' };
     case 'gm_action':
@@ -607,21 +578,10 @@ export function ReportPanel({ state }: { state: GameState }) {
           className="btn small"
           disabled={busy}
           onClick={() => {
-            if (state.report.published && !window.confirm('The report is live on his screen. Regenerate and replace it?')) return;
             void run(() => api('/api/gm/report/generate', { method: 'POST', timeoutMs: 240_000 }), 'Report generated');
           }}
         >
           {state.report.markdown ? 'Regenerate' : 'Generate'} with AI
-        </button>
-        <button
-          className={`btn small ${state.report.published ? 'ghost' : ''}`}
-          disabled={busy || !state.report.markdown}
-          onClick={() => {
-            if (state.report.published && !window.confirm('Take the case file off his screen?')) return;
-            void run(() => api('/api/gm/report/publish', { json: { published: !state.report.published } }));
-          }}
-        >
-          {state.report.published ? 'Unpublish from player' : 'Publish to player'}
         </button>
         <button className="btn small ghost" disabled={!state.report.markdown} onClick={() => setOpen((o) => !o)}>
           {open ? 'Hide' : 'Preview'}
@@ -632,7 +592,7 @@ export function ReportPanel({ state }: { state: GameState }) {
       </div>
       {busy ? <div className="small amber cursor" style={{ marginTop: 8 }}>Working</div> : null}
       {msg ? <div className="small amber" style={{ marginTop: 8 }}>{msg}</div> : null}
-      {state.report.generatedAt ? <div className="tiny" style={{ marginTop: 8 }}>Generated {fmt(state.report.generatedAt)}{state.report.published ? ' · published' : ''}</div> : null}
+      {state.report.generatedAt ? <div className="tiny" style={{ marginTop: 8 }}>Generated {fmt(state.report.generatedAt)}</div> : null}
       {open && state.report.markdown ? (
         <div className="frame" style={{ marginTop: 10 }}>
           <Markdown text={state.report.markdown} />

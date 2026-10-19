@@ -1,6 +1,5 @@
-export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation' | 'solved';
-export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
-export type SlotId = 'time' | 'suspect' | 'method' | 'asset' | 'motive' | 'prop';
+export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation';
+export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation'];
 export type LetterState = 'hit' | 'near' | 'miss';
 export type HackMode = 'solo' | 'race';
 export type HackRoundResult = 'player' | 'ai' | 'exhausted' | 'pass';
@@ -72,22 +71,7 @@ export interface PlayerView {
   reveal: { title: string; body: string; buttonLabel: string };
   ledger: { layer1: boolean; layer2: boolean; layer2Label: string; interrogationWindow: string };
   archive: { enabled: boolean; locked: boolean; busy: boolean; welcome: string; maxMessageChars: number; epoch: number };
-  deduction: {
-    prompt: string;
-    template: string;
-    slots: { id: SlotId; label: string; placeholder: string }[];
-    attempts: number;
-    passed: boolean;
-    maxAttempts: number | null;
-    feedback: 'pass_fail' | 'count';
-    lastPass: boolean | null;
-    lastAnswers: Record<SlotId, string> | null;
-    successTitle: string | null;
-    successBody: string | null;
-    failText: string;
-  };
   hints: HintPush[];
-  report: string | null;
 }
 
 export interface LedgerEntry {
@@ -128,17 +112,6 @@ export interface GameEvent {
   type: string;
   payload: Record<string, unknown>;
 }
-export interface SlotGrade {
-  id: SlotId;
-  pass: boolean;
-  reason: string;
-}
-export interface GradeResult {
-  pass: boolean;
-  slots: SlotGrade[];
-  source: 'ai' | 'fallback';
-  note?: string;
-}
 export interface GameState {
   stage: StageId;
   startedAt: number | null;
@@ -163,18 +136,8 @@ export interface GameState {
   hackScripts: { key: string; byWord: Record<string, { plan: string[]; source: 'ai' | 'generated'; at: number }>; busy: boolean };
   ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean };
-  deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
-  report: { markdown: string | null; generatedAt: number | null; published: boolean };
-}
-export interface SlotSpec {
-  id: SlotId;
-  label: string;
-  placeholder: string;
-  canonical: string;
-  accept: string[];
-  reject: string[];
-  guidance: string;
+  report: { markdown: string | null; generatedAt: number | null };
 }
 export interface GameConfig {
   version: number;
@@ -215,16 +178,6 @@ export interface GameConfig {
   ledger: { layer2Label: string; layer2ReleasedText: string; interrogationWindow: string };
   phil: { challenge: string; response: string; part1: string; part2: string; secondCaller: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
-  deduction: {
-    prompt: string;
-    template: string;
-    slots: SlotSpec[];
-    successTitle: string;
-    successBody: string;
-    failText: string;
-    maxAttempts: number | null;
-    feedback: 'pass_fail' | 'count';
-  };
   hints: { quick: Partial<Record<StageId, string[]>> };
 }
 export interface Overview {

@@ -74,7 +74,7 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
   // Integrity climbs as Ledger layers open and he asks questions, and reads 100 once the case is closed.
   const layers = (view.ledger.layer1 ? 1 : 0) + (view.ledger.layer2 ? 1 : 0);
   const asked = messages.filter((m) => m.role === 'user').length;
-  const integrity = view.stage === 'solved' ? 100 : Math.min(89, 41 + layers * 12 + Math.min(asked, 6) * 4);
+  const integrity = Math.min(89, 41 + layers * 12 + Math.min(asked, 6) * 4);
   const disabled = !view.archive.enabled || view.archive.locked || busy || sending;
   return (
     <div className="frame" style={{ padding: 12 }}>

@@ -151,8 +151,6 @@ try {
   // ============================================================================================
   begin('main', 'The full game, start to finish', 'One continuous run on the phone with the GM console open on a laptop: every stage in its default mode, a wrong answer at each gate, a hint pushed mid-investigation, and the case report at the end.');
   const phoneCtx = await browser.newContext(phoneOpts);
-  // The prop slot ships as a GM placeholder; this recording hides the hard copy in the card envelope.
-  await app.patch((c) => Object.assign(c.deduction.slots.find((x) => x.id === 'prop'), { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle'] }));
   const player = await phoneCtx.newPage();
   const deskCtx = await browser.newContext(deskOpts);
   const gm = await deskCtx.newPage();
@@ -268,39 +266,10 @@ try {
   await shot(player, 'Transmissions received', 'Every hint so far, newest first, from the button in the top bar.', { full: false });
   await player.getByRole('button', { name: /^close$/i }).click();
 
-  await player.getByRole('tab', { name: 'deduction' }).click();
-  await shot(player, 'Master deduction, empty', 'Free text in each blank. The draft survives tab switches and reloads.');
-  const fill = async (answers) => { for (const [label, value] of Object.entries(answers)) await player.getByLabel(label, { exact: true }).fill(value); };
-  await fill({ TIME: '2:14 am', SUSPECT: 'Mara Voss', METHOD: 'the letter opener', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
-  await shot(player, 'Deduction filled in, wrong suspect', 'Everything right except the suspect.');
-  await player.getByRole('button', { name: /submit deduction/i }).click();
-  await sleep(900);
-  await shot(player, 'Verifying', 'The verdict always takes at least two and a half seconds, with status lines cycling.', { full: false, wait: 0 });
-  await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
-  await shot(player, 'Deduction rejected', 'Pass or fail only: it does not say which field is wrong. The frame shakes and turns red.');
-  await shot(gm, 'GM sees exactly what failed', 'The console shows the per-field result, which the player never sees, so the GMs can steer with a hint.', { device: 'desktop' });
-  await fill({ SUSPECT: 'Nina Calder' });
-  await player.getByRole('button', { name: /submit deduction/i }).click();
-  await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
-  await sleep(600);
-  await shot(player, 'Deduction verified', 'The verdict plays in beats, one per CONTINUE.', { wait: 0 });
-  for (let i = 0; i < 6; i++) {
-    await finishTyping(player);
-    const next = player.getByRole('button', { name: /^continue$/i });
-    if (!(await next.count())) break;
-    if (i === 1) await shot(player, 'Verdict, middle beat', 'Each beat types out before CONTINUE appears.');
-    await next.click();
-  }
-  await finishTyping(player);
-  await shot(player, 'Happy thirtieth', 'The last beat closes the case and turns into the birthday line.');
   await gm.getByRole('button', { name: /generate with ai/i }).click();
   await gm.getByText(/Generated \d/).waitFor({ timeout: 20_000 });
   await gm.getByRole('button', { name: /^preview$/i }).click();
-  await shot(gm, 'Case report preview', 'After the win the GM generates a case file from the whole game log and previews it before publishing.', { device: 'desktop' });
-  await gm.getByRole('button', { name: /publish to player/i }).click();
-  await player.getByText('CASE FILE 30-0214').first().waitFor({ timeout: 10_000 });
-  await finishTyping(player);
-  await shot(player, 'Case file on the phone', 'Published, the report appears under the verdict. The GM can also print it.');
+  await shot(gm, 'Case report preview', 'Once Jimmy names the killer at the table, the GM generates a case file from the whole game log, previews it and can print it. It never goes to the phone.', { device: 'desktop' });
   await sleep(1500);
   await recPlayer.stop('The full run on the phone', 'phone');
   await recGm.stop('The GM console during the same run', 'desktop');
@@ -494,7 +463,6 @@ try {
     ['Ledger decrypted', 'The notice shown after the puzzle, with the interrogation directive.'],
     ['Surveillance records', 'The section name on the phone and the transmission pushed when it is released.'],
     ['ARCHIVE terminal', 'Welcome line and the model ARCHIVE runs on.'],
-    ['Deduction grid', 'The sentence template, each blank’s canonical answer, accepted and rejected phrasings, grader guidance, attempts and feedback mode.'],
     ['Quick hints per stage', 'The one-tap hints for each stage, one per line.'],
   ];
   const unstick = await g.addStyleTag({ content: '.sticky-actions{position:static!important}' });
@@ -503,7 +471,6 @@ try {
     await s.click();
     await sleep(500);
     const det = g.locator('details.section', { has: g.locator('summary', { hasText: name }) }).first();
-    if (name.startsWith('Deduction')) { const slot = det.locator('summary', { hasText: 'suspect' }).first(); if (await slot.count()) await slot.click(); }
     await det.scrollIntoViewIfNeeded();
     await sleep(name.startsWith('Location') ? 2500 : 300);
     const file = `${String(++n).padStart(3, '0')}-${journey.id}.jpg`;

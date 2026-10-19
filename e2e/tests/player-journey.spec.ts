@@ -1,7 +1,7 @@
-import { RIGHT_ANSWERS, WRONG_SUSPECT, clearWord, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
+import { clearWord, expect, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 test.describe('player journey', () => {
-  test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
+  test('plays the whole game from the QR landing to the investigation', async ({ player, app }) => {
     await app.patch((c) => {
       c.hack.mode = 'solo';
       c.hack.secret = 'ALPHA';
@@ -52,21 +52,8 @@ test.describe('player journey', () => {
     // Investigation.
     await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
     await expect(player.getByText('Mara Voss')).toBeVisible();
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, SUSPECT: WRONG_SUSPECT });
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await expect(player.getByText(/DEDUCTION REJECTED/)).toBeVisible({ timeout: 15_000 });
-    await expect(player.getByText(/FIELDS VERIFIED/), 'pass/fail mode never says which field is wrong').toHaveCount(0);
-    await fillDeduction(player, { SUSPECT: 'Nina Calder' });
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await expect(player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first()).toBeVisible({ timeout: 15_000 });
-    await finishBeats(player);
-    await expect(player.locator('pre.typed:not(.ghost)', { hasText: 'Happy thirtieth, Detective' })).toBeVisible();
-
-    // Case file published by the GM.
-    await app.gmApi('/api/gm/report/generate', { method: 'POST' });
-    await app.gmApi('/api/gm/report/publish', { json: { published: true } });
-    await expect(player.getByText('CASE FILE 30-0214').first()).toBeVisible();
+    await player.getByRole('tab', { name: 'archive' }).click();
+    await expect(player.getByRole('tab', { name: 'deduction' }), 'the investigation has no deduction tab').toHaveCount(0);
     await noHorizontalScroll(player);
   });
 
