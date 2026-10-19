@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api, errorText } from '../api';
-import type { ArchiveMessage, HintPush, PlayerView, StageId } from '../types';
+import { fill, type ArchiveMessage, type HintPush, type PlayerView, type StageId } from '../types';
 import { useSocket } from '../ws';
 import { Frame, Typewriter, clock } from './common';
 import { Gate } from './Gate';
@@ -18,13 +18,12 @@ export interface StageProps {
   hold: (stage: StageId, ms: number) => void;
 }
 
-const STAGE_LABEL: Record<StageId, string> = {
-  intro: 'Recovery chain // link 1',
-  geo: 'Recovery chain // field transmission',
-  gate: 'Recovery chain // secure line',
-  hack: 'Recovery chain // ledger key',
-  reveal: 'Ledger decrypted',
-  investigation: 'Investigation',
+/** Shown before the first view arrives, when no configuration has reached the phone yet. */
+const DEFAULT_APP_TEXT = {
+  loadingTitle: 'Section 30',
+  loading: 'Establishing link',
+  accessDeniedTitle: 'Access denied',
+  accessDeniedBody: 'This terminal only answers to the recovery link. Scan the code again, or open the link exactly as it was given to you.',
 };
 
 const SEEN_KEY = 's30.lastHintId';
@@ -182,8 +181,8 @@ export function PlayerApp() {
   if (denied) {
     return (
       <div className="shell">
-        <Frame title="Access denied" className="danger">
-          <p>This terminal only answers to the recovery link. Scan the code again, or open the link exactly as it was given to you.</p>
+        <Frame title={DEFAULT_APP_TEXT.accessDeniedTitle} className="danger">
+          <p>{DEFAULT_APP_TEXT.accessDeniedBody}</p>
         </Frame>
       </div>
     );
@@ -191,8 +190,8 @@ export function PlayerApp() {
   if (!view) {
     return (
       <div className="shell">
-        <Frame title="Section 30">
-          <p className="muted cursor">{error ?? 'Establishing link'}</p>
+        <Frame title={DEFAULT_APP_TEXT.loadingTitle}>
+          <p className="muted cursor">{error ?? DEFAULT_APP_TEXT.loading}</p>
           {error ? (
             <button className="btn" onClick={() => void refresh()}>
               Retry
@@ -207,6 +206,7 @@ export function PlayerApp() {
   const stage: StageId = pin && Date.now() < pin.until ? pin.stage : view.stage;
   shownStage.current = stage;
   const unread = view.hints.filter((h) => h.id > seen).length;
+  const t = view.text.app;
   let screen;
   switch (stage) {
     case 'intro':
@@ -231,35 +231,35 @@ export function PlayerApp() {
 
   return (
     <div className="shell">
-      {(everConnected && !connected) || offline ? <div className="link-down">Link lost · reconnecting</div> : null}
+      {(everConnected && !connected) || offline ? <div className="link-down">{t.linkLost}</div> : null}
       <div className="topbar">
         <span>
           <span className={`dot ${connected ? 'on' : ''}`} aria-hidden="true" />
-          {STAGE_LABEL[stage]}
+          {view.text.stageLabels[stage]}
         </span>
         {view.hints.length ? (
           <button className={`btn small ${unread ? 'unread' : 'ghost'}`} onClick={openList}>
-            Transmissions ({view.hints.length})
+            {fill(t.transmissions, { n: view.hints.length })}
           </button>
         ) : null}
       </div>
       {screen}
       {toast ? (
-        <div className="overlay" role="dialog" aria-modal="true" aria-label="Incoming transmission">
+        <div className="overlay" role="dialog" aria-modal="true" aria-label={t.transmissionKicker}>
           <div className="frame accent">
-            <div className="kicker">Incoming transmission</div>
-            <h1>Magenta channel</h1>
+            <div className="kicker">{t.transmissionKicker}</div>
+            <h1>{t.transmissionTitle}</h1>
             <Typewriter text={toast.text} speed={3} />
             <button ref={ackRef} className="btn primary block" onClick={acknowledge} autoFocus>
-              Acknowledge
+              {t.acknowledge}
             </button>
           </div>
         </div>
       ) : null}
       {showHints ? (
-        <div className="overlay" role="dialog" aria-modal="true" aria-label="Transmissions received" onClick={() => setShowHints(false)}>
+        <div className="overlay" role="dialog" aria-modal="true" aria-label={t.transmissionsReceived} onClick={() => setShowHints(false)}>
           <div className="frame" onClick={(e) => e.stopPropagation()}>
-            <h1>Transmissions received</h1>
+            <h1>{t.transmissionsReceived}</h1>
             <div className="stack">
               {[...view.hints].reverse().map((h) => (
                 <div key={h.id}>

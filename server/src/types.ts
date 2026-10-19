@@ -1,3 +1,6 @@
+import type { LedgerContent } from './content/ledger.js';
+import type { UiText } from './content/text.js';
+
 export type GeoMode = 'puzzle' | 'reveal' | 'off';
 export type HackMode = 'solo' | 'race';
 export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation';
@@ -56,17 +59,37 @@ export interface GameConfig {
   reveal: { title: string; body: string; buttonLabel: string };
   /** The Ledger the investigation reads. The personnel files open with the investigation; the surveillance records stay hidden until the second call. */
   ledger: {
+    /** The section name on the phone for the personnel files, e.g. PERSONNEL FILES. */
+    layer1Label: string;
     /** The section name on the phone once released, e.g. SURVEILLANCE RECORDS. */
     layer2Label: string;
     /** Pushed to the phone as a transmission when the records are released. Empty for none. */
     layer2ReleasedText: string;
     /** The window Jimmy is told to establish for every agent. */
     interrogationWindow: string;
+    /** The header line above the files on the phone; {window} is replaced by interrogationWindow. */
+    headLine: string;
+    /** The name of the section that re-shows the decryption notice. */
+    recordLabel: string;
+    /** Every word of the files themselves: agents, incident, duty log, fragments. */
+    content: LedgerContent;
   };
   /** The two phone calls, shown in the GM console for whoever plays them: Phil takes the first, `secondCaller` the second. */
   phil: { challenge: string; response: string; part1: string; part2: string; secondCaller: string };
-  archive: { enabled: boolean; maxMessageChars: number; welcome: string };
+  archive: {
+    enabled: boolean;
+    maxMessageChars: number;
+    welcome: string;
+    /** The ARCHIVE's persona and rules, sent to the model as its system prompt. */
+    persona: string;
+    /** What the tools (and the mock) answer for anything not on file, before the records are released. */
+    notOnFile: string;
+  };
   hints: { quick: Partial<Record<StageId, string[]>> };
+  /** The brief for the closing case file. */
+  report: { prompt: string };
+  /** Every other line the phone prints. */
+  text: UiText;
 }
 
 export interface HintPush {

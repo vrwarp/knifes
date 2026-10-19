@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, errorText } from '../api';
-import type { ArchiveMessage, PlayerView } from '../types';
+import { fill, type ArchiveMessage, type PlayerView } from '../types';
 import { Typewriter } from './common';
 
-const PROCESSING_LINES = ['ARCHIVE PROCESSING', 'SEARCHING SURVIVING SEGMENTS', 'CROSS-CHECKING THE INDEX', 'SEGMENT 7 CORRUPT. REROUTING', 'ASSEMBLING RECORD'];
-
 export function Archive({ view, feed, busy, active = true }: { view: PlayerView; feed: ArchiveMessage[]; busy: boolean; active?: boolean }) {
+  const t = view.text.archive;
+  const PROCESSING_LINES = t.processingLines;
   const [messages, setMessages] = useState<ArchiveMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -20,7 +20,8 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
     }
     const t = window.setInterval(() => setPhase((p) => (p + 1) % PROCESSING_LINES.length), 2500);
     return () => window.clearInterval(t);
-  }, [working]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [working, PROCESSING_LINES.length]);
   const loadedIds = useRef<Set<number> | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
@@ -78,7 +79,7 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
   const disabled = !view.archive.enabled || view.archive.locked || busy || sending;
   return (
     <div className="frame" style={{ padding: 12 }}>
-      <p className="tiny">ARCHIVE · integrity {integrity}%</p>
+      <p className="tiny">{fill(t.integrity, { n: integrity })}</p>
       {loadErr ? (
         <div className="error" role="alert">
           {loadErr}{' '}
@@ -89,12 +90,12 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
       ) : null}
       <div className="chat" role="log" aria-live="polite">
         <div className="msg assistant">
-          <span className="who">ARCHIVE</span>
+          <span className="who">{t.speakerArchive}</span>
           {view.archive.welcome}
         </div>
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.role}`}>
-            <span className="who">{m.role === 'user' ? 'Detective' : m.role === 'assistant' ? 'ARCHIVE' : 'LINK'}</span>
+            <span className="who">{m.role === 'user' ? t.speakerPlayer : m.role === 'assistant' ? t.speakerArchive : t.speakerLink}</span>
             {m.role === 'assistant' && m.id === typingId ? (
               <Typewriter text={m.text} speed={4} onProgress={scrollDown} onDone={scrollDown} />
             ) : (
@@ -102,24 +103,24 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
             )}
           </div>
         ))}
-        {working ? <div className="msg system cursor" role="status">{PROCESSING_LINES[phase]}</div> : null}
+        {working ? <div className="msg system cursor" role="status">{PROCESSING_LINES[phase % PROCESSING_LINES.length]}</div> : null}
         <div ref={bottom} />
       </div>
-      {view.archive.locked ? <div className="error">ARCHIVE SEALED BY COMMAND AUTHORITY</div> : null}
-      {!view.archive.enabled ? <div className="error">ARCHIVE OFFLINE</div> : null}
+      {view.archive.locked ? <div className="error">{t.sealed}</div> : null}
+      {!view.archive.enabled ? <div className="error">{t.offline}</div> : null}
       <div className="chat-input">
         <form onSubmit={send} className="row">
           <input
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, view.archive.maxMessageChars))}
-            placeholder="Query the ARCHIVE"
+            placeholder={t.placeholder}
             disabled={!view.archive.enabled || view.archive.locked}
             aria-label="Query"
             autoComplete="off"
             style={{ flex: 1 }}
           />
           <button className="btn primary" disabled={disabled || !text.trim()}>
-            Send
+            {t.send}
           </button>
         </form>
       </div>

@@ -51,7 +51,7 @@ Progress lives on the server, so a dead phone or a refresh loses nothing; any de
 
 ## 4. GM console (`/gm`)
 
-Password login. Panels: NOW strip, progress chips with jump/unlock and reset controls, seal/unseal ARCHIVE, **The calls & the Ledger** (challenge and response, both codes in large type with the caller's name, records state, Release / Hide button, the two call scripts), player status (attempts, guesses, the word in play, Ledger files), hint panel (type, pick a quick hint, or draft with AI, then push), live event log, ARCHIVE transcript, case report, setup assistant with the readiness list, and the full configuration editor with photo uploads. Everything updates live over WebSocket.
+Password login. Panels: NOW strip, progress chips with jump/unlock and reset controls, seal/unseal ARCHIVE, **The calls & the Ledger** (challenge and response, the gate code in large type, who makes each call, records state, Release / Hide button, the two call scripts), player status (attempts, guesses, the word in play, Ledger files), hint panel (type, pick a quick hint, or draft with AI, then push), live event log, ARCHIVE transcript, case report, setup assistant with the readiness list, and the full configuration editor with photo uploads. Everything updates live over WebSocket.
 
 ## 5. AI features (Claude Agent SDK)
 
@@ -79,6 +79,7 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 - Auth: GM cookie signed with HMAC; optional player key in the QR link; GM password compared in constant time.
 - Deployment: multi-stage Dockerfile on `node:22-bookworm-slim`, non-root user, `/data` volume for SQLite, uploads and SDK session files. Health check on `/healthz`.
 - Upgrades: a configuration saved before this revision loses its evidence-vault block and picks up the `ledger` and `phil` defaults; a saved game state gains the personnel files if it was already investigating.
+- Every word of the story is in the configuration and editable in the console: the Ledger itself (`ledger.content`: the agents' personnel facts, profiles, recorded activity, belongings and findings; the incident; the duty log; the index fragments), the section names and the header line, the ARCHIVE's persona and its not-on-file answer, the case-file brief (`report.prompt`), and every other line the phone prints (`text`, grouped by screen, with `{placeholders}` filled at render time). The server validates surveillance times as clock times so the ARCHIVE's window search keeps working. A configuration saved before this revision picks up all of it from the defaults.
 
 ### API summary
 

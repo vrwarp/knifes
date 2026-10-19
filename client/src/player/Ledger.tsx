@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
-import type { LedgerEntry, LedgerFiles, PlayerView } from '../types';
+import { fill, type LedgerEntry, type LedgerFiles, type PlayerView, type UiText } from '../types';
 
 function Log({ lines }: { lines: { time: string; text: string }[] }) {
   return (
@@ -17,7 +17,7 @@ function Log({ lines }: { lines: { time: string; text: string }[] }) {
   );
 }
 
-function Agent({ e, layer, defaultOpen = false }: { e: LedgerEntry; layer: 1 | 2; defaultOpen?: boolean }) {
+function Agent({ e, layer, t, defaultOpen = false }: { e: LedgerEntry; layer: 1 | 2; t: UiText['ledger']; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className={`agent ${layer === 2 ? 'l2' : ''} ${open ? 'open' : ''}`}>
@@ -27,7 +27,7 @@ function Agent({ e, layer, defaultOpen = false }: { e: LedgerEntry; layer: 1 | 2
       </header>
       {open ? (
         <div className="body">
-          <p className="tiny">Ledger id {e.id}</p>
+          <p className="tiny">{fill(t.idLine, { id: e.id })}</p>
           {layer === 1 ? (
             <>
               <dl className="facts">
@@ -38,24 +38,24 @@ function Agent({ e, layer, defaultOpen = false }: { e: LedgerEntry; layer: 1 | 2
                   </div>
                 ))}
               </dl>
-              <h4>Personnel profile</h4>
+              <h4>{t.profileHeading}</h4>
               <p className="notes">{e.notes}</p>
             </>
           ) : (
             <>
-              <h4>Recorded activity</h4>
+              <h4>{t.activityHeading}</h4>
               <Log lines={e.log ?? []} />
             </>
           )}
           {layer === 2 ? (
             <>
-              <h4>Recovered evidence</h4>
+              <h4>{t.evidenceHeading}</h4>
               <ul className="items">
                 {(e.evidence ?? []).map((x) => (
                   <li key={x}>{x}</li>
                 ))}
               </ul>
-              <h4>Additional findings</h4>
+              <h4>{t.findingsHeading}</h4>
               <p className="notes">{e.notes}</p>
             </>
           ) : null}
@@ -82,6 +82,7 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
   const [files, setFiles] = useState<LedgerFiles | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const key = `${view.ledger.layer1}:${view.ledger.layer2}`;
+  const t = view.text.ledger;
   const load = async () => {
     try {
       setFiles(await api<LedgerFiles>('/api/player/ledger'));
@@ -108,26 +109,31 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
         </button>
       </div>
     );
-  if (!files) return <p className="muted cursor">Mounting Ledger</p>;
+  if (!files) return <p className="muted cursor">{t.mounting}</p>;
   const l1 = files.layer1;
   const l2 = files.layer2;
 
   return (
     <div>
       <p className="ledger-head">
-        S30 Ledger · access level magenta · ask every agent where they were, <b>{files.interrogationWindow}</b>
+        {view.ledger.headLine.split('{window}').map((part, i, all) => (
+          <span key={i}>
+            {part}
+            {i < all.length - 1 ? <b>{files.interrogationWindow}</b> : null}
+          </span>
+        ))}
       </p>
-      <Section name="PERSONNEL FILES" locked={!l1} defaultOpen>
+      <Section name={view.ledger.layer1Label} locked={!l1} defaultOpen>
         {l1 ? (
           <>
             <p className="tiny">{l1.subtitle}</p>
             <p className="small muted">{l1.intro}</p>
             {l1.entries.map((e, i) => (
-              <Agent key={e.id} e={e} layer={1} defaultOpen={i === 0} />
+              <Agent key={e.id} e={e} layer={1} t={t} defaultOpen={i === 0} />
             ))}
           </>
         ) : (
-          <p className="muted">Not yet decrypted.</p>
+          <p className="muted">{t.notDecrypted}</p>
         )}
       </Section>
       {l2 ? (
@@ -137,25 +143,25 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
             <p className="small muted">{l2.intro}</p>
             <div className="incident">
               <div>
-                <b>Incident:</b> {l2.incident.incident}
+                <b>{t.incidentLabel}</b> {l2.incident.incident}
               </div>
               <div>
-                <b>Confirmed time of death:</b> {l2.incident.timeOfDeath}
+                <b>{t.timeOfDeathLabel}</b> {l2.incident.timeOfDeath}
               </div>
               <div>
-                <b>Location:</b> {l2.incident.location}
+                <b>{t.locationLabel}</b> {l2.incident.location}
               </div>
               <div>
-                <b>Found:</b> {l2.incident.found}
+                <b>{t.foundLabel}</b> {l2.incident.found}
               </div>
             </div>
             {l2.entries.map((e) => (
-              <Agent key={e.id} e={e} layer={2} />
+              <Agent key={e.id} e={e} layer={2} t={t} />
             ))}
             <div className="agent l2">
               <header>
-                <span className="name">Duty officer Hale</span>
-                <span className="pos">Facility log</span>
+                <span className="name">{l2.dutyLog.name}</span>
+                <span className="pos">{l2.dutyLog.position}</span>
               </header>
               <div className="body">
                 <Log lines={l2.facilityLog} />
@@ -164,7 +170,7 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
           </>
         </Section>
       ) : null}
-      <Section name="LEDGER DECRYPTION RECORD" locked={false}>
+      <Section name={view.ledger.recordLabel} locked={false}>
         <pre className="typed small">{view.reveal.body}</pre>
       </Section>
     </div>

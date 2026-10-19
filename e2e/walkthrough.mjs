@@ -240,7 +240,7 @@ try {
   await finishTyping(player);
   await shot(player, 'ARCHIVE answering questions', 'Integrity rises with every question. These replies come from the scripted mock; on the night they come from Claude on the organizer’s subscription.');
 
-  await shot(gm, 'The calls and the Ledger panel', 'Whoever plays Phil and Matt reads from the console: the challenge phrase, both codes in large type, the call scripts, and the Release records button for Matt\u2019s call.', { device: 'desktop', full: false });
+  await shot(gm, 'The calls and the Ledger panel', 'Whoever plays Phil and Matt reads from the console: the challenge phrase, the gate code in large type, the call scripts, and the Release records button for Matt\u2019s call.', { device: 'desktop', full: false });
   await gm.getByRole('button', { name: /^release records$/i }).click();
   await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
   await finishTyping(player);

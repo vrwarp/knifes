@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { AgentError, aiLive, probeAuth, runAgent } from './ai/agent.js';
-import { ARCHIVE_ALLOWED_TOOLS, ARCHIVE_SYSTEM_PROMPT, createArchiveServer, mockArchiveReply } from './ai/archive.js';
+import { ARCHIVE_ALLOWED_TOOLS, createArchiveServer, mockArchiveReply } from './ai/archive.js';
 import { draftHint, type HintStrength } from './ai/copilot.js';
 import { SETUP_ALLOWED_TOOLS, SETUP_SYSTEM_PROMPT, createSetupServer, mockSetupReply, type SetupContext } from './ai/setup.js';
 import { generateReport } from './ai/report.js';
-import { FACILITY_LOG, INCIDENT, LAYER_01, LAYER_01_HEADER, LAYER_02, LAYER_02_HEADER } from './content/ledger.js';
+import { LEDGER_TITLE, ledgerMinutes, personnelEntries, surveillanceEntries } from './content/ledger.js';
+import { fill, type UiText } from './content/text.js';
 import type { AssistantMessage, ConfigSource, Db, Proposal, ProposalChange } from './db.js';
 import { diffPaths, getPath, preview, setPath } from './game/configPaths.js';
 import fs from 'node:fs';
@@ -48,6 +49,22 @@ export interface ReadinessItem {
 type Listener = (m: ServerMessage) => void;
 
 const latLng = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
+/** A surveillance line: the time has to read as a clock time or the ARCHIVE's window search cannot place it. */
+const logLine = z.object({
+  time: z.string().trim().max(40).refine((t) => ledgerMinutes(t) !== null, 'time must look like 2:14 AM or 2:00–2:30 AM'),
+  text: z.string().max(400),
+});
+const line = z.string().max(400);
+/** Every field of the UI text is a short string, or a list of them; the shape is checked against the defaults. */
+const textSchema = z.object(
+  Object.fromEntries(
+    Object.entries(DEFAULT_CONFIG.text).map(([group, fields]) => [
+      group,
+      z.object(Object.fromEntries(Object.entries(fields as Record<string, unknown>).map(([k, v]) => [k, Array.isArray(v) ? z.array(line).min(1).max(20) : line]))),
+    ]),
+  ),
+) as unknown as z.ZodType<UiText>;
+
 const ConfigSchema = z.object({
   version: z.number(),
   title: z.string().min(1),
@@ -100,13 +117,44 @@ const ConfigSchema = z.object({
     }),
   reveal: z.object({ title: z.string(), body: z.string(), buttonLabel: z.string().min(1) }),
   ledger: z.object({
+    layer1Label: z.string().min(1).max(80),
     layer2Label: z.string().min(1).max(80),
     layer2ReleasedText: z.string().max(1000),
     interrogationWindow: z.string().max(80),
+    headLine: z.string().max(300),
+    recordLabel: z.string().min(1).max(80),
+    content: z.object({
+      personnel: z.object({ subtitle: z.string().max(200), intro: z.string().max(1000) }),
+      surveillance: z.object({ subtitle: z.string().max(200), intro: z.string().max(1000) }),
+      incident: z.object({ incident: z.string().max(200), timeOfDeath: z.string().max(40), location: z.string().max(200), found: z.string().max(300) }),
+      agents: z
+        .array(
+          z.object({
+            id: z.string().trim().min(1).max(20),
+            name: z.string().trim().min(1).max(60),
+            position: z.string().max(80),
+            facts: z.array(z.object({ label: z.string().min(1).max(40), value: z.string().max(400) })).max(12),
+            profile: z.string().max(1000),
+            log: z.array(logLine).max(60),
+            evidence: z.array(z.string().max(200)).max(20),
+            findings: z.string().max(2000),
+          }),
+        )
+        .min(1)
+        .max(12)
+        .superRefine((agents, ctx) => {
+          const ids = agents.map((a) => a.id.toLowerCase());
+          if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'every agent needs a different Ledger id' });
+        }),
+      dutyLog: z.object({ name: z.string().max(60), position: z.string().max(60), lines: z.array(logLine).max(60) }),
+      fragments: z.array(z.object({ key: z.string().trim().min(1).max(40), text: z.string().max(1000) })).max(40),
+    }),
   }),
   phil: z.object({ challenge: z.string().max(200), response: z.string().max(200), part1: z.string().max(8000), part2: z.string().max(8000), secondCaller: z.string().min(1).max(60) }),
-  archive: z.object({ enabled: z.boolean(), maxMessageChars: z.number().int().min(50).max(2000), welcome: z.string() }),
+  archive: z.object({ enabled: z.boolean(), maxMessageChars: z.number().int().min(50).max(2000), welcome: z.string(), persona: z.string().min(1).max(12_000), notOnFile: z.string().min(1).max(600) }),
   hints: z.object({ quick: z.record(z.string(), z.array(z.string())) }),
+  report: z.object({ prompt: z.string().min(1).max(12_000) }),
+  text: textSchema,
 });
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -279,12 +327,12 @@ export class GameService {
     this.requireStage('hack', 'hack');
     if (this.state.hack.solved) return { solved: true, lockedUntil: null };
     const now = Date.now();
-    if (this.state.hack.lockedUntil && this.state.hack.lockedUntil > now) throw new HttpError(423, 'Partition locked');
+    if (this.state.hack.lockedUntil && this.state.hack.lockedUntil > now) throw new HttpError(423, this.config.text.server.partitionLocked);
     if (this.state.hack.lockedUntil && this.state.hack.lockedUntil <= now) this.hackRetry();
     const h = this.state.hack;
     const guess = normalizeGuess(word);
     const secret = currentSecret(this.config, this.state);
-    if (guess.length !== secret.length) throw new HttpError(400, `Key must be ${secret.length} characters`);
+    if (guess.length !== secret.length) throw new HttpError(400, fill(this.config.text.server.keyLength, { n: secret.length }));
     h.guesses.push(guess);
     h.guessAt.push(now);
     const scores = scoreGuess(guess, secret);
@@ -499,10 +547,13 @@ export class GameService {
   ledgerFiles() {
     this.requireStage('investigation', 'the Ledger');
     const l = this.state.ledger;
+    const c = this.config.ledger.content;
     return {
       interrogationWindow: this.config.ledger.interrogationWindow,
-      layer1: l.layer1 ? { ...LAYER_01_HEADER, entries: LAYER_01 } : null,
-      layer2: l.layer2 ? { ...LAYER_02_HEADER, title: `S30 LEDGER // ${this.config.ledger.layer2Label}`, label: this.config.ledger.layer2Label, incident: INCIDENT, entries: LAYER_02, facilityLog: FACILITY_LOG } : null,
+      layer1: l.layer1 ? { ...c.personnel, title: `${LEDGER_TITLE} // ${this.config.ledger.layer1Label}`, entries: personnelEntries(c) } : null,
+      layer2: l.layer2
+        ? { ...c.surveillance, title: `${LEDGER_TITLE} // ${this.config.ledger.layer2Label}`, label: this.config.ledger.layer2Label, incident: c.incident, entries: surveillanceEntries(c), facilityLog: c.dutyLog.lines, dutyLog: { name: c.dutyLog.name, position: c.dutyLog.position } }
+        : null,
       layer2Label: this.config.ledger.layer2Label,
       locked: { layer2: !l.layer2 },
     };
@@ -533,9 +584,9 @@ export class GameService {
 
   async archiveSend(text: string): Promise<ArchiveMessage> {
     this.requireStage('investigation', 'ARCHIVE');
-    if (!this.config.archive.enabled) throw new HttpError(403, 'ARCHIVE offline');
-    if (this.state.archive.locked) throw new HttpError(423, 'ARCHIVE sealed by command authority');
-    if (this.state.archive.busy) throw new HttpError(429, 'ARCHIVE is answering a previous query');
+    if (!this.config.archive.enabled) throw new HttpError(403, this.config.text.server.archiveOffline);
+    if (this.state.archive.locked) throw new HttpError(423, this.config.text.server.archiveSealed);
+    if (this.state.archive.busy) throw new HttpError(429, this.config.text.server.archiveBusy);
     const clean = text.replace(/\s+/g, ' ').trim().slice(0, this.config.archive.maxMessageChars);
     if (!clean) throw new HttpError(400, 'Empty query');
 
@@ -554,7 +605,7 @@ export class GameService {
         meta = { source: 'mock' };
       } else {
         const run = await this.runArchive(clean);
-        reply = run.text.trim() || '[SEGMENT LOST] The partition returned nothing. Rephrase the query.';
+        reply = run.text.trim() || this.config.text.server.archiveEmptyReply;
         meta = { source: 'ai', costUsd: run.costUsd, tools: run.toolCalls.map((t) => t.name) };
       }
       const msg = this.db.addArchive('assistant', reply, meta);
@@ -564,7 +615,7 @@ export class GameService {
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       this.event('ai_error', { where: 'archive', error });
-      const msg = this.db.addArchive('system', '[LINK DEGRADED] The ARCHIVE did not answer. Repeat the query.', { error });
+      const msg = this.db.addArchive('system', this.config.text.server.archiveDegraded, { error });
       this.emit({ type: 'archive', message: msg });
       return msg;
     } finally {
@@ -578,7 +629,7 @@ export class GameService {
     const attempt = (resume: string | null) =>
       runAgent({
         prompt: text,
-        systemPrompt: ARCHIVE_SYSTEM_PROMPT,
+        systemPrompt: this.config.archive.persona,
         mcpServers: { archive: createArchiveServer(() => ({ config: this.config, state: this.state })) },
         allowedTools: ARCHIVE_ALLOWED_TOOLS,
         resume,

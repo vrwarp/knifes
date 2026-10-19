@@ -1,10 +1,6 @@
 import type { ArchiveMessage, GameConfig, GameEvent, GameState } from '../types.js';
 import { aiLive, runAgent } from './agent.js';
 
-const REPORT_SYSTEM_PROMPT = `You write the closing case file for a live murder-mystery party game, in the voice of Section 30, an off-the-books counter-cyberintelligence cell. The detective is Jimmy, who is celebrating his thirtieth birthday; the case is the death of Director Arthur Pendelton. You receive the full activity log of the evening.
-
-Write in Markdown, 350 to 600 words, with these headings: CASE FILE 30-0214, Recovery Chain, The Interrogation, Commendation. The recovery chain ran from a letter at church through a drop at Lake Elizabeth, a call to Phil, and a word race, to the S30 Ledger's personnel files and surveillance records; the interrogation covers the ARCHIVE queries and the release of the surveillance records. Stay in-world: dry, affectionate, lightly wry about any lockouts or wrong turns, never mocking. Quote one or two of the detective's actual ARCHIVE questions if any were asked. Use the real timestamps and counts from the log. Do not mention AI, prompts, game masters or the app. End with the line "Filed by ARCHIVE. Integrity restored."`;
-
 function fmt(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-US', { hour12: false });
 }
@@ -56,7 +52,7 @@ export async function generateReport(
   if (!aiLive()) return { markdown: mockReport(config, state, events, archive), source: 'mock' };
   const run = await runAgent({
     prompt: buildReportPrompt(config, state, events, archive),
-    systemPrompt: REPORT_SYSTEM_PROMPT,
+    systemPrompt: config.report.prompt,
     maxTurns: 2,
     effort: 'high',
     persist: false,

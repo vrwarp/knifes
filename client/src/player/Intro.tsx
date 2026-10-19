@@ -22,7 +22,7 @@ export function Intro({ view, setView }: StageProps) {
   return (
     <Frame title={view.intro.headline} className="accent">
       <Typewriter text={view.intro.body} onDone={onDone} />
-      <SkipHint done={done} />
+      <SkipHint done={done} text={view.text.app.skipHint} />
       <button ref={cta} className="btn primary block" onClick={start} disabled={busy || !done} style={{ marginTop: 12 }}>
         {view.intro.buttonLabel}
       </button>
