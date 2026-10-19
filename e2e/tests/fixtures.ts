@@ -4,7 +4,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test as base, expect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { test as base, expect, type Browser, type BrowserContext, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const GM_PASSWORD = 'test';
@@ -185,13 +185,19 @@ export async function dismissBriefing(page: Page) {
   if (await engage.count()) await engage.click();
 }
 
-/** Types a word on the puzzle's on-screen keyboard (ENTER is the "Attempt key" button). */
-export async function typeWord(page: Page, word: string) {
-  const kb = page.getByRole('group', { name: 'Keyboard' });
+/** Types on the console's on-screen keyboard (letters and digits; ENTER is the screen's submit button). */
+export async function typeWord(page: Page, word: string, scope: Page | Locator = page) {
+  const kb = scope.getByRole('group', { name: 'Keyboard' }).first();
   // The keyboard and the briefing mount together; wait for the keyboard so the briefing check is not too early.
   await kb.waitFor();
   await dismissBriefing(page);
-  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}$`) }).click();
+}
+
+/** Backspaces the on-screen keyboard until its field is empty. */
+export async function clearWord(page: Page, scope: Page | Locator = page) {
+  const back = scope.getByRole('group', { name: 'Keyboard' }).first().getByRole('button', { name: 'Delete letter' });
+  for (let i = 0; i < 32 && (await back.isEnabled()); i++) await back.click();
 }
 
 export async function fillDeduction(page: Page, answers: Record<string, string>) {

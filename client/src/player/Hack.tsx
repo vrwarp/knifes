@@ -3,9 +3,9 @@ import { api, errorText } from '../api';
 import type { LetterScore, PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
+import { Keyboard } from './Keyboard';
 
 const STATE_WORD = { hit: 'placed', near: 'misplaced', miss: 'absent' } as const;
-const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
 function describeRow(scored: LetterScore[]): string {
   return scored.map((s) => (s.letter ? `${s.letter} ${STATE_WORD[s.state]}` : STATE_WORD[s.state])).join(', ');
@@ -79,35 +79,15 @@ export function Hack({ view, setView, refresh }: StageProps) {
     }
   }, [busy, roundOpen, input, h.length, refresh]);
 
-  const press = useCallback(
-    (key: string) => {
-      if (!roundOpen || busy || briefing) return;
-      if (key === 'ENTER') void submit();
-      else if (key === 'BACK') setInput((v) => v.slice(0, -1));
-      else if (/^[A-Z]$/.test(key)) setInput((v) => (v.length < h.length ? v + key : v));
-    },
-    [roundOpen, busy, briefing, submit, h.length],
-  );
-
-  // A hardware keyboard (desktop, or a phone with one attached) works too.
+  // While the briefing is up, Enter or Escape dismisses it; the keyboard itself is paused.
   useEffect(() => {
+    if (!briefing) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (briefing) {
-        if (e.key === 'Enter' || e.key === 'Escape') dismissBriefing();
-        return;
-      }
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
-      if (e.key === 'Enter') press('ENTER');
-      else if (e.key === 'Backspace') press('BACK');
-      else if (/^[a-zA-Z]$/.test(e.key)) press(e.key.toUpperCase());
-      else return;
-      e.preventDefault();
+      if (e.key === 'Enter' || e.key === 'Escape') dismissBriefing();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [press, briefing, dismissBriefing]);
+  }, [briefing, dismissBriefing]);
 
   const retry = async () => {
     setBusy(true);
@@ -260,39 +240,26 @@ export function Hack({ view, setView, refresh }: StageProps) {
           Reset partition
         </button>
       ) : (
-        <div className="keyboard" role="group" aria-label="Keyboard">
-          <div className="keyboard-inner">
-            {KEY_ROWS.map((row, r) => (
-              <div className="krow" key={r}>
-                {r === 2 ? <div className="key wide spacer" aria-hidden="true" /> : null}
-                {row.split('').map((k) => (
-                  <button type="button" key={k} className="key" onClick={() => press(k)} disabled={busy} aria-label={k}>
-                    {k}
-                  </button>
-                ))}
-                {r === 2 ? (
-                  <button type="button" className="key wide back" onClick={() => press('BACK')} disabled={busy || !input} aria-label="Delete letter">
-                    ⌫
-                  </button>
-                ) : null}
-              </div>
-            ))}
-            <div className="krow">
-              {/* The space-bar slot: a dead key dressed as the console's status line. */}
-              <div className="key filler" aria-hidden="true">
-                <span>SEC-30 // 30-BETA</span>
-                <span className="filler-mid">KEYSPACE 26^{h.length}</span>
-                <span className="filler-right">
-                  {input.length}/{h.length}
-                  <i className="caret" />
-                </span>
-              </div>
-              <button type="button" className="key wide enter" onClick={() => press('ENTER')} disabled={busy || input.length !== h.length} aria-label="Attempt key">
-                ENTER
-              </button>
-            </div>
-          </div>
-        </div>
+        <Keyboard
+          value={input}
+          onChange={setInput}
+          onEnter={() => void submit()}
+          maxLength={h.length}
+          canEnter={input.length === h.length}
+          disabled={busy}
+          paused={briefing}
+          enterLabel="Attempt key"
+          status={
+            <>
+              <span>SEC-30 // 30-BETA</span>
+              <span className="filler-mid">KEYSPACE 26^{h.length}</span>
+              <span className="filler-right">
+                {input.length}/{h.length}
+                <i className="caret" />
+              </span>
+            </>
+          }
+        />
       )}
       {err ? <div className="error center">{err}</div> : null}
       {h.rounds && !race ? <div className="tiny center" style={{ marginTop: 8 }}>Partition resets: {h.rounds}</div> : null}

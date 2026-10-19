@@ -13,12 +13,16 @@ const root = path.resolve(here, '..');
 import net from 'node:net';
 
 // Types a word on the puzzle's on-screen keyboard after dismissing the briefing; ENTER is the "Attempt key" button.
-const typeWord = async (page, word) => {
-  const kb = page.getByRole('group', { name: 'Keyboard' });
+const typeWord = async (page, word, scope = page) => {
+  const kb = scope.getByRole('group', { name: 'Keyboard' }).first();
   await kb.waitFor();
   const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
   if (await engage.count()) await engage.click();
-  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}$`) }).click();
+};
+const clearWord = async (page, scope = page) => {
+  const back = scope.getByRole('group', { name: 'Keyboard' }).first().getByRole('button', { name: 'Delete letter' });
+  for (let i = 0; i < 32 && (await back.isEnabled()); i++) await back.click();
 };
 const port = Number(process.env.SMOKE_PORT) || (await new Promise((resolve) => {
   const srv = net.createServer();
@@ -123,11 +127,11 @@ try {
 
   await step('gate rejects a wrong code and accepts MAGENTA30', async () => {
     await player.locator('h1', { hasText: 'Secure line' }).waitFor();
-    const box = player.getByLabel('Recovery key');
-    await box.fill('WRONG');
+    await typeWord(player, 'WRONG');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.getByText('KEY REJECTED').waitFor();
-    await box.fill('magenta-30');
+    await clearWord(player);
+    await typeWord(player, 'magenta30');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   });

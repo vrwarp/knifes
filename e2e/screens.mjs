@@ -8,12 +8,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 // Types a word on the puzzle's on-screen keyboard; the ENTER key is the "Attempt key" button.
-const typeWord = async (page, word) => {
-  const kb = page.getByRole('group', { name: 'Keyboard' });
+const typeWord = async (page, word, scope = page) => {
+  const kb = scope.getByRole('group', { name: 'Keyboard' }).first();
   await kb.waitFor();
   const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
   if (await engage.count()) await engage.click();
-  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}$`) }).click();
+};
+const clearWord = async (page, scope = page) => {
+  const back = scope.getByRole('group', { name: 'Keyboard' }).first().getByRole('button', { name: 'Delete letter' });
+  for (let i = 0; i < 32 && (await back.isEnabled()); i++) await back.click();
 };
 
 
@@ -96,11 +100,12 @@ try {
   await player.locator('h1', { hasText: 'Secure line' }).waitFor();
   await finishTyping();
   await shot(player, 'p04-gate');
-  await player.getByLabel('Recovery key').fill('WRONGKEY');
+  await typeWord(player, 'WRONGKEY');
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('KEY REJECTED').waitFor();
   await shot(player, 'p05-gate-rejected');
-  await player.getByLabel('Recovery key').fill('MAGENTA30');
+  await clearWord(player);
+  await typeWord(player, 'MAGENTA30');
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('Recovery key accepted').waitFor();
   await shot(player, 'p05b-gate-accepted');

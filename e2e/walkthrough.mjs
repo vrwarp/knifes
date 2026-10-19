@@ -8,12 +8,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 // Types a word on the puzzle's on-screen keyboard; the ENTER key is the "Attempt key" button.
-const typeWord = async (page, word) => {
-  const kb = page.getByRole('group', { name: 'Keyboard' });
+const typeWord = async (page, word, scope = page) => {
+  const kb = scope.getByRole('group', { name: 'Keyboard' }).first();
   await kb.waitFor();
   const engage = page.getByRole('dialog').getByRole('button', { name: /engage/i });
   if (await engage.count()) await engage.click();
-  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}(,|$)`) }).click();
+  for (const l of word.toUpperCase()) await kb.getByRole('button', { name: new RegExp(`^${l}$`) }).click();
+};
+const clearWord = async (page, scope = page) => {
+  const back = scope.getByRole('group', { name: 'Keyboard' }).first().getByRole('button', { name: 'Delete letter' });
+  for (let i = 0; i < 32 && (await back.isEnabled()); i++) await back.click();
 };
 
 
@@ -186,11 +190,12 @@ try {
   await player.locator('h1', { hasText: 'Secure line' }).waitFor();
   await finishTyping(player);
   await shot(player, 'Code gate', 'Jimmy has to call the number on the drop-point card. Phil answers and reads out the recovery key.');
-  await player.getByLabel('Recovery key').fill('WRONGKEY');
+  await typeWord(player, 'WRONGKEY');
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('KEY REJECTED').waitFor();
   await shot(player, 'Wrong key', 'The rejection stays on screen until Jimmy types again.');
-  await player.getByLabel('Recovery key').fill('MAGENTA30');
+  await clearWord(player);
+  await typeWord(player, 'MAGENTA30');
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('Recovery key accepted').waitFor();
   await shot(player, 'Key accepted', 'The success state holds for a beat before the next stage arrives.', { wait: 150 });
@@ -247,7 +252,7 @@ try {
   await shot(gm, 'GM console during the investigation', 'Live log, ARCHIVE transcript and player status update live.', { device: 'desktop' });
   await gm.getByRole('button', { name: /^draft$/i }).click();
   await gm.getByText(/Copilot:/).waitFor({ timeout: 15_000 });
-  await shot(gm, 'AI hint draft', 'The copilot reads the player's progress and drafts a hint at the chosen strength. The GM edits it or pushes it as is.', { device: 'desktop', full: false });
+  await shot(gm, 'AI hint draft', 'The copilot reads the player’s progress and drafts a hint at the chosen strength. The GM edits it or pushes it as is.', { device: 'desktop', full: false });
   await gm.getByRole('button', { name: /push to his screen/i }).click();
   await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
   await sleep(800);
@@ -394,17 +399,20 @@ try {
   await p.locator('.file header', { hasText: '00_Directors' }).click();
   await shot(p, 'Sealed files', 'Two files read SEALED. The operative manifest is split out so the dossiers stay readable.');
   await p.locator('.file header', { hasText: '02_Audio' }).click();
-  await p.getByLabel('Passcode').first().fill('WRONG');
-  await p.getByRole('button', { name: /^unlock$/i }).first().click();
-  await p.getByRole('alert').first().waitFor();
+  const audio = p.locator('.file', { has: p.locator('header', { hasText: '02_Audio' }) });
+  await typeWord(p, 'WRONG', audio);
+  await audio.getByRole('button', { name: /^unlock$/i }).click();
+  await audio.getByRole('alert').waitFor();
   await shot(p, 'Wrong passcode', 'A wrong passcode is rejected in place.');
-  await p.getByLabel('Passcode').first().fill('CANIS30');
-  await p.getByRole('button', { name: /^unlock$/i }).first().click();
+  await clearWord(p, audio);
+  await typeWord(p, 'CANIS30', audio);
+  await audio.getByRole('button', { name: /^unlock$/i }).click();
   await sleep(800);
   await shot(p, 'Audio unsealed', 'CANIS30 opens the intercept.');
   await p.locator('.file header', { hasText: '03_Toxicology' }).click();
-  await p.getByLabel('Passcode').first().fill('1996');
-  await p.getByRole('button', { name: /^unlock$/i }).first().click();
+  const tox = p.locator('.file', { has: p.locator('header', { hasText: '03_Toxicology' }) });
+  await typeWord(p, '1996', tox);
+  await tox.getByRole('button', { name: /^unlock$/i }).click();
   await p.getByText('PRELIMINARY TOXICOLOGY').waitFor();
   await shot(p, 'Toxicology unsealed', '1996 opens the toxicology report. ARCHIVE respects the same seals until then.');
   await ctx.close();

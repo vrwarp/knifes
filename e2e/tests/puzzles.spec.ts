@@ -1,17 +1,17 @@
-import { expect, finishTyping, startGame, test, typeWord } from './fixtures';
+import { clearWord, expect, finishTyping, startGame, test, typeWord } from './fixtures';
 
 test.describe('code gate', () => {
-  test('ignores case and dashes, and keeps the rejection until the next attempt', async ({ player, app }) => {
+  test('rejects a wrong key, keeps the rejection until the next attempt, and accepts the code', async ({ player, app }) => {
     await app.patch((c) => (c.geo.mode = 'off'));
     await startGame(player, app.base);
     await finishTyping(player);
-    const key = player.getByLabel('Recovery key');
-    await key.fill('nope');
+    await typeWord(player, 'nope');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.getByText('KEY REJECTED')).toBeVisible();
     await player.waitForTimeout(1500);
     await expect(player.getByText('KEY REJECTED'), 'the rejection does not vanish on its own').toBeVisible();
-    await key.fill('Magenta-30');
+    await clearWord(player);
+    await typeWord(player, 'magenta30');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
   });
