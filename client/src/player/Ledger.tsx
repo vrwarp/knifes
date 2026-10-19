@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
 import type { LedgerEntry, LedgerFiles, PlayerView } from '../types';
-import { Keyboard, PromptLine } from './Keyboard';
 
 function Log({ lines }: { lines: { time: string; text: string }[] }) {
   return (
@@ -81,64 +80,13 @@ function Section({ name, locked, children, defaultOpen = false }: { name: string
   );
 }
 
-function Passcode({ label, onUnlocked }: { label: string; onUnlocked: () => void }) {
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [shaking, setShaking] = useState(false);
-  const submit = async () => {
-    if (!code.trim() || busy) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      await api('/api/player/ledger/unlock', { json: { passcode: code } });
-      onUnlocked();
-    } catch (e2) {
-      setErr(errorText(e2));
-      setShaking(true);
-      window.setTimeout(() => setShaking(false), 500);
-    } finally {
-      setBusy(false);
-    }
-  };
+function Sealed({ label }: { label: string }) {
   return (
-    <div className="stack passcode">
-      <p className="muted small">[LAYER SEALED] {label} needs a second recovery authorization. It arrives by command release, or as a passcode read to you over the secure line.</p>
+    <div className="stack">
+      <p className="muted small">[LAYER SEALED] {label} needs a second recovery authorization. It arrives by command release over the secure line.</p>
       <div className="con-line cmd" aria-hidden="true">
-        <span className="prompt">$</span> unseal --layer 02 --passcode
+        <span className="prompt">$</span> unseal --layer 02 <span className="muted">awaiting command release</span>
       </div>
-      <div className="transcript">
-        <PromptLine value={code} maxLength={Math.max(8, code.length)} label="Passcode" shake={shaking} />
-      </div>
-      {err ? (
-        <div className="con-line sys" role="alert">
-          <span className="red">!</span> {err}
-        </div>
-      ) : null}
-      <Keyboard
-        value={code}
-        onChange={(v) => {
-          setCode(v);
-          setErr(null);
-        }}
-        onEnter={() => void submit()}
-        maxLength={16}
-        digits
-        canEnter={code.trim().length > 0}
-        disabled={busy}
-        enterLabel="Unlock"
-        fixed={false}
-        hardware={false}
-        status={
-          <>
-            <span>SEALED</span>
-            <span className="filler-right">
-              {code.length}
-              <i className="caret" />
-            </span>
-          </>
-        }
-      />
     </div>
   );
 }
@@ -231,7 +179,7 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
             </div>
           </>
         ) : (
-          <Passcode label={`Layer 02, ${files.layer2Label},`} onUnlocked={load} />
+          <Sealed label={`Layer 02, ${files.layer2Label},`} />
         )}
       </Section>
       <Section name="LEDGER DECRYPTION RECORD" locked={false}>

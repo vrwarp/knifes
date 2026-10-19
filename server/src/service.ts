@@ -115,7 +115,6 @@ export const ConfigSchema = z.object({
     }),
   reveal: z.object({ title: z.string(), body: z.string(), buttonLabel: z.string().min(1) }),
   ledger: z.object({
-    layer2Passcode: z.string().min(1).max(80),
     layer2Label: z.string().min(1).max(80),
     layer2ReleasedText: z.string().max(1000),
     interrogationWindow: z.string().max(80),
@@ -176,7 +175,8 @@ export class GameService {
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
     // A save from before the two-layer Ledger carries an evidence block instead; the stage it was at decides Layer 01.
     delete (this.state as unknown as Record<string, unknown>).evidence;
-    this.state.ledger = { ...initialLedger(), ...(this.state.ledger ?? {}) };
+    const { layer1, layer2, layer2ReleasedAt } = { ...initialLedger(), ...(this.state.ledger ?? {}) };
+    this.state.ledger = { layer1, layer2, layer2ReleasedAt };
     if (isAtLeast(this.state, 'investigation')) this.state.ledger.layer1 = true;
     this.state.archive.busy = false;
     this.state.hack = normalizeHack(this.state.hack);
@@ -528,36 +528,20 @@ export class GameService {
     };
   }
 
-  /** Phil reads the passcode out when no GM is at the console. */
-  ledgerUnlock(passcode: string): { released: boolean } {
-    this.requireStage('investigation', 'the Ledger');
-    if (this.state.ledger.layer2) return { released: true };
-    const ok = normCode(passcode) === normCode(this.config.ledger.layer2Passcode);
-    if (!ok) {
-      this.event('ledger_passcode', { passcode: passcode.slice(0, 40), ok: false });
-      this.touch();
-      throw new HttpError(400, 'PASSCODE REJECTED');
-    }
-    this.releaseLayer2(true, 'passcode');
-    return { released: true };
-  }
-
   /** Opens (or, in rehearsal, re-seals) Layer 02. Opening it also pushes the configured transmission to the phone. */
-  releaseLayer2(released: boolean, source: 'gm' | 'passcode' = 'gm'): void {
+  releaseLayer2(released: boolean): void {
     const l = this.state.ledger;
     if (released === l.layer2) return;
     if (released) {
       if (!isAtLeast(this.state, 'investigation')) throw new HttpError(400, 'Layer 02 can only be released once he is investigating');
       l.layer2 = true;
       l.layer2ReleasedAt = Date.now();
-      l.layer2Source = source;
-      this.event('ledger_release', { layer: 2, source });
+      this.event('ledger_release', { layer: 2 });
       this.touch();
       if (this.config.ledger.layer2ReleasedText.trim()) this.pushHint(this.config.ledger.layer2ReleasedText);
     } else {
       l.layer2 = false;
       l.layer2ReleasedAt = null;
-      l.layer2Source = null;
       this.event('gm_action', { action: 'ledger_reseal', layer: 2 });
       this.touch();
     }
@@ -836,8 +820,7 @@ export class GameService {
       add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken at the drop point.');
     for (const id of c.geo.photos) if (!fs.existsSync(path.join(env.uploadsDir, id))) add('blocker', 'Location puzzle', `Photo ${id} is listed but its file is missing.`);
     if (c.gate.code === DEFAULT_CONFIG.gate.code) add('info', 'Code gate', `The code is still the default ${c.gate.code}. Fine if that is what Phil will read out.`);
-    if (normCode(c.ledger.layer2Passcode) === normCode(c.gate.code)) add('warn', 'Ledger', 'The Layer 02 passcode is the same as the gate code. Give Phil two different words.');
-    add('info', 'Ledger', `Layer 02 (${c.ledger.layer2Label}) opens from the Release button in the console or with the passcode ${c.ledger.layer2Passcode}. Time it with Phil's second call.`);
+    add('info', 'Ledger', `Layer 02 (${c.ledger.layer2Label}) opens from the Release button in the console. Press it during Phil's second call.`);
     for (const s of c.deduction.slots) {
       if (!s.canonical.trim()) add('blocker', 'Deduction', `The ${s.label} blank has no canonical answer.`);
       else if (s.canonical.trim().startsWith('[GM:') || s.canonical === PROP_PLACEHOLDER)

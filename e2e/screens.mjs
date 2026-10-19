@@ -161,7 +161,7 @@ try {
   await player.getByText(/rarely forgets a conversation/i).waitFor();
   await shot(player, 'p10b-ledger-nina');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-  await player.getByLabel('Passcode').waitFor();
+  await player.getByText(/awaiting command release/i).waitFor();
   await shot(player, 'p11-ledger-layer2-sealed');
 
   await player.getByRole('tab', { name: 'archive' }).click();

@@ -70,7 +70,6 @@ export interface GameConfig {
   /** The two-layer Ledger the investigation reads. Layer 01 opens with the investigation; Layer 02 waits for Phil's second call. */
   ledger: {
     /** Phil can read this out instead of a GM pressing Release. Case, spaces and dashes are ignored. */
-    layer2Passcode: string;
     /** The section name on the phone, e.g. CLASSIFIED EVIDENCE. */
     layer2Label: string;
     /** Pushed to the phone as a transmission when Layer 02 opens. Empty for none. */
@@ -177,7 +176,7 @@ export interface GameState {
   hack: HackState;
   /** Survives a game reset: it belongs to the configuration, not the evening. */
   hackScripts: HackScripts;
-  ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null; layer2Source: 'gm' | 'passcode' | null };
+  ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean; /** Bumped when the GM starts a new ARCHIVE session. */ epoch?: number };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
@@ -200,7 +199,6 @@ export type EventType =
   | 'hack_ai_guess'
   | 'hack_ai_solved'
   | 'ledger_release'
-  | 'ledger_passcode'
   | 'archive_user'
   | 'archive_assistant'
   | 'archive_tool'

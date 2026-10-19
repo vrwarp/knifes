@@ -382,11 +382,8 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         {T(['reveal', 'buttonLabel'], 'Button label')}
       </Section>
       <Section title="Ledger Layer 02 (Phil's second call)">
-        <p className="small muted">Layer 01 opens with the investigation. Layer 02 opens from the Release button in the console, or when Jimmy types the passcode Phil reads him.</p>
-        <div className="two">
-          {T(['ledger', 'layer2Passcode'], 'Layer 02 passcode (case and dashes ignored)')}
-          {T(['ledger', 'layer2Label'], 'Section name on his phone')}
-        </div>
+        <p className="small muted">Layer 01 opens with the investigation. Layer 02 opens from the Release button in the console.</p>
+        {T(['ledger', 'layer2Label'], 'Section name on his phone')}
         {T(['ledger', 'interrogationWindow'], 'Interrogation window shown on the Ledger')}
         {A(['ledger', 'layer2ReleasedText'], 'Transmission pushed to his phone when Layer 02 opens (blank for none)', 4)}
       </Section>

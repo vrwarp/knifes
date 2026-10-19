@@ -230,7 +230,7 @@ try {
   await player.getByText(/rarely forgets a conversation/i).waitFor();
   await shot(player, 'A personnel file', 'Each agent: service, clearance, posting and profile. Nothing about the night; Jimmy gets that from the agents at the table.');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-  await shot(player, 'Layer 02 sealed', 'The classified evidence waits for Phil\u2019s second call: a GM presses Release, or Phil reads Jimmy the passcode.');
+  await shot(player, 'Layer 02 sealed', 'The classified evidence waits for Phil\u2019s second call: a GM presses Release.');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
 
   await player.getByRole('tab', { name: 'archive' }).click();
@@ -396,28 +396,6 @@ try {
   await app.patch((c) => { c.hack.aiIntervalSeconds = 10; c.hack.aiJitterSeconds = 5; c.hack.lockoutSeconds = 45; });
 
   // ============================================================================================
-  begin('ledger', 'Layer 02 by passcode', 'If no GM is at the console during Phil\u2019s second call, Phil reads Jimmy the Layer 02 passcode (MAGENTA30 by default) and he types it into the sealed section himself.');
-  await app.resetGame();
-  await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'investigation' } });
-  ctx = await browser.newContext(phoneOpts);
-  p = await ctx.newPage();
-  await p.goto(app.base);
-  await p.locator('.file header', { hasText: 'LAYER 02' }).waitFor();
-  await p.locator('.file header', { hasText: 'LAYER 02' }).click();
-  await shot(p, 'Sealed layer', 'Layer 02 reads SEALED and offers a passcode field.');
-  const sealedFile = p.locator('.file', { has: p.locator('header', { hasText: 'LAYER 02' }) });
-  await typeWord(p, 'WRONG', sealedFile);
-  await sealedFile.getByRole('button', { name: /^unlock$/i }).click();
-  await p.getByRole('alert').first().waitFor();
-  await shot(p, 'Wrong passcode', 'A wrong passcode is rejected in place and logged for the GMs.');
-  await clearWord(p, sealedFile);
-  await typeWord(p, 'MAGENTA30', sealedFile);
-  await sealedFile.getByRole('button', { name: /^unlock$/i }).click();
-  await p.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
-  await shot(p, 'Layer 02 unsealed', 'The passcode opens the same classified evidence the GM button releases. ARCHIVE respects the seal until then.');
-  await ctx.close();
-
-  // ============================================================================================
   begin('gm', 'Running the night from the GM console', 'Every control the three GMs have: what the NOW strip shows across a room, skipping and rewinding stages, sealing ARCHIVE, the live log, the danger zone, and the configuration editor.');
   await app.resetGame();
   ctx = await browser.newContext(deskOpts);
@@ -517,7 +495,7 @@ try {
     ['Phil\'s calls', 'The challenge phrase and both call scripts, shown in the Phil panel for whoever plays him.'],
     ['Word puzzle (Ledger key)', 'The key bank, race pace, attempts and lockout length.'],
     ['Ledger decrypted', 'The notice shown after the puzzle, with the interrogation directive.'],
-    ['Ledger Layer 02', 'The passcode Phil can read out, the section name on the phone, and the transmission pushed when it opens.'],
+    ['Ledger Layer 02', 'The section name on the phone and the transmission pushed when it opens.'],
     ['ARCHIVE terminal', 'Welcome line and the model ARCHIVE runs on.'],
     ['Deduction grid', 'The sentence template, each blank’s canonical answer, accepted and rejected phrasings, grader guidance, attempts and feedback mode.'],
     ['Quick hints per stage', 'The one-tap hints for each stage, one per line.'],

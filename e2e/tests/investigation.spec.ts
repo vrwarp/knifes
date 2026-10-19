@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, WRONG_SUSPECT, acceptDialogs, clearWord, expect, fillDeduction, noHorizontalScroll, releaseLayer2, test, typeWord } from './fixtures';
+import { RIGHT_ANSWERS, WRONG_SUSPECT, acceptDialogs, expect, fillDeduction, noHorizontalScroll, releaseLayer2, test } from './fixtures';
 
 test.describe('investigation', () => {
   test.beforeEach(async ({ player, app }) => {
@@ -20,7 +20,7 @@ test.describe('investigation', () => {
     await noHorizontalScroll(player);
     await expect(section('LAYER 02')).toContainText(/sealed/i);
     await section('LAYER 02').click();
-    await expect(player.getByLabel('Passcode')).toBeVisible();
+    await expect(player.getByText(/awaiting command release/i)).toBeVisible();
     await expect(player.getByText('Silver letter opener')).toHaveCount(0);
     await section('LEDGER DECRYPTION RECORD').click();
     await expect(player.getByText(/Return to headquarters/).first()).toBeVisible();
@@ -53,19 +53,7 @@ test.describe('investigation', () => {
     const sealed = player.locator('.file header', { hasText: 'LAYER 02' });
     await expect(sealed).toContainText(/sealed/i);
     await sealed.click();
-    await expect(player.getByLabel('Passcode')).toBeVisible();
-  });
-
-  test('the passcode opens Layer 02 and a wrong one is rejected in place', async ({ player }) => {
-    await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-    const sealed = player.locator('.file', { has: player.locator('header', { hasText: 'LAYER 02' }) });
-    await typeWord(player, 'WRONG', sealed);
-    await sealed.getByRole('button', { name: /^unlock$/i }).click();
-    await expect(player.getByRole('alert')).toContainText(/REJECTED/);
-    await clearWord(player, sealed);
-    await typeWord(player, 'magenta30', sealed);
-    await sealed.getByRole('button', { name: /^unlock$/i }).click();
-    await expect(player.getByText('Confirmed time of death:')).toBeVisible();
+    await expect(player.getByText(/awaiting command release/i)).toBeVisible();
   });
 
   test('ARCHIVE answers from Layer 01 and refuses Layer 02 until it is released', async ({ player, app }) => {

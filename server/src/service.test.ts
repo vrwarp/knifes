@@ -221,7 +221,6 @@ describe('the two-layer Ledger', () => {
     expect(files.layer1?.entries.map((e) => e.name)).toEqual(['Mara Voss', 'Elias Mercer', 'Nina Calder', 'Theo Blackwood', 'Celeste Rowan']);
     expect(files.layer2).toBeNull();
     expect(files.locked.layer2).toBe(true);
-    expect(JSON.stringify(svc.view())).not.toContain(svc.config.ledger.layer2Passcode);
   });
   it('is not reachable before the investigation', () => {
     expect(() => svc.ledgerFiles()).toThrow(/not reachable/);
@@ -230,21 +229,13 @@ describe('the two-layer Ledger', () => {
   it('a GM release opens Layer 02 and pushes the transmission', () => {
     svc.setStage('investigation');
     svc.releaseLayer2(true);
-    expect(svc.state.ledger).toMatchObject({ layer2: true, layer2Source: 'gm' });
+    expect(svc.state.ledger.layer2).toBe(true);
     expect(svc.ledgerFiles().layer2?.incident.timeOfDeath).toBe('2:14 AM');
     expect(svc.state.hints.at(-1)?.text).toBe(svc.config.ledger.layer2ReleasedText);
     expect(db.listEvents(20).some((e) => e.type === 'ledger_release')).toBe(true);
     svc.releaseLayer2(false);
     expect(svc.state.ledger.layer2).toBe(false);
     expect(svc.ledgerFiles().layer2).toBeNull();
-  });
-  it('the passcode opens Layer 02 once, ignoring case and dashes, and a wrong one is logged', () => {
-    svc.setStage('investigation');
-    expect(() => svc.ledgerUnlock('nope')).toThrow(/REJECTED/);
-    expect(db.listEvents(20).find((e) => e.type === 'ledger_passcode')?.payload).toMatchObject({ ok: false, passcode: 'nope' });
-    expect(svc.ledgerUnlock('magenta-30')).toEqual({ released: true });
-    expect(svc.state.ledger).toMatchObject({ layer2: true, layer2Source: 'passcode' });
-    expect(svc.ledgerUnlock('anything')).toEqual({ released: true });
   });
   it('a reset of the investigation re-seals Layer 02, and a game reset clears it', () => {
     svc.setStage('investigation');
@@ -262,7 +253,7 @@ describe('the two-layer Ledger', () => {
     db.setJson('state', raw);
     svc.close();
     svc = new GameService(db);
-    expect(svc.state.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null, layer2Source: null });
+    expect(svc.state.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null });
     expect('evidence' in svc.state).toBe(false);
   });
 });

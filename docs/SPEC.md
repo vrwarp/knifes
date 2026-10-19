@@ -16,10 +16,10 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style key race, Ledger decrypted notice, investigation (two-layer Ledger, ARCHIVE terminal, deduction grid), final reveal. |
 | Physical chain | The intro letter, the magic square (combination 132), the book safe, the QR code and the Bananagram tiles (LETTER OPENER) are props, not app features. |
 | Geo puzzle | GeoGuessr-style: an embedded Google Street View panorama (address and road labels hidden, walking optional) plus a map pin on OpenStreetMap, accepted within a configurable radius. The map centres on Lake Elizabeth, Los Angeles County; the GMs pin the exact drop. Uploaded photos stand in when no Maps key is set. Switchable to reveal-only or off. |
-| Phil's calls | Two one-way calls, scripts in the config and the GM console. Call 1: Jimmy gives the challenge "Who watches the watchers?", Phil answers "Section Thirty" and reads the recovery authorization code `S30GHOST`. Call 2: Phil announces the breakthrough; a GM presses Release Layer 02 or Phil reads the Layer 02 passcode (`MAGENTA30` by default). |
+| Phil's calls | Two one-way calls, scripts in the config and the GM console. Call 1: Jimmy gives the challenge "Who watches the watchers?", Phil answers "Section Thirty" and reads the recovery authorization code `S30GHOST`. Call 2: Phil announces the breakthrough and a GM presses Release Layer 02. |
 | Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5` scripting each round in advance, 8 ± 2 guesses to the key): each round draws a fresh 7-letter word from a GM-editable bank of ten keys (STEALTH, PHANTOM, CIPHERS, COURIER, SHADOWS, SILENCE, BEACONS, TRAITOR, CAPTURE, PAYLOAD; none appears in the Ledger text); when the adversary has taken every key, a configurable free pass lets Jimmy through; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins). Attempts are unlimited by default. Solo mode keeps a fixed secret (`LANTERN`). |
 | After the puzzle | A short LEDGER DECRYPTED notice: Layer 01 is open, the Director was found at 04:15, return to headquarters and establish every agent's movements between 11:00 PM and 4:00 AM. |
-| The Ledger | Layer 01 (personnel files only: service, posting, a two-line profile) opens with the investigation. The agents' accounts of the night come from the interviews at the table; see docs/ACTOR-BRIEFS.md. Layer 02 (CLASSIFIED EVIDENCE: verified surveillance activity, confiscated belongings, additional findings, time of death 2:14 AM in the Director's Office) opens from a GM button or the passcode, and its release pushes a transmission to the phone. Both can be re-sealed in rehearsal. |
+| The Ledger | Layer 01 (personnel files only: service, posting, a two-line profile) opens with the investigation. The agents' accounts of the night come from the interviews at the table; see docs/ACTOR-BRIEFS.md. Layer 02 (CLASSIFIED EVIDENCE: verified surveillance activity, confiscated belongings, additional findings, time of death 2:14 AM in the Director's Office) opens from a GM button, and its release pushes a transmission to the phone. Both can be re-sealed in rehearsal. |
 | Nina's alibi | At the table she claims the archives from 2:00 to 2:30 AM (the dossier had her self-report in the office); Layer 02 puts her inside the office 2:11 to 2:19. The other four actors' timelines are in the briefs. |
 | Murder method | The silver letter opener found on Nina. Poison, which the first draft used, is a rejected answer. |
 | Deduction grid | Six free-text slots in one sentence: time, suspect, method, asset, motive, physical prop. Pass or fail only. AI grader with keyword fallback. The prop slot ships as a GM placeholder that the readiness check flags until the GMs decide where the hard copy is hidden. |
@@ -45,7 +45,7 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 4. **Hack.** Seven-letter keys in a terminal window: a one-time briefing dialog, one interleaved transcript of both sides' attempts, the on-screen keyboard pinned to the bottom. In race mode (default) the adversary's attempts show on the same transcript and it reads THINKING... between them. Jimmy finds the key first: key accepted, on to the reveal. The adversary finds it first: a new key is drawn at once and a banner names the lost round. When the adversary has taken every key and the free pass is on, the configured failsafe text shows and the stage moves on.
 5. **Reveal.** LEDGER DECRYPTED // LAYER 01 RELEASED, the 04:15 discovery, the directive to return to headquarters and the 11 PM to 4 AM window. Button RETURN TO HEADQUARTERS.
 6. **Investigation.** Three tabs.
-   - Ledger: a header with the interrogation window; LAYER 01 // PERSONNEL RECORDS (five agent cards: id, name, position, service, posting, profile; the first opens by default); LAYER 02 // CLASSIFIED EVIDENCE (sealed, with the same on-screen keyboard for Phil's passcode, until released, then the incident line and five cards with verified activity, recovered evidence and findings); the decryption notice for re-reading. The tab carries an amber dot from the moment Layer 02 opens until he looks.
+   - Ledger: a header with the interrogation window; LAYER 01 // PERSONNEL RECORDS (five agent cards: id, name, position, service, posting, profile; the first opens by default); LAYER 02 // CLASSIFIED EVIDENCE (sealed until a GM releases it, then the incident line and five cards with verified activity, recovered evidence and findings); the decryption notice for re-reading. The tab carries an amber dot from the moment Layer 02 opens until he looks.
    - ARCHIVE: chat with the records mainframe.
    - Deduction: the sentence with six inputs. Status lines cycle while the grader runs.
 7. **Solved.** The reveal in beats (Nina Calder, the letter opener, the hard copy, happy thirtieth), the case file when published, and the case materials for re-reading.
@@ -79,7 +79,7 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 ## 7. Architecture
 
-- `server/`: Express 5 API, `ws` WebSocket hub, `node:sqlite` store (config versions, state, events, transcript), Agent SDK. Player view is redacted server-side: no codes, secret word, Layer 02 passcode or canonical answers ever reach the phone, and Layer 02 content is not served until released.
+- `server/`: Express 5 API, `ws` WebSocket hub, `node:sqlite` store (config versions, state, events, transcript), Agent SDK. Player view is redacted server-side: no codes, secret word or canonical answers ever reach the phone, and Layer 02 content is not served until released.
 - `client/`: React SPA, terminal styling, Leaflet map, no external fonts or CDNs besides OpenStreetMap tiles and, with a key, Google Street View.
 - Auth: GM cookie signed with HMAC; optional player key in the QR link; GM password compared in constant time.
 - Deployment: multi-stage Dockerfile on `node:22-bookworm-slim`, non-root user, `/data` volume for SQLite, uploads and SDK session files. Health check on `/healthz`.
@@ -87,7 +87,7 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 ### API summary
 
-Player (`/api/player/*`): `state`, `start`, `geo/guess`, `geo/proceed`, `gate`, `hack/guess`, `hack/retry`, `reveal/continue`, `ledger`, `ledger/unlock`, `archive` (GET, POST), `deduction`.
+Player (`/api/player/*`): `state`, `start`, `geo/guess`, `geo/proceed`, `gate`, `hack/guess`, `hack/retry`, `reveal/continue`, `ledger`, `archive` (GET, POST), `deduction`.
 GM (`/api/gm/*`): `login`, `logout`, `me`, `overview`, `config` (PUT), `config/history`, `config/restore`, `stage`, `reset`, `hint`, `hint/draft`, `ledger/release`, `archive/lock`, `archive/reset`, `hack/scripts`, `report/generate`, `report/publish`, `assistant/*`, `claude/*`, `upload` (photos), `upload/:id` (DELETE).
 WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIVE messages, ARCHIVE busy flag, assistant messages (GM only).
 
@@ -102,6 +102,6 @@ WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIV
 ## 9. Test plan
 
 - Unit: word scoring, geo distance, fallback grader with the new slots (letter opener passes, poison and the other four agents fail, the placeholder prop fails), state machine including Layer 01 and Layer 02 unlock and re-seal, config and state migration, player-view redaction, bank solver, race loop with fake timers (`server`, vitest).
-- End to end in mock mode: full run from intro to solved through the real HTTP and WebSocket paths, Layer 02 release from the GM console and by passcode, ARCHIVE refusing Layer 02 until released, GM login, jump, reset, hint push (`e2e/`, Playwright).
+- End to end in mock mode: full run from intro to solved through the real HTTP and WebSocket paths, Layer 02 release from the GM console, ARCHIVE refusing Layer 02 until released, GM login, jump, reset, hint push (`e2e/`, Playwright).
 - Live AI: with a credential set, exercise the ARCHIVE with the canonical questions (where was everyone at 2:14, tell me about Nina Calder, read the classified evidence before and after release, who did it), the grader with the canonical answers and a poison answer, one hint draft before and after the release, one case report.
 - Dry run on real phones before the 23rd, over cellular, through the reverse proxy, including Phil's second call and the release.

@@ -47,8 +47,8 @@ points at a drop near Lake Elizabeth, the code gate (Phil's first call gives him
 race, and then the two-layer S30 Ledger. Layer 01, the five agents' personnel files and the activity
 they reported, opens as soon as the race is won. Layer 02, labelled CLASSIFIED EVIDENCE, holds the
 recovered surveillance timestamps and confiscated belongings and stays sealed until Phil's second
-call: a GM presses **Release Layer 02** in the console's Phil panel, or Phil reads Jimmy the Layer 02
-passcode (`MAGENTA30` by default) and he types it in. The Phil panel also carries both call scripts.
+call, when a GM presses **Release Layer 02** in the console's Phil panel. The Phil panel also carries
+both call scripts.
 The ARCHIVE terminal answers from whichever layers are open, and the deduction grid closes the case.
 
 ## Use your Claude subscription instead of an API key
@@ -192,7 +192,7 @@ On Linux, WebKit also needs its system libraries once: `npx playwright install-d
 Set `PW_CHROMIUM` or `PW_WEBKIT` to a browser executable to use one Playwright did not install.
 
 Coverage: the full player journey; the three location modes and target radius; the code gate; the
-word puzzle scoring, lockout and reset; every evidence file; passcode vault mode; ARCHIVE answers,
+word puzzle scoring, lockout and reset; every evidence file; the Layer 02 release; ARCHIVE answers,
 persistence and sealing; deduction drafts, the verdict delay, pass/fail and count feedback; hints
 (overlay focus, Escape, transmissions list, quick hints, AI drafts); the GM console (login, stuck
 alarms with a mocked clock, skips and jumps with confirmations, stage and whole-game resets, log
@@ -203,6 +203,6 @@ sideways scroll, 16px inputs and 44px touch targets.
 ### Visual walkthrough
 
 `node e2e/walkthrough.mjs` drives the real app through every player and GM journey (default run,
-location modes, word-puzzle lockout, passcode vault, GM console, link and access problems) and
+location modes, word-puzzle lockout, GM console, link and access problems) and
 writes screenshots, two screencast videos and a `manifest.json` to `e2e/output/walkthrough/`.
 Videos are encoded with the system `ffmpeg`.

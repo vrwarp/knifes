@@ -31,7 +31,7 @@ The Ledger you opened earlier was only the personnel layer. But Pendelton kept a
 
 And Jimmy... there are some discrepancies. At least one of the agents wasn't where they claimed to be on the night of the murder. I've uploaded the recovered information to your Ledger. You should have access to a new section labeled CLASSIFIED EVIDENCE. Compare the recovered timestamps against what the agents told you during their interrogations. I think we're getting close.
 
-(GM: press Release Layer 02 now, or read him the passcode.)
+(GM: press Release Layer 02 now.)
 
 Good luck, Detective.`;
 
@@ -106,7 +106,6 @@ Recovery chain complete. The rest is detective work.`,
     buttonLabel: 'RETURN TO HEADQUARTERS',
   },
   ledger: {
-    layer2Passcode: 'MAGENTA30',
     layer2Label: 'CLASSIFIED EVIDENCE',
     layer2ReleasedText:
       'SECOND AUTHORIZATION RECEIVED. Ledger Layer 02 decrypted: recovered surveillance records and confiscated belongings for all five agents. A new section, CLASSIFIED EVIDENCE, is open in your Ledger. Compare the recovered timestamps against what they told you.',

@@ -16,7 +16,7 @@ const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
   none: 'no credential',
 };
 
-const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'ledger_passcode', 'archive_user', 'deduction_submit']);
+const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'archive_user', 'deduction_submit']);
 const PUZZLE_STAGES = new Set(['geo', 'gate', 'hack', 'investigation']);
 
 /** The across-the-room strip: where he is, how long since he last did anything, what is happening. */
