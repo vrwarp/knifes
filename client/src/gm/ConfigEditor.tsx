@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
 import { HistoryPanel } from './HistoryPanel';
-import type { GameConfig, StageId } from '../types';
+import type { GameConfig, LedgerAgent, StageId } from '../types';
 import { STAGE_NAME } from './panels';
 
 type Path = (string | number)[];
@@ -33,6 +33,17 @@ function Section({ title, children, open = false }: { title: string; children: R
 }
 
 const STAGES: StageId[] = ['geo', 'gate', 'hack', 'reveal', 'investigation'];
+
+const TEXT_GROUP_NAME: Record<string, string> = {
+  stageLabels: 'Phone text · top bar stage labels',
+  app: 'Phone text · loading, transmissions, access denied',
+  geo: 'Phone text · location screen',
+  gate: 'Phone text · secure line screen',
+  hack: 'Phone text · key race screen',
+  ledger: 'Phone text · Ledger tab',
+  archive: 'Phone text · ARCHIVE tab',
+  server: 'Phone text · server replies',
+};
 
 export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: GameConfig; onSaved: () => Promise<void>; streetViewKeySet: boolean }) {
   const [draft, setDraft] = useState<GameConfig>(() => structuredClone(config));
@@ -188,6 +199,58 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
       </label>
     );
   };
+
+  /** Objects with two string fields, one per line, split on the first " | " (or ": " for facts). */
+  const Pairs = (path: Path, label: string, keys: [string, string], hint: string, rows = 6) => {
+    const k = rawKey(path);
+    const [a, b] = keys;
+    const value = raw[k] ?? ((getIn(draft, path) as Record<string, string>[] | undefined) ?? []).map((o) => `${o[a]} | ${o[b]}`).join('\n');
+    return (
+      <label className="field">
+        <span>
+          {label} (one per line, {hint})
+        </span>
+        <textarea
+          rows={rows}
+          value={value}
+          onChange={(e) => {
+            setRaw((r) => ({ ...r, [k]: e.target.value }));
+            up(
+              path,
+              e.target.value
+                .split('\n')
+                .map((x) => x.trim())
+                .filter(Boolean)
+                .map((x) => {
+                  const i = x.indexOf('|');
+                  return i < 0 ? { [a]: x, [b]: '' } : { [a]: x.slice(0, i).trim(), [b]: x.slice(i + 1).trim() };
+                }),
+            );
+          }}
+        />
+      </label>
+    );
+  };
+  const agents = draft.ledger.content.agents;
+  const addAgent = () => {
+    const n = agents.length + 1;
+    const blank: LedgerAgent = { id: `S30-${String(n).padStart(3, '0')}`, name: `Agent ${n}`, position: '', facts: [], profile: '', log: [], evidence: [], findings: '' };
+    up(['ledger', 'content', 'agents'], [...agents, blank]);
+  };
+  const removeAgent = (i: number) => {
+    if (!window.confirm(`Remove ${agents[i].name} from the Ledger? The version history keeps the old files.`)) return;
+    setRaw({});
+    up(['ledger', 'content', 'agents'], agents.filter((_, j) => j !== i));
+  };
+  /** Every line the phone prints, grouped by screen; the shape comes from the defaults so new fields appear here on their own. */
+  const textGroup = (group: string, fields: Record<string, string | string[]>) => (
+    <details className="section" key={group}>
+      <summary>{TEXT_GROUP_NAME[group] ?? group}</summary>
+      {Object.entries(fields).map(([key, v]) =>
+        Array.isArray(v) ? <div key={key}>{Lines(['text', group, key], key)}</div> : v.length > 70 ? <div key={key}>{A(['text', group, key], key, 2)}</div> : <div key={key}>{T(['text', group, key], key)}</div>,
+      )}
+    </details>
+  );
 
   const target = draft.geo.target;
   const svLoc = draft.geo.streetView.location;
@@ -360,21 +423,82 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         {A(['reveal', 'body'], 'Body', 10)}
         {T(['reveal', 'buttonLabel'], 'Button label')}
       </Section>
+      <Section title="Personnel files (the Ledger during the investigation)">
+        <p className="small muted">The personnel files open with the investigation. Each agent's card shows the name, the position, the facts and the profile; where they were that night is for the actors to tell him.</p>
+        <div className="two">
+          {T(['ledger', 'layer1Label'], 'Section name on his phone')}
+          {T(['ledger', 'interrogationWindow'], 'Interrogation window shown on the Ledger')}
+        </div>
+        {T(['ledger', 'headLine'], 'Header line above the files ({window} is the interrogation window)')}
+        {T(['ledger', 'content', 'personnel', 'subtitle'], 'Subtitle')}
+        {A(['ledger', 'content', 'personnel', 'intro'], 'Introduction', 2)}
+        {T(['ledger', 'recordLabel'], 'Name of the section that re-shows the decryption notice')}
+      </Section>
       <Section title="Surveillance records (the second call)">
-        <p className="small muted">The personnel files open with the investigation. The surveillance records stay hidden from his phone until a GM presses Release records in the console during the second call.</p>
+        <p className="small muted">The surveillance records stay hidden from his phone until a GM presses Release records in the console during the second call.</p>
         {T(['ledger', 'layer2Label'], 'Section name on his phone')}
-        {T(['ledger', 'interrogationWindow'], 'Interrogation window shown on the Ledger')}
         {A(['ledger', 'layer2ReleasedText'], 'Transmission pushed to his phone when the records are released (blank for none)', 4)}
+        {T(['ledger', 'content', 'surveillance', 'subtitle'], 'Subtitle')}
+        {A(['ledger', 'content', 'surveillance', 'intro'], 'Introduction', 3)}
+        <div className="two">
+          {T(['ledger', 'content', 'incident', 'incident'], 'Incident')}
+          {T(['ledger', 'content', 'incident', 'timeOfDeath'], 'Confirmed time of death')}
+          {T(['ledger', 'content', 'incident', 'location'], 'Location')}
+          {T(['ledger', 'content', 'incident', 'found'], 'Found')}
+        </div>
+        <div className="two">
+          {T(['ledger', 'content', 'dutyLog', 'name'], 'Duty log: name')}
+          {T(['ledger', 'content', 'dutyLog', 'position'], 'Duty log: position')}
+        </div>
+        {Pairs(['ledger', 'content', 'dutyLog', 'lines'], 'Duty log', ['time', 'text'], 'TIME | what was recorded')}
+      </Section>
+      <Section title="The agents (personnel file and surveillance record for each)">
+        <p className="small muted">Times are 12-hour (2:14 AM, or a span such as 2:00–2:30 AM) and must stay in order; the ARCHIVE searches them by window. The personnel side of each card holds the facts and the profile; the surveillance side holds the recorded activity, the confiscated belongings and the findings.</p>
+        {agents.map((a, i) => (
+          <details className="section" key={i}>
+            <summary>
+              {a.id}: {a.name}
+            </summary>
+            <div className="two">
+              {T(['ledger', 'content', 'agents', i, 'id'], 'Ledger id')}
+              {T(['ledger', 'content', 'agents', i, 'name'], 'Name')}
+            </div>
+            {T(['ledger', 'content', 'agents', i, 'position'], 'Position')}
+            {Pairs(['ledger', 'content', 'agents', i, 'facts'], 'Personnel facts', ['label', 'value'], 'LABEL | value', 3)}
+            {A(['ledger', 'content', 'agents', i, 'profile'], 'Personnel profile', 2)}
+            {Pairs(['ledger', 'content', 'agents', i, 'log'], 'Recorded activity', ['time', 'text'], 'TIME | what was recorded', 12)}
+            {Lines(['ledger', 'content', 'agents', i, 'evidence'], 'Confiscated belongings')}
+            {A(['ledger', 'content', 'agents', i, 'findings'], 'Additional findings', 3)}
+            <button type="button" className="btn small ghost" onClick={() => removeAgent(i)} disabled={agents.length <= 1}>
+              Remove this agent
+            </button>
+          </details>
+        ))}
+        <button type="button" className="btn small" onClick={addAgent} disabled={agents.length >= 12}>
+          Add an agent
+        </button>
+      </Section>
+      <Section title="Ledger index fragments (the ARCHIVE's lookup)">
+        {Pairs(['ledger', 'content', 'fragments'], 'Fragments', ['key', 'text'], 'KEY | text', 10)}
       </Section>
       <Section title="ARCHIVE terminal">
         {B(['archive', 'enabled'], 'ARCHIVE enabled')}
         {N(['archive', 'maxMessageChars'], 'Max characters per query')}
         {A(['archive', 'welcome'], 'Welcome line', 3)}
+        {A(['archive', 'notOnFile'], 'Answer for anything not on file (before the records are released)', 2)}
+        {A(['archive', 'persona'], 'Persona and rules (the system prompt the ARCHIVE runs under)', 16)}
+      </Section>
+      <Section title="Case file (the closing report)">
+        {A(['report', 'prompt'], 'Brief for the report writer', 8)}
       </Section>
       <Section title="Quick hints per stage">
         {STAGES.map((s) => (
           <div key={s}>{Lines(['hints', 'quick', s], STAGE_NAME[s])}</div>
         ))}
+      </Section>
+      <Section title="Phone text (every other line the phone prints)">
+        <p className="small muted">Labels, prompts, status words and rejection lines, screen by screen. Keep the {'{placeholders}'}: they are filled in when the line is shown.</p>
+        {Object.entries(draft.text).map(([group, fields]) => textGroup(group, fields as Record<string, string | string[]>))}
       </Section>
       <Section title="Version history">
         <HistoryPanel currentVersion={config.version} dirty={dirty} />

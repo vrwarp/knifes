@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { api, errorText } from '../api';
-import type { LetterScore, PlayerView } from '../types';
+import { fill, type LetterScore, type PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Countdown, Frame } from './common';
 import { Keyboard, PromptSlots } from './Keyboard';
@@ -13,6 +13,7 @@ function describeRow(scored: LetterScore[]): string {
 
 export function Hack({ view, setView, refresh }: StageProps) {
   const h = view.hack;
+  const t = view.text.hack;
   const ai = h.ai;
   const race = h.mode === 'race' && ai !== null;
   const [input, setInput] = useState('');
@@ -129,53 +130,53 @@ export function Hack({ view, setView, refresh }: StageProps) {
   // Jimmy never sees the clock: between attempts the adversary is simply thinking.
   let aiStatus: { text: string; cls: string } | null = null;
   if (ai) {
-    if (h.solved) aiStatus = { text: `beaten at ${ai.attempts}${cap}`, cls: 'green' };
-    else if (ai.solved) aiStatus = { text: 'recovered the key', cls: 'red' };
-    else if (ai.exhausted) aiStatus = { text: 'exhausted', cls: 'green' };
-    else if (roundOpen) aiStatus = { text: 'thinking...', cls: 'amber thinking' };
-    else aiStatus = { text: 'standing by', cls: 'muted' };
+    if (h.solved) aiStatus = { text: `${fill(t.advBeaten, { n: ai.attempts })}${cap}`, cls: 'green' };
+    else if (ai.solved) aiStatus = { text: t.advRecovered, cls: 'red' };
+    else if (ai.exhausted) aiStatus = { text: t.advExhausted, cls: 'green' };
+    else if (roundOpen) aiStatus = { text: t.advThinking, cls: 'amber thinking' };
+    else aiStatus = { text: t.advStandby, cls: 'muted' };
   }
 
   const last = h.lastRound;
 
   return (
-    <Frame kicker="sec-30 terminal // tty1" title="Brute-force key" className={`console hack ${roundOpen ? 'with-keyboard' : ''} ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
+    <Frame kicker={t.kicker} title={t.title} className={`console hack ${roundOpen ? 'with-keyboard' : ''} ${locked ? 'danger' : ''} ${h.solved ? 'success' : ''}`}>
       {briefing ? (
         <div className="briefing" role="dialog" aria-modal="true" aria-labelledby="briefing-title">
           <div className="briefing-box">
-            <div className="tl-n">partition 30-beta</div>
-            <h2 id="briefing-title">Brute-force the {h.length}-character key</h2>
+            <div className="tl-n">{t.partition}</div>
+            <h2 id="briefing-title">{fill(t.heading, { n: h.length })}</h2>
             <p>{h.intro}</p>
-            {race ? <p>An adversary process is working the same key. Find it first or the key rotates.</p> : null}
+            {race ? <p>{t.adversaryWarning}</p> : null}
             <p className="legend-line">
-              <span className="hit">A</span> placed <span className="near">B</span> misplaced <span className="miss">C</span> absent
+              <span className="hit">A</span> {t.legendPlaced} <span className="near">B</span> {t.legendMisplaced} <span className="miss">C</span> {t.legendAbsent}
             </p>
             <button type="button" className="btn primary block" onClick={dismissBriefing} autoFocus>
-              Engage
+              {t.engage}
             </button>
           </div>
         </div>
       ) : null}
       <div className="con-line cmd">
-        <span className="prompt">$</span> breach --key {h.length}
-        {race ? ' --adversary' : ''}
+        <span className="prompt">$</span> {fill(t.command, { n: h.length })}
+        {race ? ` ${t.adversaryFlag}` : ''}
         <button type="button" className="help" onClick={() => setBriefing(true)} aria-label="Show the briefing">
           ?
         </button>
       </div>
       {last && race && !h.solved && !h.freePass ? (
         <div className="con-line sys" role="status">
-          <span className="red">!</span> race {last.round} lost: {last.result === 'ai' ? `adversary took ${last.word} in ${last.aiAttempts}` : `${last.word} survived ${last.playerAttempts}`}. <span className="amber">new key issued.</span>
+          <span className="red">!</span> {last.result === 'ai' ? fill(t.raceLostToAdversary, { round: last.round, word: last.word, n: last.aiAttempts }) : fill(t.raceLostSurvived, { round: last.round, word: last.word, n: last.playerAttempts })} <span className="amber">{t.newKey}</span>
         </div>
       ) : null}
       <div className="pane-head">
         <span>
-          You · {h.rows.length}
+          {t.you} · {h.rows.length}
           {cap}
         </span>
         {ai ? (
           <span>
-            Adversary · {ai.attempts}
+            {t.adversary} · {ai.attempts}
             {cap}
             {aiStatus ? (
               <>
@@ -211,27 +212,27 @@ export function Hack({ view, setView, refresh }: StageProps) {
             </span>
           </div>
         ) : null}
-        {!lines.length && !roundOpen ? <div className="tl dim">no attempts</div> : null}
+        {!lines.length && !roundOpen ? <div className="tl dim">{t.noAttempts}</div> : null}
       </div>
       <div ref={endRef} />
       {h.solved ? (
         <div className={`con-line sys result ${h.freePass ? 'amber' : 'green'}`} role="status">
-          <span className="prompt">$</span> {h.freePass ?? 'KEY ACCEPTED. DECRYPTING PARTITION'}
+          <span className="prompt">$</span> {h.freePass ?? t.accepted}
         </div>
       ) : locked && h.lockedUntil ? (
         <div className="con-line sys result" role="status">
-          <span className="red">PARTITION LOCKED</span>
+          <span className="red">{t.locked}</span>
           {h.lastWord ? (
             <>
               {' '}
-              · the key was <b className="amber">{h.lastWord}</b>
+              · {t.keyWas.split('{word}')[0]}<b className="amber">{h.lastWord}</b>{t.keyWas.split('{word}')[1] ?? ''}
             </>
           ) : null}{' '}
-          · reset in <Countdown until={h.lockedUntil} onDone={onDone} />
+          · {t.resetIn} <Countdown until={h.lockedUntil} onDone={onDone} />
         </div>
       ) : lockPassed ? (
         <button className="btn block" onClick={retry} disabled={busy} style={{ marginTop: 12 }}>
-          Reset partition
+          {t.reset}
         </button>
       ) : (
         <Keyboard
@@ -242,11 +243,11 @@ export function Hack({ view, setView, refresh }: StageProps) {
           canEnter={input.length === h.length}
           disabled={busy}
           paused={briefing}
-          enterLabel="Attempt key"
+          enterLabel={t.attempt}
           status={
             <>
-              <span>SEC-30 // 30-BETA</span>
-              <span className="filler-mid">KEYSPACE 26^{h.length}</span>
+              <span>{t.statusLeft}</span>
+              <span className="filler-mid">{fill(t.keyspace, { n: h.length })}</span>
               <span className="filler-right">
                 {input.length}/{h.length}
                 <i className="caret" />
@@ -256,7 +257,7 @@ export function Hack({ view, setView, refresh }: StageProps) {
         />
       )}
       {err ? <div className="error center">{err}</div> : null}
-      {h.rounds && !race ? <div className="tiny center" style={{ marginTop: 8 }}>Partition resets: {h.rounds}</div> : null}
+      {h.rounds && !race ? <div className="tiny center" style={{ marginTop: 8 }}>{fill(t.resets, { n: h.rounds })}</div> : null}
     </Frame>
   );
 }

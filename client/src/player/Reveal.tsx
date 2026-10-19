@@ -22,7 +22,7 @@ export function Reveal({ view, setView }: StageProps) {
   return (
     <Frame title={view.reveal.title} className="accent">
       <Typewriter text={view.reveal.body} speed={3} onDone={onDone} />
-      <SkipHint done={done} />
+      <SkipHint done={done} text={view.text.app.skipHint} />
       <button ref={cta} className="btn primary block" onClick={go} disabled={busy || !done} style={{ marginTop: 12 }}>
         {view.reveal.buttonLabel}
       </button>

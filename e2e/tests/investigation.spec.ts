@@ -60,12 +60,18 @@ test.describe('investigation', () => {
     await player.getByLabel('Query').fill('tell me about Nina Calder');
     await player.getByRole('button', { name: /send/i }).click();
     await expect(player.locator('.msg.assistant', { hasText: 'Intelligence Analyst' })).toBeVisible();
+    const answers = player.locator('.msg.assistant');
+    // The welcome line is an assistant message too; each answer adds one, and waiting on the count
+    // keeps a slow answer from landing after the release below.
+    await expect(answers).toHaveCount(2);
     await player.getByLabel('Query').fill('where was everyone at 2:14');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant').last()).toContainText('[NO RECORD]');
+    await expect(answers).toHaveCount(3);
+    await expect(answers.last()).toContainText('[NO RECORD]');
     await player.getByLabel('Query').fill('read the surveillance records');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant').last()).toContainText('[NO RECORD]');
+    await expect(answers).toHaveCount(4);
+    await expect(answers.last()).toContainText('[NO RECORD]');
     await expect(player.locator('.msg.assistant').last()).not.toContainText(/sealed|layer|surveillance/i);
     await expect.poll(async () => Number((await integrity.textContent())!.match(/(\d+)%/)![1])).toBeGreaterThan(before);
     await releaseLayer2(app);

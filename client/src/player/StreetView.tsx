@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { LatLng } from '../types';
+import type { LatLng, UiText } from '../types';
 
 declare global {
   interface Window {
@@ -53,7 +53,7 @@ export interface StreetViewProps {
  * A GeoGuessr-style panorama: look around (and walk, when allowed) with the address and road
  * labels hidden. Starts locked like the map so the page still scrolls past it on a phone.
  */
-export function StreetView({ apiKey, location, heading, pitch, allowMoving }: StreetViewProps) {
+export function StreetView({ apiKey, location, heading, pitch, allowMoving, text }: StreetViewProps & { text: UiText['geo'] }) {
   const ref = useRef<HTMLDivElement>(null);
   const panoRef = useRef<google.maps.StreetViewPanorama | null>(null);
   const startRef = useRef<string | null>(null);
@@ -132,7 +132,7 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
   if (status === 'none' || status === 'error') {
     return (
       <p className="muted small" role="status">
-        {status === 'none' ? '[FEED OFFLINE: NO STREET-LEVEL IMAGERY AT THE SOURCE]' : '[FEED OFFLINE: STREET VIEW FAILED TO LOAD]'}
+        {status === 'none' ? text.feedNone : text.feedFailed}
         {reason ? <span className="tiny" style={{ display: 'block' }}>{reason}</span> : null}
       </p>
     );
@@ -140,20 +140,20 @@ export function StreetView({ apiKey, location, heading, pitch, allowMoving }: St
   return (
     <div className={`sv-wrap ${locked ? 'locked' : ''}`}>
       <div className="streetview" ref={ref} aria-label="Street View feed" />
-      {status === 'loading' ? <div className="sv-loading muted small">[RECOVERING FEED]</div> : null}
+      {status === 'loading' ? <div className="sv-loading muted small">{text.feedLoading}</div> : null}
       {locked ? (
         <button type="button" className="map-lock" onClick={() => setLocked(false)}>
-          <span className="map-lock-label">Tap to look around</span>
+          <span className="map-lock-label">{text.feedUnlock}</span>
         </button>
       ) : (
         <div className="sv-controls">
           {allowMoving ? (
             <button type="button" className="btn small" onClick={backToStart}>
-              Back to start
+              {text.feedBack}
             </button>
           ) : null}
           <button type="button" className="btn small" onClick={() => setLocked(true)}>
-            Lock feed
+            {text.feedLock}
           </button>
         </div>
       )}

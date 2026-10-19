@@ -17,6 +17,148 @@ export interface HintPush {
   text: string;
 }
 
+export interface UiText {
+  stageLabels: { intro: string; geo: string; gate: string; hack: string; reveal: string; investigation: string };
+  app: {
+    loadingTitle: string;
+    loading: string;
+    linkLost: string;
+    accessDeniedTitle: string;
+    accessDeniedBody: string;
+    transmissionKicker: string;
+    transmissionTitle: string;
+    acknowledge: string;
+    /** {n} is the count. */
+    transmissions: string;
+    transmissionsReceived: string;
+    skipHint: string;
+  };
+  geo: {
+    title: string;
+    /** {distance} is how far the marker was, or "far". */
+    mismatch: string;
+    feedHelp: string;
+    feedHelpMoving: string;
+    photosMissing: string;
+    photosHelp: string;
+    mapHelp: string;
+    mapHelpAfterFeed: string;
+    triangulate: string;
+    proceed: string;
+    unlockMap: string;
+    lockMap: string;
+    feedNone: string;
+    feedFailed: string;
+    feedLoading: string;
+    feedUnlock: string;
+    feedBack: string;
+    feedLock: string;
+    /** {n} is the count. */
+    attempts: string;
+  };
+  gate: { kicker: string; title: string; command: string; keyLabel: string; rejected: string; submit: string; statusLeft: string; statusMid: string; attempts: string };
+  hack: {
+    kicker: string;
+    title: string;
+    partition: string;
+    /** {n} is the key length. */
+    heading: string;
+    adversaryWarning: string;
+    legendPlaced: string;
+    legendMisplaced: string;
+    legendAbsent: string;
+    engage: string;
+    /** {n} is the key length. */
+    command: string;
+    adversaryFlag: string;
+    /** {round}, {word}, {n}. */
+    raceLostToAdversary: string;
+    raceLostSurvived: string;
+    newKey: string;
+    you: string;
+    adversary: string;
+    advBeaten: string;
+    advRecovered: string;
+    advExhausted: string;
+    advThinking: string;
+    advStandby: string;
+    noAttempts: string;
+    accepted: string;
+    locked: string;
+    /** {word}. */
+    keyWas: string;
+    resetIn: string;
+    reset: string;
+    attempt: string;
+    statusLeft: string;
+    /** {n} is the key length. */
+    keyspace: string;
+    /** {n}. */
+    resets: string;
+  };
+  ledger: {
+    mounting: string;
+    notDecrypted: string;
+    /** {id}. */
+    idLine: string;
+    profileHeading: string;
+    activityHeading: string;
+    evidenceHeading: string;
+    findingsHeading: string;
+    incidentLabel: string;
+    timeOfDeathLabel: string;
+    locationLabel: string;
+    foundLabel: string;
+  };
+  archive: {
+    processingLines: string[];
+    /** {n} is the integrity percentage. */
+    integrity: string;
+    speakerArchive: string;
+    speakerPlayer: string;
+    speakerLink: string;
+    sealed: string;
+    offline: string;
+    placeholder: string;
+    send: string;
+  };
+  /** Lines the server sends back to the phone. */
+  server: {
+    /** {n}. */
+    keyLength: string;
+    partitionLocked: string;
+    archiveOffline: string;
+    archiveSealed: string;
+    archiveBusy: string;
+    archiveEmptyReply: string;
+    archiveDegraded: string;
+  };
+}
+
+/** Replaces {name} placeholders; unknown names are left as written. */
+export function fill(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
+}
+
+export interface LedgerAgent {
+  id: string;
+  name: string;
+  position: string;
+  facts: { label: string; value: string }[];
+  profile: string;
+  log: { time: string; text: string }[];
+  evidence: string[];
+  findings: string;
+}
+export interface LedgerContent {
+  personnel: { subtitle: string; intro: string };
+  surveillance: { subtitle: string; intro: string };
+  incident: { incident: string; timeOfDeath: string; location: string; found: string };
+  agents: LedgerAgent[];
+  dutyLog: { name: string; position: string; lines: { time: string; text: string }[] };
+  fragments: { key: string; text: string }[];
+}
+
 export interface PlayerView {
   /** Server revision; a view older than one already shown is ignored. */
   rev: number;
@@ -69,7 +211,8 @@ export interface PlayerView {
     } | null;
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  ledger: { layer1: boolean; layer2: boolean; layer2Label: string; interrogationWindow: string };
+  ledger: { layer1: boolean; layer2: boolean; layer1Label: string; layer2Label: string; interrogationWindow: string; headLine: string; recordLabel: string };
+  text: UiText;
   archive: { enabled: boolean; locked: boolean; busy: boolean; welcome: string; maxMessageChars: number; epoch: number };
   hints: HintPush[];
 }
@@ -94,7 +237,7 @@ export interface LedgerLayer {
 export interface LedgerFiles {
   interrogationWindow: string;
   layer1: LedgerLayer | null;
-  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string; found: string }; facilityLog: { time: string; text: string }[] }) | null;
+  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string; found: string }; facilityLog: { time: string; text: string }[]; dutyLog: { name: string; position: string } }) | null;
   layer2Label: string;
   locked: { layer2: boolean };
 }
@@ -175,10 +318,20 @@ export interface GameConfig {
     freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  ledger: { layer2Label: string; layer2ReleasedText: string; interrogationWindow: string };
+  ledger: {
+    layer1Label: string;
+    layer2Label: string;
+    layer2ReleasedText: string;
+    interrogationWindow: string;
+    headLine: string;
+    recordLabel: string;
+    content: LedgerContent;
+  };
   phil: { challenge: string; response: string; part1: string; part2: string; secondCaller: string };
-  archive: { enabled: boolean; maxMessageChars: number; welcome: string };
+  archive: { enabled: boolean; maxMessageChars: number; welcome: string; persona: string; notOnFile: string };
   hints: { quick: Partial<Record<StageId, string[]>> };
+  report: { prompt: string };
+  text: UiText;
 }
 export interface Overview {
   config: GameConfig;

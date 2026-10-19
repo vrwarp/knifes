@@ -25,15 +25,43 @@ export interface LedgerEntry {
   evidence?: string[];
 }
 
+/** One agent as the GMs edit it: the personnel file and the surveillance record together. */
+export interface LedgerAgent {
+  id: string;
+  name: string;
+  position: string;
+  /** Personnel file: the fields (service, posting). */
+  facts: { label: string; value: string }[];
+  /** Personnel file: the profile paragraph. */
+  profile: string;
+  /** Surveillance record: the recorded activity, 12-hour times, in order. */
+  log: LogLine[];
+  /** Surveillance record: the belongings confiscated at headquarters. */
+  evidence: string[];
+  /** Surveillance record: the additional findings. */
+  findings: string;
+}
+
+/** Everything the Ledger says, editable in the GM console. */
+export interface LedgerContent {
+  personnel: { subtitle: string; intro: string };
+  surveillance: { subtitle: string; intro: string };
+  incident: { incident: string; timeOfDeath: string; location: string; found: string };
+  agents: LedgerAgent[];
+  /** Records that belong to no agent: the duty officer's rounds and the discovery. */
+  dutyLog: { name: string; position: string; lines: LogLine[] };
+  /** Surviving fragments of the Ledger index, for the ARCHIVE's lookup tool. */
+  fragments: { key: string; text: string }[];
+}
+
 export const LEDGER_TITLE = 'S30 LEDGER';
 
-export const LAYER_01_HEADER = {
-  title: 'S30 LEDGER // PERSONNEL FILES',
+const PERSONNEL_HEADER = {
   subtitle: 'SECTION 30 // CLASSIFIED PERSONNEL FILES // ACCESS LEVEL: MAGENTA',
   intro: 'Personnel files for the five agents under investigation. Where each of them was tonight is for the agents to tell you.',
 };
 
-export const LAYER_01: LedgerEntry[] = [
+const PERSONNEL: LedgerEntry[] = [
   {
     id: 'S30-001',
     name: 'Mara Voss',
@@ -86,14 +114,13 @@ export const LAYER_01: LedgerEntry[] = [
   },
 ];
 
-export const LAYER_02_HEADER = {
-  title: 'S30 LEDGER // SURVEILLANCE RECORDS',
+const SURVEILLANCE_HEADER = {
   subtitle: 'CLASSIFIED // MAGENTA CHANNEL // RECOVERED SURVEILLANCE & EVIDENCE RECORDS // STATUS: DECRYPTED',
   intro:
     "The following records were recovered from Section 30's internal surveillance network for 10 PM to 4 AM: badge, camera, terminal, radio and vehicle events, with the belongings confiscated from each agent at headquarters. Some information may contradict what the agents have told you.",
 };
 
-export const INCIDENT = {
+const INCIDENT = {
   incident: 'Murder of Arthur Pendelton',
   timeOfDeath: '2:14 AM',
   location: "Director's Office, secure safehouse",
@@ -101,7 +128,7 @@ export const INCIDENT = {
 };
 
 /** Surveillance records that belong to no agent: the duty officer's rounds and the discovery. Searchable like the rest. */
-export const FACILITY_LOG: LogLine[] = [
+const FACILITY_LOG: LogLine[] = [
   { time: '11:02 PM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
   { time: '12:04 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
   { time: '1:01 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
@@ -110,7 +137,7 @@ export const FACILITY_LOG: LogLine[] = [
   { time: '4:15 AM', text: "Duty officer Hale: hourly round. Director's Office door open. Director found unresponsive. Security called." },
 ];
 
-export const LAYER_02: LedgerEntry[] = [
+const SURVEILLANCE: LedgerEntry[] = [
   {
     id: 'S30-001',
     name: 'Mara Voss',
@@ -230,7 +257,7 @@ export const LAYER_02: LedgerEntry[] = [
 ];
 
 /** Surviving fragments of the Ledger index, for the ARCHIVE's lookup tool. Nothing here bears on who did it. */
-export const LEDGER_FRAGMENTS: Record<string, string> = {
+const FRAGMENTS: Record<string, string> = {
   'section 30':
     'Created thirty years ago to identify, contain and neutralize the most dangerous cyber threats. No public mandate, no official oversight. Authorizing names sealed.',
   ledger:
@@ -246,6 +273,38 @@ export const LEDGER_FRAGMENTS: Record<string, string> = {
   compound:
     'Headquarters compound: main building (ops floor, analysis wing, archives on B1, server room, security control room, armoury, mess, gym on the lower level); the secure safehouse in the inner compound with the Director’s Office; the perimeter (north gate, west perimeter road, restricted equipment storage facility on the storage road, east fence); the motor pool.',
 };
+
+/** The Ledger as shipped. The configuration carries a copy the GMs can edit. */
+export const DEFAULT_LEDGER: LedgerContent = {
+  personnel: PERSONNEL_HEADER,
+  surveillance: SURVEILLANCE_HEADER,
+  incident: INCIDENT,
+  agents: PERSONNEL.map((p) => {
+    const sv = SURVEILLANCE.find((x) => x.id === p.id)!;
+    return { id: p.id, name: p.name, position: p.position, facts: p.facts ?? [], profile: p.notes, log: sv.log ?? [], evidence: sv.evidence ?? [], findings: sv.notes };
+  }),
+  dutyLog: { name: 'Duty officer Hale', position: 'Facility log', lines: FACILITY_LOG },
+  fragments: Object.entries(FRAGMENTS).map(([key, text]) => ({ key, text })),
+};
+
+/** The personnel files as the phone and the ARCHIVE read them. */
+export function personnelEntries(c: LedgerContent): LedgerEntry[] {
+  return c.agents.map((a) => ({ id: a.id, name: a.name, position: a.position, notes: a.profile, facts: a.facts }));
+}
+
+/** The surveillance records as the phone and the ARCHIVE read them. */
+export function surveillanceEntries(c: LedgerContent): LedgerEntry[] {
+  return c.agents.map((a) => ({ id: a.id, name: a.name, position: a.position, notes: a.findings, log: a.log, evidence: a.evidence }));
+}
+
+export function incidentLine(c: LedgerContent): string {
+  const i = c.incident;
+  return `Incident: ${i.incident}. Confirmed time of death ${i.timeOfDeath}. Location: ${i.location}. Found ${i.found}.`;
+}
+
+export function dutyLogText(c: LedgerContent): string {
+  return c.dutyLog.lines.map((l) => `${l.time} ${l.text}`).join('\n');
+}
 
 /** Case-insensitive match on a ledger id or any part of a name. */
 export function findEntries<T extends { id: string; name: string }>(entries: T[], who?: string): T[] {
@@ -311,7 +370,7 @@ export interface SearchHit {
 }
 
 /** Search the open layers by agent, time window and free text. `place` and `keyword` both match the line text, case-insensitively. */
-export function searchLedger(opts: { who?: string; from?: string; to?: string; text?: string; layers: { 1: boolean; 2: boolean } }): SearchHit[] {
+export function searchLedger(c: LedgerContent, opts: { who?: string; from?: string; to?: string; text?: string; layers: { 1: boolean; 2: boolean } }): SearchHit[] {
   const a = parseWindow(opts.from);
   const b = parseWindow(opts.to);
   const words = (opts.text ?? '')
@@ -332,13 +391,13 @@ export function searchLedger(opts: { who?: string; from?: string; to?: string; t
   const hits: SearchHit[] = [];
   // Personnel files have no times: their fields answer a word search when no window was asked for.
   if (opts.layers[1] && a === null && b === null)
-    for (const e of findEntries(LAYER_01, opts.who)) {
+    for (const e of findEntries(personnelEntries(c), opts.who)) {
       const fields = [...(e.facts ?? []).map((f) => `${f.label}: ${f.value}`), `Profile: ${e.notes}`];
       for (const f of fields) if (words.length && matches(f, '')) hits.push({ layer: 1, who: e.id, name: e.name, time: 'file', text: f });
     }
   if (opts.layers[2]) {
-    for (const e of findEntries(LAYER_02, opts.who)) for (const l of e.log ?? []) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: e.id, name: e.name, time: l.time, text: l.text });
-    if (!opts.who || /hale|duty|facility/i.test(opts.who)) for (const l of FACILITY_LOG) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: 'FACILITY', name: 'Duty log', time: l.time, text: l.text });
+    for (const e of findEntries(surveillanceEntries(c), opts.who)) for (const l of e.log ?? []) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: e.id, name: e.name, time: l.time, text: l.text });
+    if (!opts.who || /hale|duty|facility/i.test(opts.who) || c.dutyLog.name.toLowerCase().includes(opts.who.toLowerCase())) for (const l of c.dutyLog.lines) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: 'FACILITY', name: 'Duty log', time: l.time, text: l.text });
   }
   return hits.sort((x, y) => (ledgerMinutes(x.time) ?? 0) - (ledgerMinutes(y.time) ?? 0) || x.layer - y.layer);
 }

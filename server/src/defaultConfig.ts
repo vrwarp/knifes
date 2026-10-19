@@ -1,4 +1,7 @@
+import { DEFAULT_LEDGER } from './content/ledger.js';
 import { DEFAULT_WORD_BANK } from './content/words.js';
+import { ARCHIVE_SYSTEM_PROMPT, NOT_ON_FILE, REPORT_SYSTEM_PROMPT } from './content/prompts.js';
+import { DEFAULT_TEXT } from './content/text.js';
 import type { GameConfig } from './types.js';
 
 export const PHIL_PART_1 = `PHIL: Identify yourself.
@@ -100,10 +103,14 @@ Recovery chain complete. The rest is detective work.`,
     buttonLabel: 'RETURN TO HEADQUARTERS',
   },
   ledger: {
+    layer1Label: 'PERSONNEL FILES',
     layer2Label: 'SURVEILLANCE RECORDS',
     layer2ReleasedText:
       'SECOND AUTHORIZATION RECEIVED. Surveillance records decrypted: badge, camera, terminal and vehicle events for all five agents, 10 PM to 4 AM, with the belongings taken off them at headquarters. A new section, SURVEILLANCE RECORDS, is open in your Ledger. Compare the recorded timestamps against what they told you.',
     interrogationWindow: '11:00 PM to 4:00 AM',
+    headLine: 'S30 Ledger · access level magenta · ask every agent where they were, {window}',
+    recordLabel: 'LEDGER DECRYPTION RECORD',
+    content: DEFAULT_LEDGER,
   },
   phil: {
     challenge: 'Who watches the watchers?',
@@ -117,7 +124,11 @@ Recovery chain complete. The rest is detective work.`,
     maxMessageChars: 400,
     welcome:
       'ARCHIVE ONLINE. Ledger partition mounted. I hold what the failsafe recovered: the personnel files. Where the agents were tonight is not in my records. Ask. I answer what the records support. I do not guess.',
+    persona: ARCHIVE_SYSTEM_PROMPT,
+    notOnFile: NOT_ON_FILE,
   },
+  report: { prompt: REPORT_SYSTEM_PROMPT },
+  text: DEFAULT_TEXT,
   hints: {
     quick: {
       geo: ['Turn towards the water. One of the signs carries a name you can put on the map.'],

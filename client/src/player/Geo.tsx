@@ -2,12 +2,12 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
 import { api, errorText } from '../api';
-import type { LatLng, PlayerView } from '../types';
+import { fill, type LatLng, type PlayerView } from '../types';
 import type { StageProps } from './PlayerApp';
 import { Frame, Typewriter, formatDistance } from './common';
 import { StreetView } from './StreetView';
 
-function MapPicker({ center, zoom, onPick }: { center: LatLng; zoom: number; onPick: (p: LatLng) => void }) {
+function MapPicker({ center, zoom, onPick, labels }: { center: LatLng; zoom: number; onPick: (p: LatLng) => void; labels: { unlock: string; lock: string } }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const [locked, setLocked] = useState(true);
@@ -44,11 +44,11 @@ function MapPicker({ center, zoom, onPick }: { center: LatLng; zoom: number; onP
       <div className="map" ref={ref} aria-label="Map" />
       {locked ? (
         <button type="button" className="map-lock" onClick={() => setInteractive(true)}>
-          <span className="map-lock-label">Tap to unlock map</span>
+          <span className="map-lock-label">{labels.unlock}</span>
         </button>
       ) : (
         <button type="button" className="btn small map-unlock-btn" onClick={() => setInteractive(false)}>
-          Lock map
+          {labels.lock}
         </button>
       )}
     </div>
@@ -57,6 +57,7 @@ function MapPicker({ center, zoom, onPick }: { center: LatLng; zoom: number; onP
 
 export function Geo({ view, setView }: StageProps) {
   const g = view.geo;
+  const t = view.text.geo;
   const puzzle = view.geoMode === 'puzzle';
   const confirmed = g.solved || !puzzle;
   const [pin, setPin] = useState<LatLng | null>(null);
@@ -71,7 +72,7 @@ export function Geo({ view, setView }: StageProps) {
     setErr(null);
     try {
       const r = await api<{ solved: boolean; distanceM: number | null }>('/api/player/geo/guess', { json: pin });
-      if (!r.solved) setMsg(`SIGNAL MISMATCH. Marker is ${r.distanceM !== null ? formatDistance(r.distanceM) : 'far'} from the source.`);
+      if (!r.solved) setMsg(fill(t.mismatch, { distance: r.distanceM !== null ? formatDistance(r.distanceM) : 'far' }));
       else setMsg(null);
     } catch (e) {
       setErr(errorText(e));
@@ -91,10 +92,10 @@ export function Geo({ view, setView }: StageProps) {
   };
 
   return (
-    <Frame title="Field transmission" className={`accent ${confirmed && puzzle ? 'success' : ''}`}>
+    <Frame title={t.title} className={`accent ${confirmed && puzzle ? 'success' : ''}`}>
       <Typewriter text={g.briefing} speed={3} />
-      {g.streetView ? <StreetView {...g.streetView} /> : null}
-      {g.streetView && !confirmed ? <p className="tiny">Unlock the feed, drag to look around{g.streetView.allowMoving ? ', tap the arrows to move' : ''}.</p> : null}
+      {g.streetView ? <StreetView {...g.streetView} text={t} /> : null}
+      {g.streetView && !confirmed ? <p className="tiny">{g.streetView.allowMoving ? t.feedHelpMoving : t.feedHelp}</p> : null}
       {g.photos.length ? (
         <div className="photos" aria-label="Field images, tap one to enlarge">
           {g.photos.map((p, i) => (
@@ -102,31 +103,31 @@ export function Geo({ view, setView }: StageProps) {
           ))}
         </div>
       ) : puzzle && !g.streetView && !confirmed ? (
-        <p className="muted small">[IMAGE BURST NOT YET RECOVERED]</p>
+        <p className="muted small">{t.photosMissing}</p>
       ) : null}
-      {g.photos.length ? <p className="tiny">Tap a photo to enlarge it.</p> : null}
+      {g.photos.length ? <p className="tiny">{t.photosHelp}</p> : null}
       {!confirmed ? (
         <>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            {g.streetView ? 'Then unlock the map, find the spot, tap to drop the marker, and triangulate.' : 'Unlock the map, find the spot, tap to drop the marker, then triangulate.'}
+            {g.streetView ? t.mapHelpAfterFeed : t.mapHelp}
           </p>
-          <MapPicker center={g.mapCenter} zoom={g.mapZoom} onPick={setPin} />
+          <MapPicker center={g.mapCenter} zoom={g.mapZoom} onPick={setPin} labels={{ unlock: t.unlockMap, lock: t.lockMap }} />
           <button className="btn primary block" onClick={guess} disabled={!pin || busy}>
-            Triangulate
+            {t.triangulate}
           </button>
           {msg ? (
             <div className="error" role="alert">
               {msg}
             </div>
           ) : null}
-          {g.attempts ? <div className="tiny" style={{ marginTop: 8 }}>Attempts: {g.attempts}</div> : null}
+          {g.attempts ? <div className="tiny" style={{ marginTop: 8 }}>{fill(t.attempts, { n: g.attempts })}</div> : null}
         </>
       ) : (
         <div style={{ marginTop: 12 }}>
           <h2 className="green">{g.revealTitle}</h2>
           <pre className="typed">{g.revealBody}</pre>
           <button className="btn primary block" onClick={proceed} disabled={busy} style={{ marginTop: 12 }}>
-            Proceed
+            {t.proceed}
           </button>
         </div>
       )}

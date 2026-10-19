@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '../defaultConfig.js';
 import { mockArchiveReply } from '../ai/archive.js';
 import { initialState } from '../game/state.js';
-import { FACILITY_LOG, LAYER_01, LAYER_02, ledgerMinutes, ledgerRange, parseWindow, searchLedger } from './ledger.js';
+import { DEFAULT_LEDGER, ledgerMinutes, ledgerRange, parseWindow, personnelEntries, searchLedger as search, surveillanceEntries } from './ledger.js';
+
+const LAYER_01 = personnelEntries(DEFAULT_LEDGER);
+const LAYER_02 = surveillanceEntries(DEFAULT_LEDGER);
+const FACILITY_LOG = DEFAULT_LEDGER.dutyLog.lines;
+const searchLedger = (opts: Parameters<typeof search>[1]) => search(DEFAULT_LEDGER, opts);
 
 const both = { 1: true, 2: true } as const;
 const l1 = { 1: true, 2: false } as const;

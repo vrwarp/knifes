@@ -205,9 +205,13 @@ export function playerView(config: GameConfig, state: GameState, googleMapsApiKe
     ledger: {
       layer1: state.ledger.layer1,
       layer2: state.ledger.layer2,
+      layer1Label: config.ledger.layer1Label,
       layer2Label: config.ledger.layer2Label,
       interrogationWindow: config.ledger.interrogationWindow,
+      headLine: config.ledger.headLine,
+      recordLabel: config.ledger.recordLabel,
     },
+    text: config.text,
     archive: {
       enabled: config.archive.enabled,
       locked: state.archive.locked,

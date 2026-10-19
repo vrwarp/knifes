@@ -90,8 +90,8 @@ export function useTyped(): [boolean, () => void] {
   return [done, onDone];
 }
 
-export function SkipHint({ done }: { done: boolean }) {
-  return <div className="skip-hint">{done ? '' : 'tap the text to skip'}</div>;
+export function SkipHint({ done, text = 'tap the text to skip' }: { done: boolean; text?: string }) {
+  return <div className="skip-hint">{done ? '' : text}</div>;
 }
 
 export function Frame({

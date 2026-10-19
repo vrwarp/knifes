@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { FACILITY_LOG, INCIDENT, LAYER_01, LAYER_02, LEDGER_FRAGMENTS, formatEntry } from '../content/ledger.js';
+import { dutyLogText, formatEntry, incidentLine, personnelEntries, surveillanceEntries } from '../content/ledger.js';
 import type { ConfigVersionMeta, Proposal, ProposalChange } from '../db.js';
 import { env } from '../env.js';
 import type { ReadinessItem } from '../service.js';
@@ -37,20 +37,18 @@ export interface SetupContext {
 
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
 
-export function caseFilesText(): string {
-  const ledger = Object.entries(LEDGER_FRAGMENTS)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('\n');
+export function caseFilesText(config: GameConfig): string {
+  const c = config.ledger.content;
   return [
-    '## Personnel Files (opens after the word race)',
-    LAYER_01.map((e) => formatEntry(e, 1)).join('\n\n'),
-    `## Surveillance Records (hidden until released during the second call)`,
-    `Incident: ${INCIDENT.incident}. Confirmed time of death ${INCIDENT.timeOfDeath}. Location: ${INCIDENT.location}.`,
-    LAYER_02.map((e) => formatEntry(e, 2)).join('\n\n'),
-    '## Duty log (part of the Surveillance Records)',
-    FACILITY_LOG.map((l) => `${l.time} ${l.text}`).join('\n'),
+    `## ${config.ledger.layer1Label} (opens after the word race; ledger.content in the configuration)`,
+    personnelEntries(c).map((e) => formatEntry(e, 1)).join('\n\n'),
+    `## ${config.ledger.layer2Label} (hidden until released during the second call)`,
+    incidentLine(c),
+    surveillanceEntries(c).map((e) => formatEntry(e, 2)).join('\n\n'),
+    `## ${c.dutyLog.name} (part of the ${config.ledger.layer2Label})`,
+    dutyLogText(c),
     '## Ledger fragments',
-    ledger,
+    c.fragments.map((f) => `${f.key}: ${f.text}`).join('\n'),
   ].join('\n\n');
 }
 
@@ -76,7 +74,7 @@ export function createSetupServer(ctx: SetupContext) {
         { annotations: { readOnlyHint: true } },
       ),
       tool('get_case_files', 'The full case files: the Personnel Files, the Surveillance Records (recorded activity, duty log, confiscated belongings, findings) and the ledger fragments.', {}, async () =>
-        text(caseFilesText()),
+        text(caseFilesText(ctx.config())),
       { annotations: { readOnlyHint: true } }),
       tool(
         'list_versions',
