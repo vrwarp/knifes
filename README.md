@@ -2,7 +2,7 @@
 
 Phone web app and game-master console for Jimmy's thirtieth-birthday murder mystery.
 One Node server hosts both, keeps state in SQLite, and uses the Claude Agent SDK for the
-in-world ARCHIVE terminal, GM hint drafting, free-text deduction grading and the closing case file.
+in-world ARCHIVE terminal, GM hint drafting and the closing case file.
 
 Full requirements and design: [docs/SPEC.md](docs/SPEC.md).
 
@@ -49,8 +49,8 @@ open as soon as the race is won; Jimmy gets each agent's account of the night fr
 table. The SURVEILLANCE RECORDS, the recorded movements from 10 PM, the confiscated belongings and the
 findings, do not appear on his phone at all until the second call, which comes from Matt: a GM presses
 **Release records** in the console's calls panel. The panel also carries both call scripts. The
-ARCHIVE terminal answers from whatever is on file and never admits that more exists, and the
-deduction grid closes the case.
+ARCHIVE terminal answers from whatever is on file and never admits that more exists. The
+investigation is the last screen: Jimmy names the killer at the table, not in the app.
 
 ## Use your Claude subscription instead of an API key
 
@@ -86,11 +86,11 @@ your Claude subscription and requires a Pro, Max, Team, or Enterprise plan", and
 developers may not offer claude.ai login or rate limits in their products; this setup is the
 personal-use shape of that rule, your login on your NAS for your own party, so do not hand the
 container to other people. Subscription usage limits also apply: if the plan's window runs out
-mid-evening, the ARCHIVE answers "link degraded", the grader falls back to keyword matching, and the
+mid-evening, the ARCHIVE answers "link degraded" and the
 GM log shows an `ai_error` naming the limit. An API key in `.env` is the fallback if that happens.
 
 Without a credential the app runs in **mock mode**: every screen works, the ARCHIVE answers from canned
-lookups, grading is keyword based, hints come from the quick-hint lists. Good for rehearsals.
+lookups, hints come from the quick-hint lists. Good for rehearsals.
 
 ## Setup assistant and configuration history
 
@@ -147,9 +147,10 @@ cd client && npm run build
 ## The night of
 
 - The GM console shows the stage, every code and guess, ARCHIVE transcripts, and lets you jump, reset,
-  seal the ARCHIVE, push hints (drafted by AI or typed), and generate the case file.
+  seal the ARCHIVE, push hints (drafted by AI or typed), and generate and print the case file
+  (for the GMs only; it never goes to the phone).
 - "Reset whole game" wipes progress and logs but keeps configuration. Use it after the dry run.
-- If the AI is unreachable, the ARCHIVE says the link is degraded and grading falls back to keyword matching.
+- If the AI is unreachable, the ARCHIVE says the link is degraded and hints fall back to the quick-hint lists.
   Nothing blocks the game.
 - Costs: the ARCHIVE and copilot calls are short. A full evening is expected to cost a few dollars at Opus 5.5 rates.
 
@@ -194,10 +195,10 @@ Set `PW_CHROMIUM` or `PW_WEBKIT` to a browser executable to use one Playwright d
 
 Coverage: the full player journey; the three location modes and target radius; the code gate; the
 word puzzle scoring, lockout and reset; every evidence file; the Layer 02 release; ARCHIVE answers,
-persistence and sealing; deduction drafts, the verdict delay, pass/fail and count feedback; hints
+persistence and sealing; hints
 (overlay focus, Escape, transmissions list, quick hints, AI drafts); the GM console (login, stuck
 alarms with a mocked clock, skips and jumps with confirmations, stage and whole-game resets, log
-filters, case report publishing, config editing, validation, concurrent-edit warning); the player
+filters, the GM-only case report, config editing, validation, concurrent-edit warning); the player
 key; API authorization; secret leakage; connection-loss banners and polling; and layout checks for
 sideways scroll, 16px inputs and 44px touch targets.
 

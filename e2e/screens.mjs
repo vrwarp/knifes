@@ -195,7 +195,7 @@ try {
   // The editor stays collapsed while a game is running; the investigation is the last stage.
   await gm.locator('summary', { hasText: 'Game configuration (collapsed' }).click();
   await gm.locator('summary', { hasText: 'Location puzzle' }).click();
-  await gm.locator('summary', { hasText: 'Ledger Layer 02' }).click();
+  await gm.locator('summary', { hasText: 'Surveillance records' }).click();
   await shot(gm, 'g02-config-open');
   await desk.close();
 
