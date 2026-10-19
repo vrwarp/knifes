@@ -38,6 +38,27 @@ describe('stage flow', () => {
     resetStage(c, s, 'investigation');
     expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null });
   });
+  it('jumping back reopens the puzzles from that stage on', () => {
+    const c = cfg();
+    const s = initialState();
+    forceStage(c, s, 'investigation');
+    forceStage(c, s, 'gate');
+    expect(s.stage).toBe('gate');
+    expect(s.geo.solved).toBe(true);
+    expect(s.gate.passed).toBe(false);
+    expect(s.hack.solved).toBe(false);
+    expect(s.stageTimes.hack).toBeUndefined();
+    expect(s.stageTimes.investigation).toBeUndefined();
+  });
+  it('resetting an earlier stage reopens the puzzles after it too', () => {
+    const c = cfg();
+    const s = initialState();
+    forceStage(c, s, 'reveal');
+    resetStage(c, s, 'geo');
+    expect(s.stage).toBe('geo');
+    expect(s.gate.passed).toBe(false);
+    expect(s.hack.solved).toBe(false);
+  });
   it('resetting a stage rewinds the pointer and clears that puzzle', () => {
     const c = cfg();
     const s = initialState();
