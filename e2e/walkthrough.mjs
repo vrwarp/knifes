@@ -511,7 +511,7 @@ try {
     ['Intro (QR landing)', 'Headline, briefing and button label for the QR landing.'],
     ['Location puzzle (geo)', 'Mode, target pin on a map, radius, Street View start, heading, pitch and walking, photos with upload and delete, and the confirmation text.'],
     ['Code gate (Phil', 'The code Phil reads out, the prompt, and the success line.'],
-    ['Phil\u2019s calls', 'The challenge phrase and both call scripts, shown in the Phil panel for whoever plays him.'],
+    ['Phil\'s calls', 'The challenge phrase and both call scripts, shown in the Phil panel for whoever plays him.'],
     ['Word puzzle (Ledger key)', 'The key bank, race pace, attempts and lockout length.'],
     ['Ledger decrypted', 'The notice shown after the puzzle, with the interrogation directive.'],
     ['Ledger Layer 02', 'The passcode Phil can read out, the section name on the phone, and the transmission pushed when it opens.'],
