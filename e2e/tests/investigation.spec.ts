@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, WRONG_SUSPECT, acceptDialogs, expect, fillDeduction, noHorizontalScroll, releaseLayer2, test } from './fixtures';
+import { RIGHT_ANSWERS, WRONG_SUSPECT, acceptDialogs, clearWord, expect, fillDeduction, noHorizontalScroll, releaseLayer2, test, typeWord } from './fixtures';
 
 test.describe('investigation', () => {
   test.beforeEach(async ({ player, app }) => {
@@ -57,11 +57,13 @@ test.describe('investigation', () => {
 
   test('the passcode opens Layer 02 and a wrong one is rejected in place', async ({ player }) => {
     await player.locator('.file header', { hasText: 'LAYER 02' }).click();
-    await player.getByLabel('Passcode').fill('WRONG');
-    await player.getByRole('button', { name: /^unlock$/i }).click();
+    const sealed = player.locator('.file', { has: player.locator('header', { hasText: 'LAYER 02' }) });
+    await typeWord(player, 'WRONG', sealed);
+    await sealed.getByRole('button', { name: /^unlock$/i }).click();
     await expect(player.getByRole('alert')).toContainText(/REJECTED/);
-    await player.getByLabel('Passcode').fill('magenta-30');
-    await player.getByRole('button', { name: /^unlock$/i }).click();
+    await clearWord(player, sealed);
+    await typeWord(player, 'magenta30', sealed);
+    await sealed.getByRole('button', { name: /^unlock$/i }).click();
     await expect(player.getByText('Confirmed time of death:')).toBeVisible();
   });
 

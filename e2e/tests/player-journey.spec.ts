@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, WRONG_SUSPECT, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
+import { RIGHT_ANSWERS, WRONG_SUSPECT, clearWord, expect, fillDeduction, finishBeats, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 test.describe('player journey', () => {
   test('plays the whole game from the QR landing to the case file', async ({ player, app }) => {
@@ -29,7 +29,8 @@ test.describe('player journey', () => {
     await typeWord(player, 'WRONGKEY');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.getByText('KEY REJECTED')).toBeVisible();
-    await player.getByLabel('Recovery key').fill('s30-ghost');
+    await clearWord(player);
+    await typeWord(player, 's30ghost');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.getByText('Recovery authorization accepted')).toBeVisible();
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
 import type { LedgerEntry, LedgerFiles, PlayerView } from '../types';
+import { Keyboard, PromptLine } from './Keyboard';
 
 /** Minutes since 6 PM for "2:14 AM" or the start of "2:00–2:30 AM"; null when unreadable. */
 function mins(time: string): number | null {
@@ -112,8 +113,9 @@ function Passcode({ label, onUnlocked }: { label: string; onUnlocked: () => void
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [shaking, setShaking] = useState(false);
+  const submit = async () => {
+    if (!code.trim() || busy) return;
     setBusy(true);
     setErr(null);
     try {
@@ -121,23 +123,51 @@ function Passcode({ label, onUnlocked }: { label: string; onUnlocked: () => void
       onUnlocked();
     } catch (e2) {
       setErr(errorText(e2));
+      setShaking(true);
+      window.setTimeout(() => setShaking(false), 500);
     } finally {
       setBusy(false);
     }
   };
   return (
-    <form onSubmit={submit} className="stack">
+    <div className="stack passcode">
       <p className="muted small">[LAYER SEALED] {label} needs a second recovery authorization. It arrives by command release, or as a passcode read to you over the secure line.</p>
-      <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="PASSCODE" aria-label="Passcode" autoCapitalize="characters" autoComplete="off" autoCorrect="off" />
-      <button className="btn block" disabled={busy || !code.trim()}>
-        Unlock
-      </button>
+      <div className="con-line cmd" aria-hidden="true">
+        <span className="prompt">$</span> unseal --layer 02 --passcode
+      </div>
+      <div className="transcript">
+        <PromptLine value={code} maxLength={Math.max(8, code.length)} label="Passcode" shake={shaking} />
+      </div>
       {err ? (
-        <div className="error" role="alert">
-          {err}
+        <div className="con-line sys" role="alert">
+          <span className="red">!</span> {err}
         </div>
       ) : null}
-    </form>
+      <Keyboard
+        value={code}
+        onChange={(v) => {
+          setCode(v);
+          setErr(null);
+        }}
+        onEnter={() => void submit()}
+        maxLength={16}
+        digits
+        canEnter={code.trim().length > 0}
+        disabled={busy}
+        enterLabel="Unlock"
+        fixed={false}
+        hardware={false}
+        status={
+          <>
+            <span>SEALED</span>
+            <span className="filler-right">
+              {code.length}
+              <i className="caret" />
+            </span>
+          </>
+        }
+      />
+    </div>
   );
 }
 

@@ -110,7 +110,8 @@ try {
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('KEY REJECTED').waitFor();
   await shot(player, 'p05-gate-rejected');
-  await player.getByLabel('Recovery key').fill('S30GHOST');
+  await clearWord(player);
+  await typeWord(player, 'S30GHOST');
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('Recovery authorization accepted').waitFor();
   await shot(player, 'p05b-gate-accepted');

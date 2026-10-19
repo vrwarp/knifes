@@ -41,11 +41,11 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 
 1. **Intro.** QR code opens the site. Failsafe recovery briefing, one button.
 2. **Geo.** A Street View panorama to look around in (or field photos without a Maps key) and a map. Tap to place a marker, "Triangulate". Within the radius the drop-point text appears. Reveal mode skips the map. Off mode skips the stage.
-3. **Gate.** Enter the recovery authorization code Phil gives over the phone. Case, spaces and dashes are ignored.
+3. **Gate.** Enter the recovery authorization code Phil gives over the phone on the console's on-screen keyboard (letters and digits). Case, spaces and dashes are ignored.
 4. **Hack.** Seven-letter keys in a terminal window: a one-time briefing dialog, one interleaved transcript of both sides' attempts, the on-screen keyboard pinned to the bottom. In race mode (default) the adversary's attempts show on the same transcript and it reads THINKING... between them. Jimmy finds the key first: key accepted, on to the reveal. The adversary finds it first: a new key is drawn at once and a banner names the lost round. When the adversary has taken every key and the free pass is on, the configured failsafe text shows and the stage moves on.
 5. **Reveal.** LEDGER DECRYPTED // LAYER 01 RELEASED, the 04:15 discovery, the directive to return to headquarters and the 11 PM to 4 AM window. Button RETURN TO HEADQUARTERS.
 6. **Investigation.** Three tabs.
-   - Ledger: a header with the interrogation window; LAYER 01 // PERSONNEL RECORDS (five agent cards: id, name, position, profile, self-reported log; the first opens by default); LAYER 02 // CLASSIFIED EVIDENCE (sealed with a passcode field until released, then the incident line and five cards with verified activity, recovered evidence and findings); the decryption notice for re-reading. The tab carries an amber dot from the moment Layer 02 opens until he looks.
+   - Ledger: a header with the interrogation window; LAYER 01 // PERSONNEL RECORDS (five agent cards: id, name, position, profile, self-reported log; the first opens by default); LAYER 02 // CLASSIFIED EVIDENCE (sealed, with the same on-screen keyboard for Phil's passcode, until released, then the incident line and five cards with verified activity, recovered evidence and findings); the decryption notice for re-reading. The tab carries an amber dot from the moment Layer 02 opens until he looks.
    - ARCHIVE: chat with the records mainframe.
    - Deduction: the sentence with six inputs. Status lines cycle while the grader runs.
 7. **Solved.** The reveal in beats (Nina Calder, the letter opener, the hard copy, happy thirtieth), the case file when published, and the case materials for re-reading.

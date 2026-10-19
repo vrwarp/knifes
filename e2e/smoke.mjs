@@ -140,7 +140,8 @@ try {
     await typeWord(player, 'WRONG');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.getByText('KEY REJECTED').waitFor();
-    await box.fill('s30-ghost');
+    await clearWord(player);
+    await typeWord(player, 's30ghost');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   });
