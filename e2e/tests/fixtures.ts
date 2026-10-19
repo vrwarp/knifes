@@ -69,13 +69,6 @@ async function startServer(extraEnv: Record<string, string>): Promise<{ server: 
     const r = await gmApi('/api/gm/config', { method: 'PUT', json: c });
     if (!r.ok) throw new Error(`config ${r.status}: ${await r.text()}`);
   };
-  // The prop slot ships as a GM placeholder; the tests stand in for the GMs and hide the hard copy in the card envelope.
-  {
-    const c = await config();
-    const prop = (c.deduction.slots as Json[]).find((s) => s.id === 'prop')!;
-    Object.assign(prop, { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle', 'teapot'] });
-    await put(c);
-  }
   const defaults = await config();
   const server: Server = {
     base: baseUrl,
@@ -207,37 +200,10 @@ export async function clearWord(page: Page, scope: Page | Locator = page) {
   for (let i = 0; i < 32 && (await back.isEnabled()); i++) await back.click();
 }
 
-export async function fillDeduction(page: Page, answers: Record<string, string>) {
-  for (const [label, value] of Object.entries(answers)) await page.getByLabel(label, { exact: true }).fill(value);
-}
-
-export const RIGHT_ANSWERS = {
-  TIME: '2:14 am',
-  SUSPECT: 'Nina Calder',
-  METHOD: 'the letter opener',
-  ASSET: 'the ledger',
-  MOTIVE: 'to sell it',
-  'PHYSICAL PROP': 'birthday card envelope',
-};
-export const WRONG_SUSPECT = 'Mara Voss';
-
 /** A GM releases the surveillance records through the API, as the Release button does. */
 export async function releaseLayer2(app: Server) {
   const r = await app.gmApi('/api/gm/ledger/release', { json: { released: true } });
   if (!r.ok) throw new Error(`release ${r.status}: ${await r.text()}`);
-}
-
-/** The verdict plays in beats separated by CONTINUE. */
-export async function finishBeats(page: Page) {
-  await expect(page.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first()).toBeVisible({ timeout: 15_000 });
-  const next = page.getByRole('button', { name: /^continue$/i });
-  for (let i = 0; i < 8; i++) {
-    await finishTyping(page);
-    if (!(await next.count())) break;
-    await expect(next).toBeEnabled();
-    await next.click();
-  }
-  await finishTyping(page);
 }
 
 /** The config editor collapses while a game runs; open it, then the named section. Returns the section. */

@@ -1,20 +1,7 @@
 export type GeoMode = 'puzzle' | 'reveal' | 'off';
 export type HackMode = 'solo' | 'race';
-export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation' | 'solved';
-export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
-
-export type SlotId = 'time' | 'suspect' | 'method' | 'asset' | 'motive' | 'prop';
-export const SLOT_IDS: SlotId[] = ['time', 'suspect', 'method', 'asset', 'motive', 'prop'];
-
-export interface SlotSpec {
-  id: SlotId;
-  label: string;
-  placeholder: string;
-  canonical: string;
-  accept: string[];
-  reject: string[];
-  guidance: string;
-}
+export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation';
+export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation'];
 
 export interface LatLng {
   lat: number;
@@ -69,7 +56,6 @@ export interface GameConfig {
   reveal: { title: string; body: string; buttonLabel: string };
   /** The Ledger the investigation reads. The personnel files open with the investigation; the surveillance records stay hidden until the second call. */
   ledger: {
-    /** Phil can read this out instead of a GM pressing Release. Case, spaces and dashes are ignored. */
     /** The section name on the phone once released, e.g. SURVEILLANCE RECORDS. */
     layer2Label: string;
     /** Pushed to the phone as a transmission when the records are released. Empty for none. */
@@ -80,30 +66,7 @@ export interface GameConfig {
   /** The two phone calls, shown in the GM console for whoever plays them: Phil takes the first, `secondCaller` the second. */
   phil: { challenge: string; response: string; part1: string; part2: string; secondCaller: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
-  deduction: {
-    prompt: string;
-    template: string;
-    slots: SlotSpec[];
-    successTitle: string;
-    successBody: string;
-    failText: string;
-    maxAttempts: number | null;
-    feedback: 'pass_fail' | 'count';
-  };
   hints: { quick: Partial<Record<StageId, string[]>> };
-}
-
-export interface SlotGrade {
-  id: SlotId;
-  pass: boolean;
-  reason: string;
-}
-
-export interface GradeResult {
-  pass: boolean;
-  slots: SlotGrade[];
-  source: 'ai' | 'fallback';
-  note?: string;
 }
 
 export interface HintPush {
@@ -178,9 +141,8 @@ export interface GameState {
   hackScripts: HackScripts;
   ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean; /** Bumped when the GM starts a new ARCHIVE session. */ epoch?: number };
-  deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
-  report: { markdown: string | null; generatedAt: number | null; published: boolean };
+  report: { markdown: string | null; generatedAt: number | null };
 }
 
 export type EventType =
@@ -202,7 +164,6 @@ export type EventType =
   | 'archive_user'
   | 'archive_assistant'
   | 'archive_tool'
-  | 'deduction_submit'
   | 'hint_pushed'
   | 'gm_action'
   | 'ai_error'

@@ -14,11 +14,8 @@ const COPILOT_SYSTEM_PROMPT = `You assist the game masters of a live murder-myst
 
 Write one to three sentences. In-world voice: terse intelligence-briefing tone, no emoji, no meta commentary, never mention a game, hints, or game masters. Strength "nudge": point at where to look without naming the answer. Strength "clear": narrow it to one or two possibilities. Strength "strong": state the answer plainly but in character. Return the hint and a one-line rationale for the game master.`;
 
-/** The canonical deduction, read from the configured slots so GM edits carry through. */
-export function solutionLine(config: GameConfig): string {
-  const c = (id: string) => config.deduction.slots.find((s) => s.id === id)?.canonical ?? '?';
-  return `at ${c('time')} ${c('suspect')} killed the Director with ${c('method')} to take ${c('asset')} ${c('motive')}; the hard copy of the Ledger is hidden in ${c('prop')}`;
-}
+/** The canon the hints steer towards. */
+const SOLUTION = "at 2:14 AM Nina Calder (S30-003) killed the Director in the Director's Office with the silver letter opener, to sell the hard copy of the S30 Ledger to the international syndicate";
 
 function describeStage(config: GameConfig, state: GameState): string {
   const lines: string[] = [`Current stage: ${state.stage}`];
@@ -35,7 +32,7 @@ function describeStage(config: GameConfig, state: GameState): string {
       break;
     case 'investigation':
       lines.push(
-        `Investigation phase. Solution: ${solutionLine(config)}. The ${config.ledger.layer2Label} are ${state.ledger.layer2 ? 'released' : 'not yet released and he does not know they exist, so he has only the personnel files and what the agents told him; a hint must not reveal surveillance facts or that more records are coming'}. Deduction attempts: ${state.deduction.attempts}. Last grading: ${JSON.stringify(state.deduction.lastResult?.slots ?? [])}. ARCHIVE queries so far: ${state.archive.messageCount}.`,
+        `Investigation phase. Solution: ${SOLUTION}. The ${config.ledger.layer2Label} are ${state.ledger.layer2 ? 'released' : 'not yet released and he does not know they exist, so he has only the personnel files and what the agents told him; a hint must not reveal surveillance facts or that more records are coming'}. ARCHIVE queries so far: ${state.archive.messageCount}.`,
       );
       break;
     default:

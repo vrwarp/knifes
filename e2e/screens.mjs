@@ -55,12 +55,6 @@ const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const settle = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
 try {
-  {
-    const c = await (await gmApi('/api/gm/overview')).json();
-    const cfg = c.config;
-    Object.assign(cfg.deduction.slots.find((s) => s.id === 'prop'), { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle'] });
-    await gmApi('/api/gm/config', { method: 'PUT', json: cfg });
-  }
   // Two placeholder "field photos" drawn on a canvas, uploaded like a GM would.
   const art = await browser.newPage({ viewport: { width: 800, height: 600 } });
   for (const [name, hue] of [['a', 200], ['b', 30]]) {
@@ -189,44 +183,19 @@ try {
   await shot(player, 'p14-transmissions');
   await player.getByRole('button', { name: /^close$/i }).click();
 
-  await player.getByRole('tab', { name: 'deduction' }).click();
-  const fill = async (answers) => { for (const [label, value] of Object.entries(answers)) await player.getByLabel(label, { exact: true }).fill(value); };
-  await fill({ TIME: '2:14 am', SUSPECT: 'Mara Voss', METHOD: 'the letter opener', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
-  await shot(player, 'p15-deduction-filled');
-  await player.getByRole('button', { name: /submit deduction/i }).click();
-  await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
-  await shot(player, 'p16-deduction-rejected');
-  await fill({ SUSPECT: 'Nina Calder' });
-  await player.getByRole('button', { name: /submit deduction/i }).click();
-  await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
-  await finishTyping();
-  await shot(player, 'p17-solved-beat1');
-  for (let i = 0; i < 6; i++) {
-    await finishTyping();
-    const next = player.getByRole('button', { name: /^continue$/i });
-    if (!(await next.count())) break;
-    await next.click();
-  }
-  await finishTyping();
-  await shot(player, 'p17b-solved-final');
-  await gmApi('/api/gm/report/generate', { method: 'POST' });
-  await gmApi('/api/gm/report/publish', { method: 'POST', json: { published: true } });
-  await player.getByText('CASE FILE 30-0214').first().waitFor({ timeout: 10_000 });
-  await finishTyping();
-  await shot(player, 'p18-solved-report');
-
   const desk = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const gm = await desk.newPage();
   await gm.goto(`${base}/gm`);
   await gm.getByLabel('Password').fill('test');
   await gm.getByRole('button', { name: /enter/i }).click();
   await gm.getByText('GM console').waitFor();
-  await gm.locator('.chip.now', { hasText: 'Case closed' }).waitFor({ timeout: 10_000 });
+  await gm.locator('.chip.now', { hasText: 'Investigation' }).waitFor({ timeout: 10_000 });
   await settle(800);
   await shot(gm, 'g01-console');
+  // The editor stays collapsed while a game is running; the investigation is the last stage.
+  await gm.locator('summary', { hasText: 'Game configuration (collapsed' }).click();
   await gm.locator('summary', { hasText: 'Location puzzle' }).click();
-  await gm.locator('summary', { hasText: 'Deduction grid' }).click();
-  await gm.locator('summary', { hasText: 'time:' }).click();
+  await gm.locator('summary', { hasText: 'Surveillance records' }).click();
   await shot(gm, 'g02-config-open');
   await desk.close();
 

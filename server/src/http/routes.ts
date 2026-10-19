@@ -55,10 +55,6 @@ export function playerRouter(service: GameService): Router {
   r.get('/ledger', (_req, res) => res.json(service.ledgerFiles()));
   r.get('/archive', (_req, res) => res.json({ messages: service.archiveTranscript() }));
   r.post('/archive', async (req, res) => res.json({ message: await service.archiveSend(str(req.body?.text, 4000)) }));
-  r.post('/deduction', async (req, res) => {
-    const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
-    res.json(await service.deductionSubmit(body));
-  });
   return r;
 }
 
@@ -133,10 +129,6 @@ export function gmRouter(service: GameService): Router {
     res.json({ ok: true });
   });
   r.post('/report/generate', async (_req, res) => res.json(await service.generateReport()));
-  r.post('/report/publish', (req, res) => {
-    service.publishReport(Boolean(req.body?.published));
-    res.json({ ok: true });
-  });
 
   // ---- Claude link: sign the container in from the console --------------------------------
   const login = new ClaudeLogin();

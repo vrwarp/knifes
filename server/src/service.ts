@@ -3,14 +3,13 @@ import { AgentError, aiLive, probeAuth, runAgent } from './ai/agent.js';
 import { ARCHIVE_ALLOWED_TOOLS, ARCHIVE_SYSTEM_PROMPT, createArchiveServer, mockArchiveReply } from './ai/archive.js';
 import { draftHint, type HintStrength } from './ai/copilot.js';
 import { SETUP_ALLOWED_TOOLS, SETUP_SYSTEM_PROMPT, createSetupServer, mockSetupReply, type SetupContext } from './ai/setup.js';
-import { gradeDeduction } from './ai/grader.js';
 import { generateReport } from './ai/report.js';
 import { FACILITY_LOG, INCIDENT, LAYER_01, LAYER_01_HEADER, LAYER_02, LAYER_02_HEADER } from './content/ledger.js';
 import type { AssistantMessage, ConfigSource, Db, Proposal, ProposalChange } from './db.js';
 import { diffPaths, getPath, preview, setPath } from './game/configPaths.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_CONFIG, PROP_PLACEHOLDER } from './defaultConfig.js';
+import { DEFAULT_CONFIG } from './defaultConfig.js';
 import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
 import { haversineMeters } from './game/geo.js';
 import { drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
@@ -18,10 +17,7 @@ import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshR
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { aiOpponentGuess, aiOpponentPlan, opponentLive } from './ai/opponent.js';
 import { vocabularyFor } from './content/words.js';
-import { SLOT_IDS, STAGE_ORDER, type HackScript, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type SlotId, type StageId } from './types.js';
-
-/** Minimum time a deduction verdict takes to come back, so it reads as weighed rather than instant. */
-const VERDICT_FLOOR_MS = 2500;
+import { STAGE_ORDER, type HackScript, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type StageId } from './types.js';
 
 export class HttpError extends Error {
   constructor(
@@ -52,18 +48,7 @@ export interface ReadinessItem {
 type Listener = (m: ServerMessage) => void;
 
 const latLng = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
-const slotIds = SLOT_IDS as [SlotId, ...SlotId[]];
-const slotSchema = z.object({
-  id: z.enum(slotIds),
-  label: z.string().min(1),
-  placeholder: z.string(),
-  canonical: z.string().min(1),
-  accept: z.array(z.string()),
-  reject: z.array(z.string()),
-  guidance: z.string(),
-});
-
-export const ConfigSchema = z.object({
+const ConfigSchema = z.object({
   version: z.number(),
   title: z.string().min(1),
   intro: z.object({ headline: z.string(), body: z.string(), buttonLabel: z.string().min(1) }),
@@ -121,16 +106,6 @@ export const ConfigSchema = z.object({
   }),
   phil: z.object({ challenge: z.string().max(200), response: z.string().max(200), part1: z.string().max(8000), part2: z.string().max(8000), secondCaller: z.string().min(1).max(60) }),
   archive: z.object({ enabled: z.boolean(), maxMessageChars: z.number().int().min(50).max(2000), welcome: z.string() }),
-  deduction: z.object({
-    prompt: z.string(),
-    template: z.string(),
-    slots: z.array(slotSchema).length(6),
-    successTitle: z.string(),
-    successBody: z.string(),
-    failText: z.string(),
-    maxAttempts: z.number().int().positive().nullable(),
-    feedback: z.enum(['pass_fail', 'count']),
-  }),
   hints: z.object({ quick: z.record(z.string(), z.array(z.string())) }),
 });
 
@@ -175,6 +150,11 @@ export class GameService {
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
     // A save from before the Ledger carries an evidence block instead; the stage it was at decides whether the personnel files are open.
     delete (this.state as unknown as Record<string, unknown>).evidence;
+    // The deduction and the solved stage were removed; a save from before lands back in the investigation.
+    delete (this.state as unknown as Record<string, unknown>).deduction;
+    if (!STAGE_ORDER.includes(this.state.stage)) this.state.stage = 'investigation';
+    for (const s of Object.keys(this.state.stageTimes) as StageId[]) if (!STAGE_ORDER.includes(s)) delete this.state.stageTimes[s];
+    this.state.report = { markdown: this.state.report?.markdown ?? null, generatedAt: this.state.report?.generatedAt ?? null };
     const { layer1, layer2, layer2ReleasedAt } = { ...initialLedger(), ...(this.state.ledger ?? {}) };
     this.state.ledger = { layer1, layer2, layer2ReleasedAt };
     if (isAtLeast(this.state, 'investigation')) this.state.ledger.layer1 = true;
@@ -623,53 +603,6 @@ export class GameService {
     }
   }
 
-  async deductionSubmit(
-    raw: Record<string, unknown>,
-  ): Promise<{ pass: boolean; title: string | null; body: string | null; failText: string; verified: number | null; total: number }> {
-    this.requireStage('investigation', 'deduction grid');
-    const d = this.state.deduction;
-    const total = this.config.deduction.slots.length;
-    if (d.passed) return { pass: true, title: this.config.deduction.successTitle, body: this.config.deduction.successBody, failText: '', verified: total, total };
-    if (this.config.deduction.maxAttempts !== null && d.attempts >= this.config.deduction.maxAttempts) {
-      throw new HttpError(429, 'No submissions remain');
-    }
-    const answers = Object.fromEntries(SLOT_IDS.map((id) => [id, String(raw[id] ?? '').trim().slice(0, 300)])) as Record<SlotId, string>;
-    d.attempts++;
-    const started = Date.now();
-    const result = await gradeDeduction(this.config.deduction.slots, answers);
-    // The verdict should feel weighed, not instant: the socket push that follows a pass swaps the screen,
-    // so the floor has to be enforced here, not only on the client.
-    const remaining = VERDICT_FLOOR_MS - (Date.now() - started);
-    if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
-    // A GM reset or jump while the verdict was pending: do not write into a stage that no longer exists.
-    if (this.state.deduction !== d || this.state.stage !== 'investigation') {
-      throw new HttpError(409, 'The game changed while the deduction was being verified. Try again.');
-    }
-    d.lastResult = result;
-    d.lastAnswers = answers;
-    this.event('deduction_submit', {
-      attempt: d.attempts,
-      pass: result.pass,
-      source: result.source,
-      answers,
-      slots: result.slots.map((s) => `${s.id}:${s.pass ? 'ok' : 'x'}`).join(' '),
-      ...(result.note ? { note: result.note } : {}),
-    });
-    if (result.pass) {
-      d.passed = true;
-      if (advanceTo(this.state, 'solved')) this.event('stage', { stage: 'solved' });
-    }
-    this.touch();
-    return {
-      pass: result.pass,
-      title: result.pass ? this.config.deduction.successTitle : null,
-      body: result.pass ? this.config.deduction.successBody : null,
-      failText: this.config.deduction.failText,
-      verified: this.config.deduction.feedback === 'count' ? result.slots.filter((g) => g.pass).length : null,
-      total,
-    };
-  }
-
   // -------------------------------------------------------------------- gm
 
   async overview() {
@@ -814,18 +747,13 @@ export class GameService {
     const c = this.config;
     const items: ReadinessItem[] = [];
     const add = (level: ReadinessItem['level'], area: string, text: string) => items.push({ level, area, text });
-    if (env.aiMode === 'mock' || !aiLive()) add('warn', 'AI', 'The AI is in mock mode. Link Claude in the Claude link panel so ARCHIVE, hints, grading and this assistant use Opus.');
+    if (env.aiMode === 'mock' || !aiLive()) add('warn', 'AI', 'The AI is in mock mode. Link Claude in the Claude link panel so ARCHIVE, hints, the case report and this assistant use Opus.');
     if (c.geo.mode === 'puzzle' && !c.geo.target) add('blocker', 'Location puzzle', 'No target pin is set, so any pin on the map passes. Set the Lake Elizabeth drop point and a radius.');
     if (c.geo.mode !== 'off' && c.geo.photos.length === 0)
       add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken at the drop point.');
     for (const id of c.geo.photos) if (!fs.existsSync(path.join(env.uploadsDir, id))) add('blocker', 'Location puzzle', `Photo ${id} is listed but its file is missing.`);
     if (c.gate.code === DEFAULT_CONFIG.gate.code) add('info', 'Code gate', `The code is still the default ${c.gate.code}. Fine if that is what Phil will read out.`);
     add('info', 'Ledger', `The ${c.ledger.layer2Label} stay hidden until a GM presses Release records in the console. Time it with ${c.phil.secondCaller}'s call.`);
-    for (const s of c.deduction.slots) {
-      if (!s.canonical.trim()) add('blocker', 'Deduction', `The ${s.label} blank has no canonical answer.`);
-      else if (s.canonical.trim().startsWith('[GM:') || s.canonical === PROP_PLACEHOLDER)
-        add('blocker', 'Deduction', `The ${s.label} blank is still the placeholder. Decide where the hard copy of the Ledger is hidden at the party and set its canonical answer and accepted phrasings.`);
-    }
     for (const st of ['geo', 'gate', 'hack', 'investigation'] as StageId[]) {
       if (st === 'geo' && c.geo.mode === 'off') continue;
       if (!(c.hints.quick[st] ?? []).some((h) => h.trim())) add('info', 'Hints', `No quick hints for ${st}.`);
@@ -1046,13 +974,6 @@ export class GameService {
       this.event('ai_error', { where: 'report', error: err instanceof Error ? err.message : String(err) });
       throw new HttpError(502, `Report failed: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }
-
-  publishReport(published: boolean): void {
-    if (published && !this.state.report.markdown) throw new HttpError(400, 'Generate a report first');
-    this.state.report.published = published;
-    this.event('gm_action', { action: published ? 'report_publish' : 'report_unpublish' });
-    this.touch();
   }
 
   attachUpload(kind: 'photo', id: string): void {

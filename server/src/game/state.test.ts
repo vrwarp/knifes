@@ -12,7 +12,7 @@ describe('stage flow', () => {
     expect(nextStage(c, 'intro')).toBe('geo');
     c.geo.mode = 'off';
     expect(nextStage(c, 'intro')).toBe('gate');
-    expect(nextStage(c, 'solved')).toBeNull();
+    expect(nextStage(c, 'investigation')).toBeNull();
   });
   it('only advances forward', () => {
     const s = initialState();
@@ -28,9 +28,6 @@ describe('stage flow', () => {
     expect(s.gate.passed).toBe(true);
     expect(s.hack.solved).toBe(true);
     expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null });
-    const s2 = initialState();
-    forceStage(c, s2, 'solved');
-    expect(s2.ledger.layer2).toBe(false);
   });
   it('resetting the investigation hides the surveillance records again', () => {
     const c = cfg();

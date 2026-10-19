@@ -1,12 +1,6 @@
 import { DEFAULT_WORD_BANK } from './content/words.js';
 import type { GameConfig } from './types.js';
 
-export const DEDUCTION_TEMPLATE =
-  'At [TIME], [SUSPECT] killed Director Pendelton with [METHOD] to take [ASSET] because [MOTIVE], and hid it in [PHYSICAL PROP].';
-
-/** The prop slot ships unset: the GMs decide where the hard copy is hidden at the party. The readiness check flags this. */
-export const PROP_PLACEHOLDER = '[GM: SET THE HIDING PLACE]';
-
 export const PHIL_PART_1 = `PHIL: Identify yourself.
 JIMMY: Who watches the watchers?
 PHIL: Section Thirty.
@@ -124,80 +118,6 @@ Recovery chain complete. The rest is detective work.`,
     welcome:
       'ARCHIVE ONLINE. Ledger partition mounted. I hold what the failsafe recovered: the personnel files. Where the agents were tonight is not in my records. Ask. I answer what the records support. I do not guess.',
   },
-  deduction: {
-    prompt: 'Complete the master deduction. Every field must verify against the Ledger.',
-    template: DEDUCTION_TEMPLATE,
-    slots: [
-      {
-        id: 'time',
-        label: 'TIME',
-        placeholder: 'e.g. 1:50 AM',
-        canonical: '2:14 AM',
-        accept: ['2:14', '02:14', '214', '2.14', 'fourteen past two', 'fourteen minutes past two', 'two fourteen'],
-        reject: ['4:15', '04:15', '2:11', '2:19', '1:50', '2:05', '2:08', '2:17'],
-        guidance:
-          'Any phrasing of 2:14 in the morning passes. 4:15 is when the body was found and fails. 2:11 and 2:19 are the badge times either side and fail; other logged times fail.',
-      },
-      {
-        id: 'suspect',
-        label: 'SUSPECT',
-        placeholder: 'Agent name',
-        canonical: 'Nina Calder',
-        accept: ['nina', 'calder', 's30-003', 'the intelligence analyst'],
-        reject: ['mara', 'voss', 'elias', 'mercer', 'theo', 'blackwood', 'celeste', 'rowan'],
-        guidance: 'Must identify Nina Calder, the intelligence analyst, Ledger id S30-003. Any other agent fails.',
-      },
-      {
-        id: 'method',
-        label: 'METHOD',
-        placeholder: 'how it was done',
-        canonical: 'the silver letter opener',
-        accept: ['letter opener', 'opener', 'stabbed', 'stab', 'stabbing', 'blade'],
-        reject: ['poison', 'tea', 'knife', 'scissors', 'screwdriver', 'gun', 'shot', 'strangle', 'choke', 'fountain pen'],
-        guidance:
-          'The letter opener, or stabbing with it, in any wording passes. A knife, the scissors, the screwdriver or a fountain pen names another agent’s belongings and fails, as does poison or any other method.',
-      },
-      {
-        id: 'asset',
-        label: 'ASSET',
-        placeholder: 'what they were after',
-        canonical: 'the hard copy of the S30 Ledger',
-        accept: ['ledger', 'hard copy', 'hardcopy', 'master index', 'dossiers', 'personnel records', 'the files'],
-        reject: [],
-        guidance: 'The Ledger, its hard copy, the master index, the dossiers or the personnel records all pass.',
-      },
-      {
-        id: 'motive',
-        label: 'MOTIVE',
-        placeholder: 'they wanted to…',
-        canonical: 'to sell it to the international syndicate',
-        accept: ['sell', 'sale', 'syndicate', 'money', 'buyer', 'profit', 'cash', 'paid', 'rich', 'payout', 'payday'],
-        reject: ['revenge', 'love', 'accident'],
-        guidance: 'Selling the Ledger to the syndicate or any buyer, or doing it for money, passes. Mentioning her brother alongside the sale is fine. Revenge alone, love or an accident fails.',
-      },
-      {
-        id: 'prop',
-        label: 'PHYSICAL PROP',
-        placeholder: 'where the hard copy is now',
-        canonical: PROP_PLACEHOLDER,
-        accept: [],
-        reject: [],
-        guidance: 'The GMs decide where the hard copy of the Ledger is hidden at the party and set the canonical answer and its phrasings here.',
-      },
-    ],
-    successTitle: 'DEDUCTION VERIFIED',
-    successBody: `Personnel records, recovered surveillance and the confiscated belongings converge on one agent. Nina Calder. Ledger id S30-003. Inside the Director's Office at 2:14 AM, silver letter opener on her person, a hard copy of the Ledger promised to the syndicate. Clearance revoked.
-
-The hard copy is where you said it was. Recover it now.
-
-Pendelton wrote: his last decision was you. He was right. Section 30 opened its first file thirty years ago. So did you.
-
-Case closed. Happy thirtieth, Detective.`,
-    failText:
-      'DEDUCTION REJECTED. Somewhere in this room, someone just breathed out. Re-examine the Ledger and resubmit.',
-    maxAttempts: null,
-    feedback: 'pass_fail',
-  },
   hints: {
     quick: {
       geo: ['Turn towards the water. One of the signs carries a name you can put on the map.'],
@@ -210,7 +130,6 @@ Case closed. Happy thirtieth, Detective.`,
         'Every agent told you where they were between 11 PM and 4 AM. Once the surveillance records reach you, hold what each of them said against what the systems recorded.',
         'The recovered records put exactly one agent inside the Director’s Office at the time of death. Then look at what was found in that agent’s pockets.',
       ],
-      solved: [],
     },
   },
 };

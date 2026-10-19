@@ -1,4 +1,4 @@
-import { RIGHT_ANSWERS, WRONG_SUSPECT, acceptDialogs, expect, fillDeduction, noHorizontalScroll, releaseLayer2, test } from './fixtures';
+import { acceptDialogs, expect, noHorizontalScroll, releaseLayer2, test } from './fixtures';
 
 test.describe('investigation', () => {
   test.beforeEach(async ({ player, app }) => {
@@ -86,54 +86,5 @@ test.describe('investigation', () => {
     await player.reload();
     await player.getByRole('tab', { name: 'archive' }).click();
     await expect(player.getByText('tell me about Theo Blackwood')).toBeVisible();
-  });
-
-  test('deduction draft survives tab switches and reloads', async ({ player }) => {
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { SUSPECT: 'Nina Calder', METHOD: 'letter opener' });
-    await player.getByRole('tab', { name: 'ledger' }).click();
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await expect(player.getByLabel('SUSPECT', { exact: true })).toHaveValue('Nina Calder');
-    await player.reload();
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await expect(player.getByLabel('METHOD', { exact: true })).toHaveValue('letter opener');
-  });
-
-  test('submit stays disabled until every blank is filled', async ({ player }) => {
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    const submit = player.getByRole('button', { name: /submit deduction/i });
-    await expect(submit).toBeDisabled();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, MOTIVE: '' });
-    await expect(submit).toBeDisabled();
-    await fillDeduction(player, { MOTIVE: 'money' });
-    await expect(submit).toBeEnabled();
-  });
-
-  test('a wrong deduction is weighed before it is rejected', async ({ player }) => {
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, 'PHYSICAL PROP': 'the teapot' });
-    const started = Date.now();
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await expect(player.getByRole('alert').filter({ hasText: 'DEDUCTION REJECTED' })).toBeVisible({ timeout: 15_000 });
-    expect(Date.now() - started).toBeGreaterThanOrEqual(2400);
-    await expect(player.getByText('Submissions: 1')).toBeVisible();
-  });
-
-  test('poison, the old red herring, fails the method field', async ({ player, app }) => {
-    await app.patch((c) => (c.deduction.feedback = 'count'));
-    await player.reload();
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, METHOD: 'poisoned tea' });
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await expect(player.getByText('FIELDS VERIFIED: 5 / 6')).toBeVisible({ timeout: 15_000 });
-  });
-
-  test('count feedback mode tells the player how many fields verified', async ({ player, app }) => {
-    await app.patch((c) => (c.deduction.feedback = 'count'));
-    await player.reload();
-    await player.getByRole('tab', { name: 'deduction' }).click();
-    await fillDeduction(player, { ...RIGHT_ANSWERS, SUSPECT: WRONG_SUSPECT });
-    await player.getByRole('button', { name: /submit deduction/i }).click();
-    await expect(player.getByText('FIELDS VERIFIED: 5 / 6')).toBeVisible({ timeout: 15_000 });
   });
 });

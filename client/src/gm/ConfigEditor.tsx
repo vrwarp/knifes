@@ -32,7 +32,7 @@ function Section({ title, children, open = false }: { title: string; children: R
   );
 }
 
-const STAGES: StageId[] = ['geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
+const STAGES: StageId[] = ['geo', 'gate', 'hack', 'reveal', 'investigation'];
 
 export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: GameConfig; onSaved: () => Promise<void>; streetViewKeySet: boolean }) {
   const [draft, setDraft] = useState<GameConfig>(() => structuredClone(config));
@@ -168,28 +168,6 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
       <span style={{ margin: 0 }}>{label}</span>
     </label>
   );
-  const CSV = (path: Path, label: string) => {
-    const k = rawKey(path);
-    const value = raw[k] ?? ((getIn(draft, path) as string[] | undefined) ?? []).join(', ');
-    return (
-      <label className="field">
-        <span>{label} (comma separated)</span>
-        <input
-          value={value}
-          onChange={(e) => {
-            setRaw((r) => ({ ...r, [k]: e.target.value }));
-            up(
-              path,
-              e.target.value
-                .split(',')
-                .map((x) => x.trim())
-                .filter(Boolean),
-            );
-          }}
-        />
-      </label>
-    );
-  };
   const Lines = (path: Path, label: string) => {
     const k = rawKey(path);
     const value = raw[k] ?? ((getIn(draft, path) as string[] | undefined) ?? []).join('\n');
@@ -392,33 +370,6 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         {B(['archive', 'enabled'], 'ARCHIVE enabled')}
         {N(['archive', 'maxMessageChars'], 'Max characters per query')}
         {A(['archive', 'welcome'], 'Welcome line', 3)}
-      </Section>
-      <Section title="Deduction grid">
-        {A(['deduction', 'prompt'], 'Prompt', 2)}
-        {A(['deduction', 'template'], 'Sentence template (keep the [BRACKETED] labels)', 3)}
-        {draft.deduction.slots.map((s, i) => (
-          <details className="section" key={s.id}>
-            <summary>
-              {s.id}: {s.canonical}
-            </summary>
-            <div className="two">
-              {T(['deduction', 'slots', i, 'label'], 'Label (must match the template)')}
-              {T(['deduction', 'slots', i, 'placeholder'], 'Placeholder')}
-            </div>
-            {T(['deduction', 'slots', i, 'canonical'], 'Canonical answer')}
-            {CSV(['deduction', 'slots', i, 'accept'], 'Accepted phrasings')}
-            {CSV(['deduction', 'slots', i, 'reject'], 'Rejected phrasings')}
-            {A(['deduction', 'slots', i, 'guidance'], 'Guidance for the AI grader', 2)}
-          </details>
-        ))}
-        {T(['deduction', 'successTitle'], 'Success title')}
-        {A(['deduction', 'successBody'], 'Success body (the big reveal)', 8)}
-        {A(['deduction', 'failText'], 'Fail text', 2)}
-        {S(['deduction', 'feedback'], 'Feedback on a wrong submission', [
-          ['pass_fail', 'Pass or fail only'],
-          ['count', 'Pass or fail plus how many fields verified'],
-        ])}
-        {N(['deduction', 'maxAttempts'], 'Max submissions', true)}
       </Section>
       <Section title="Quick hints per stage">
         {STAGES.map((s) => (
