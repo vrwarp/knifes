@@ -158,15 +158,6 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
             {l2.entries.map((e) => (
               <Agent key={e.id} e={e} layer={2} t={t} />
             ))}
-            <div className="agent l2">
-              <header>
-                <span className="name">{l2.dutyLog.name}</span>
-                <span className="pos">{l2.dutyLog.position}</span>
-              </header>
-              <div className="body">
-                <Log lines={l2.facilityLog} />
-              </div>
-            </div>
           </>
         </Section>
       ) : null}

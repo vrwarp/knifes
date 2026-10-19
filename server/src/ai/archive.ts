@@ -1,6 +1,6 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { dutyLogText, findEntries, formatEntry, formatHits, incidentLine, ledgerMinutes, parseWindow, personnelEntries, searchLedger, surveillanceEntries } from '../content/ledger.js';
+import { findEntries, formatEntry, formatHits, incidentLine, ledgerMinutes, parseWindow, personnelEntries, searchLedger, surveillanceEntries } from '../content/ledger.js';
 import type { GameConfig, GameState } from '../types.js';
 
 export { ARCHIVE_SYSTEM_PROMPT } from '../content/prompts.js';
@@ -38,15 +38,14 @@ export function createArchiveServer(getCtx: () => ArchiveContext) {
       const list = findEntries(surveillanceEntries(content()), args.who);
       if (!list.length) return { content: [{ type: 'text', text: 'No agent matches.' }] };
       const head = incidentLine(content());
-      const duty = args.who ? [] : [`Duty log:\n${dutyLogText(content())}`];
-      return { content: [{ type: 'text', text: [head, ...list.map((e) => formatEntry(e, 2)), ...duty].join('\n\n') }] };
+      return { content: [{ type: 'text', text: [head, ...list.map((e) => formatEntry(e, 2))].join('\n\n') }] };
     },
     { annotations: { readOnlyHint: true } },
   );
 
   const searchActivity = tool(
     'search_activity',
-    'Search the Ledger. Filter by agent, by a time window, and by free text (a place such as safehouse, archives, server room, perimeter, control room, mess; an object such as radio, pouch, keycard; an event type such as badge, camera, GPS). Layer 1 is the Personnel Files and answers word searches only; layer 2 is the Surveillance Records plus the duty officer\u2019s log, timed, and returns [NO RECORD] until they are mounted. Times are 12-hour, e.g. 1:50 AM.',
+    'Search the Ledger. Filter by agent, by a time window, and by free text (a place such as safehouse, archives, server room, perimeter, control room, mess; an object such as radio, pouch, keycard; an event type such as badge, camera, GPS). Layer 1 is the Personnel Files and answers word searches only; layer 2 is the Surveillance Records, timed, and returns [NO RECORD] until they are mounted. Times are 12-hour, e.g. 1:50 AM.',
     {
       who: z.string().optional().describe('Agent name or id; omit for everyone'),
       from: z.string().optional().describe('Start of window, e.g. 1:00 AM'),

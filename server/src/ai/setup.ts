@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { dutyLogText, formatEntry, incidentLine, personnelEntries, surveillanceEntries } from '../content/ledger.js';
+import { formatEntry, incidentLine, personnelEntries, surveillanceEntries } from '../content/ledger.js';
 import type { ConfigVersionMeta, Proposal, ProposalChange } from '../db.js';
 import { env } from '../env.js';
 import type { ReadinessItem } from '../service.js';
@@ -45,8 +45,6 @@ export function caseFilesText(config: GameConfig): string {
     `## ${config.ledger.layer2Label} (hidden until released during the second call)`,
     incidentLine(c),
     surveillanceEntries(c).map((e) => formatEntry(e, 2)).join('\n\n'),
-    `## ${c.dutyLog.name} (part of the ${config.ledger.layer2Label})`,
-    dutyLogText(c),
     '## Ledger fragments',
     c.fragments.map((f) => `${f.key}: ${f.text}`).join('\n'),
   ].join('\n\n');
@@ -73,7 +71,7 @@ export function createSetupServer(ctx: SetupContext) {
         },
         { annotations: { readOnlyHint: true } },
       ),
-      tool('get_case_files', 'The full case files: the Personnel Files, the Surveillance Records (recorded activity, duty log, confiscated belongings, findings) and the ledger fragments.', {}, async () =>
+      tool('get_case_files', 'The full case files: the Personnel Files, the Surveillance Records (recorded activity, confiscated belongings, findings) and the ledger fragments.', {}, async () =>
         text(caseFilesText(ctx.config())),
       { annotations: { readOnlyHint: true } }),
       tool(

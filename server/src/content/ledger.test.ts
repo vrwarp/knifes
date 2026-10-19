@@ -6,7 +6,6 @@ import { DEFAULT_LEDGER, ledgerMinutes, ledgerRange, parseWindow, personnelEntri
 
 const LAYER_01 = personnelEntries(DEFAULT_LEDGER);
 const LAYER_02 = surveillanceEntries(DEFAULT_LEDGER);
-const FACILITY_LOG = DEFAULT_LEDGER.dutyLog.lines;
 const searchLedger = (opts: Parameters<typeof search>[1]) => search(DEFAULT_LEDGER, opts);
 
 const both = { 1: true, 2: true } as const;
@@ -42,12 +41,11 @@ describe('ledger content', () => {
     const hits = searchLedger({ from: '2:00 AM', to: '2:30 AM', text: 'safehouse office inner door', layers: { 1: false, 2: true } });
     const who = new Set(hits.map((h) => h.who));
     expect(who.has('S30-003')).toBe(true);
-    expect(who.has('FACILITY')).toBe(true);
     expect(who.has('S30-004')).toBe(true);
     expect(hits.filter((h) => /Director's Office, in/.test(h.text)).map((h) => h.who)).toEqual(['S30-003']);
   });
   it('never says who did it in either layer', () => {
-    const text = JSON.stringify([LAYER_01, LAYER_02, FACILITY_LOG]).toLowerCase();
+    const text = JSON.stringify([LAYER_01, LAYER_02]).toLowerCase();
     for (const w of ['killer', 'murder', 'stabbed', 'guilty', 'suspect']) expect(text).not.toContain(w);
   });
 });
@@ -81,9 +79,8 @@ describe('searchLedger', () => {
     expect(searchLedger({ from: '2:00 AM', to: '2:30 AM', layers: l1 })).toEqual([]);
     expect(searchLedger({ text: 'unicorn', layers: both })).toEqual([]);
   });
-  it('leaves the duty log out until the surveillance records are released', () => {
-    expect(searchLedger({ text: 'Hale', layers: l1 }).filter((h) => h.who === 'FACILITY')).toEqual([]);
-    expect(searchLedger({ text: 'Hale', layers: both }).filter((h) => h.who === 'FACILITY').length).toBe(FACILITY_LOG.length);
+  it('has no duty officer in the surveillance records', () => {
+    expect(searchLedger({ text: 'Hale', layers: both })).toEqual([]);
   });
 });
 
@@ -102,7 +99,7 @@ describe('mock ARCHIVE', () => {
     expect(mockArchiveReply('tell me about Nina Calder', ctx(false))).toContain('Intelligence Analyst');
     const after = mockArchiveReply('who was at the safehouse between 2:00 and 2:30', ctx(true));
     expect(after).toContain("L2 2:11 AM       Nina Calder: Badge: Director's Office, in.");
-    expect(after).toContain('Duty log');
+    expect(after).not.toContain('Duty log');
     expect(after).not.toContain('[NO RECORD]');
     const summary = mockArchiveReply('read the surveillance records', ctx(true));
     expect(summary).toContain('2:14 AM Confirmed inside the office.');

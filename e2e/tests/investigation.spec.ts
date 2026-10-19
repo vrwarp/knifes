@@ -46,7 +46,6 @@ test.describe('investigation', () => {
     await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
     await expect(player.getByText('Silver letter opener')).toBeVisible();
     await expect(player.getByText("Badge: Director's Office, in.", { exact: true })).toBeVisible();
-    await expect(player.getByText(/Duty officer Hale/).first()).toBeVisible();
     await noHorizontalScroll(player);
     // Hiding it again in rehearsal takes the section away entirely.
     await gm.getByRole('button', { name: /^hide records$/i }).click();

@@ -155,7 +155,6 @@ export interface LedgerContent {
   surveillance: { subtitle: string; intro: string };
   incident: { incident: string; timeOfDeath: string; location: string; found: string };
   agents: LedgerAgent[];
-  dutyLog: { name: string; position: string; lines: { time: string; text: string }[] };
   fragments: { key: string; text: string }[];
 }
 
@@ -237,7 +236,7 @@ export interface LedgerLayer {
 export interface LedgerFiles {
   interrogationWindow: string;
   layer1: LedgerLayer | null;
-  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string; found: string }; facilityLog: { time: string; text: string }[]; dutyLog: { name: string; position: string } }) | null;
+  layer2: (LedgerLayer & { label: string; incident: { incident: string; timeOfDeath: string; location: string; found: string }}) | null;
   layer2Label: string;
   locked: { layer2: boolean };
 }

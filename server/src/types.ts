@@ -71,7 +71,7 @@ export interface GameConfig {
     headLine: string;
     /** The name of the section that re-shows the decryption notice. */
     recordLabel: string;
-    /** Every word of the files themselves: agents, incident, duty log, fragments. */
+    /** Every word of the files themselves: agents, incident, fragments. */
     content: LedgerContent;
   };
   /** The two phone calls, shown in the GM console for whoever plays them: Phil takes the first, `secondCaller` the second. */

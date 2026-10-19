@@ -146,7 +146,6 @@ const ConfigSchema = z.object({
           const ids = agents.map((a) => a.id.toLowerCase());
           if (new Set(ids).size !== ids.length) ctx.addIssue({ code: 'custom', message: 'every agent needs a different Ledger id' });
         }),
-      dutyLog: z.object({ name: z.string().max(60), position: z.string().max(60), lines: z.array(logLine).max(60) }),
       fragments: z.array(z.object({ key: z.string().trim().min(1).max(40), text: z.string().max(1000) })).max(40),
     }),
   }),
@@ -552,7 +551,7 @@ export class GameService {
       interrogationWindow: this.config.ledger.interrogationWindow,
       layer1: l.layer1 ? { ...c.personnel, title: `${LEDGER_TITLE} // ${this.config.ledger.layer1Label}`, entries: personnelEntries(c) } : null,
       layer2: l.layer2
-        ? { ...c.surveillance, title: `${LEDGER_TITLE} // ${this.config.ledger.layer2Label}`, label: this.config.ledger.layer2Label, incident: c.incident, entries: surveillanceEntries(c), facilityLog: c.dutyLog.lines, dutyLog: { name: c.dutyLog.name, position: c.dutyLog.position } }
+        ? { ...c.surveillance, title: `${LEDGER_TITLE} // ${this.config.ledger.layer2Label}`, label: this.config.ledger.layer2Label, incident: c.incident, entries: surveillanceEntries(c) }
         : null,
       layer2Label: this.config.ledger.layer2Label,
       locked: { layer2: !l.layer2 },

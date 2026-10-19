@@ -96,7 +96,7 @@ lookups, hints come from the quick-hint lists. Good for rehearsals.
 
 All story text lives in **Game configuration**: the intro, the briefings and reveals, the call
 scripts, the Ledger's personnel files and surveillance records agent by agent (add or remove agents,
-edit each recorded line as `TIME | text`), the duty log, the index fragments the ARCHIVE looks up, the
+edit each recorded line as `TIME | text`), the index fragments the ARCHIVE looks up, the
 ARCHIVE's persona and welcome, the case-file brief, and under **Phone text** every label, prompt,
 status word and rejection line the phone prints, screen by screen. Keep the `{placeholders}` in those
 lines; they are filled in when the line is shown. Saving pushes the new text to the phone at once.
