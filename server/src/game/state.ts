@@ -92,9 +92,24 @@ export function forceStage(config: GameConfig, state: GameState, stage: StageId,
   if (target >= stageIndex('hack')) state.gate.passed = true;
   if (target >= stageIndex('reveal')) state.hack.solved = true;
   if (target >= stageIndex('investigation')) applyInvestigationUnlocks(config, state);
+  reopenFrom(state, stage);
   state.stage = stage;
   state.stageTimes[stage] = now;
   if (state.startedAt === null) state.startedAt = now;
+}
+
+/**
+ * Rewinding to `stage` reopens the puzzles from there on: a solved one later in the run would
+ * otherwise greet the player as done, and its solve (the only way forward) is a no-op.
+ */
+function reopenFrom(state: GameState, stage: StageId): void {
+  const target = stageIndex(stage);
+  if (target <= stageIndex('geo')) state.geo.solved = false;
+  if (target <= stageIndex('gate')) state.gate.passed = false;
+  if (target <= stageIndex('hack') && state.hack.solved) state.hack = freshRound(state.hack);
+  for (const s of STAGE_ORDER) {
+    if (stageIndex(s) > target) delete state.stageTimes[s];
+  }
 }
 
 /** The personnel files open with the investigation. The surveillance records wait for the second call (a GM presses Release). */
@@ -122,10 +137,8 @@ export function resetStage(config: GameConfig, state: GameState, stage: StageId)
   }
   // Rewind the stage pointer to the reset stage when the player is past it.
   if (stageIndex(state.stage) > stageIndex(stage)) {
+    reopenFrom(state, stage);
     state.stage = stage;
-    for (const s of STAGE_ORDER) {
-      if (stageIndex(s) > stageIndex(stage)) delete state.stageTimes[s];
-    }
   }
 }
 

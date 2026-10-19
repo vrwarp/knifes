@@ -272,3 +272,15 @@ describe('the two-layer Ledger', () => {
     expect(svc.state.report).toEqual({ markdown: '# x', generatedAt: 1 });
   });
 });
+
+describe('GM stage jump', () => {
+  it('jumping back to the gate lets the player enter the code again and reach the hack', () => {
+    svc.setStage('investigation');
+    svc.setStage('gate');
+    expect(svc.view().gate.passed).toBe(false);
+    expect(svc.gateAttempt(svc.config.gate.code)).toBe(true);
+    expect(svc.state.stage).toBe('hack');
+    expect(svc.state.hack.solved).toBe(false);
+    expect(svc.state.hack.secret).not.toBeNull();
+  });
+});

@@ -119,7 +119,7 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
           disabled={busy || jump === state.stage}
           onClick={() => {
             const back = stages.indexOf(jump) < idx;
-            if (back && !window.confirm(`Jump BACK to ${STAGE_NAME[jump]}? His phone will show that screen again.`)) return;
+            if (back && !window.confirm(`Jump BACK to ${STAGE_NAME[jump]}? His phone will show that screen again, and that puzzle and every one after it start over.`)) return;
             if (!back && !window.confirm(`Unlock ${STAGE_NAME[jump]} now? His phone moves to that screen and this cannot be undone from here.`)) return;
             picked.current = false;
             void run(() => api('/api/gm/stage', { json: { stage: jump } }), `${back ? 'Jumped back to' : 'Unlocked'} ${STAGE_NAME[jump]}`);
