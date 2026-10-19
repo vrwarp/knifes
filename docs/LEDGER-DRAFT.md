@@ -305,3 +305,29 @@ Two passes by a fast model with no extended thinking, playing Jimmy. Pass 1 saw 
 2. Replace "2:14 AM Confirmed inside the office" with a natural record, for example `2:13 AM Director's desk terminal unlocked with Director's credentials` and `2:19 AM Badge: Director's Office, out`, so the time of death is matched by inference rather than stated.
 3. Decide whether motive and asset should be deducible from the records or remain the intro letter's gift. If deducible, Nina's Layer 02 needs one trace of the syndicate or the hard copy (a line in her findings, or on the encrypted flash drive), and the grader's motive slot should then accept the brother's operation as a wrong answer rather than a near miss.
 4. The ARCHIVE as retrieval over these logs is what the player reached for unprompted: by file id, by place and window, by keyword.
+
+## Simulation 2, ARCHIVE only, 19 Oct 2026
+
+Same fast model, no extended thinking, no cards and no interrogation. One query per turn to a retrieval-only ARCHIVE answered from the draft logs (by agent, time window, place or keyword; never compares, never judges). Layer 02 was released after turn 5 with Phil's second-call text.
+
+| Turn | Query | What came back |
+| - | - | - |
+| 1 | safehouse / Director's Office, 11 PM to 4 AM | Four Layer 01 lines mentioning Pendelton or the safehouse, plus the seal notice |
+| 2 | Voss and Rowan, self-reported, 11 PM to 4:15 | Their Layer 01 blocks |
+| 3 | Blackwood, vehicle / gate / patrol | His Layer 01 patrol lines, seal notice for GPS |
+| 4 | Calder and Mercer after midnight | Their Layer 01 blocks |
+| 5 | Director's Office, safe, letter, 10 PM to 4:30 | The four Pendelton meetings; nothing on safe or letter. Layer 02 released here |
+| 6 | layer 2, Director's Office / safehouse, 2:00 to 2:30, badge / camera / terminal / GPS | Three lines, all Nina: 2:11 in, 2:14 inside, 2:19 out |
+| 7 | layer 2, Calder, belongings / decrypt / Pendelton | Her belongings, findings, four events |
+
+Deduction after 7 queries: 2:14 AM, Nina Calder, the silver letter opener, 70 percent. Motive again the brother's closed operation; asset "the classified file on the operation". Never found: what she took, and what the flagged message 14 was (a routine line it read as a lead).
+
+**Findings.**
+1. Before the release, five queries over Layer 01 produced no suspect. The self-reports hold.
+2. After the release, one place-and-window query at the time of death returned only Nina. With Layer 02 searchable by place and time, the ARCHIVE is a one-query answer key. That is retrieval, not deduction, but it collapses the puzzle.
+3. The syndicate and the hard copy never surfaced. Motive and asset are not recoverable from the records as drafted.
+
+**Options for the Layer 02 search, in order of how much of the puzzle they keep.**
+- Layer 02 is not searchable by place or window across agents, only readable per agent (the card, or "everything recorded on Theo"). Finding the one agent at the scene means reading five records, which is the intended work.
+- Layer 02 is not in the ARCHIVE at all; it lives on the cards only. The ARCHIVE stays a Layer 01 and index tool.
+- Keep full search and accept that a sharp question ends it. For a party guest the right question is less obvious than for a model told the time of death up front; the time of death is itself a Layer 02 fact, so the query needs two steps.
