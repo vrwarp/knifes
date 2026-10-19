@@ -1,6 +1,6 @@
 # Actor briefs: what each agent says at the table
 
-Status: 19 Oct 2026. Layer 01 of the Ledger now holds personnel files only; the alibis live here, in the mouths of the five guests playing the agents. Each brief is the timeline the agent gives when Jimmy asks where they were between 11 PM and 4 AM, the secret Layer 02 will expose, and the belongings taken off them at headquarters. Stick to the timeline; improvise texture, not times.
+Status: 19 Oct 2026. The Ledger's personnel files hold personnel information only; the alibis live here, in the mouths of the five guests playing the agents. Each brief is the timeline the agent gives when Jimmy asks where they were between 11 PM and 4 AM, the secret the surveillance records will expose, and the belongings taken off them at headquarters. Stick to the timeline; improvise texture, not times.
 
 Ground truth: Pendelton was killed in the Director's Office at 2:14 AM. Found at 4:15 by duty officer Hale. The killer is Nina Calder.
 
@@ -142,4 +142,4 @@ Ground truth: Pendelton was killed in the Director's Office at 2:14 AM. Found at
 
 ## For the GMs
 
-The Layer 02 records are the truth. If an actor drifts from the timeline above in a way that contradicts Layer 02 harder than intended, a quiet correction between courses is fine. The GM console's Phil panel has the release button for Layer 02; release it after Jimmy has questioned all five.
+The surveillance records are the truth. If an actor drifts from the timeline above in a way that contradicts them harder than intended, a quiet correction between courses is fine. The GM console's calls panel has the Release records button; release them during Matt's call, after Jimmy has questioned all five.

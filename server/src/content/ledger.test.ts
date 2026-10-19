@@ -8,7 +8,7 @@ const both = { 1: true, 2: true } as const;
 const l1 = { 1: true, 2: false } as const;
 
 describe('ledger content', () => {
-  it('has five agents in each layer with the same ids: personnel files in Layer 01, a full night in Layer 02', () => {
+  it('has five agents in each file with the same ids: personnel files, then a full night of surveillance records', () => {
     expect(LAYER_01.map((e) => e.id)).toEqual(LAYER_02.map((e) => e.id));
     for (const e of LAYER_01) {
       expect(e.log ?? []).toEqual([]);
@@ -21,12 +21,17 @@ describe('ledger content', () => {
       expect(e.evidence).toHaveLength(4);
     }
   });
-  it('keeps every Layer 02 log in time order from 10 PM to 4 AM', () => {
+  it('keeps every surveillance log in time order from 10 PM to 4 AM', () => {
     for (const e of LAYER_02) {
       const mins = e.log!.map((l) => ledgerMinutes(l.time)!);
       expect(mins.every((m) => m !== null && m >= -5 && m <= 10 * 60 + 30)).toBe(true);
       expect([...mins].sort((a, b) => a - b)).toEqual(mins);
     }
+  });
+  it('gives only the killer a line at the exact time of death; the others are a few minutes off', () => {
+    const at = LAYER_02.filter((e) => e.log!.some((l) => l.time === '2:14 AM')).map((e) => e.id);
+    expect(at).toEqual(['S30-003']);
+    for (const e of LAYER_02) expect(e.log!.some((l) => Math.abs(ledgerMinutes(l.time)! - (8 * 60 + 14)) <= 3)).toBe(true);
   });
   it('puts exactly one agent inside the Director’s Office at the time of death, with innocent traces nearby', () => {
     const hits = searchLedger({ from: '2:00 AM', to: '2:30 AM', text: 'safehouse office inner door', layers: { 1: false, 2: true } });
@@ -65,13 +70,13 @@ describe('searchLedger', () => {
     const theo = searchLedger({ who: 'theo', from: '1:30 AM', to: '2:30 AM', layers: both });
     expect(theo.every((h) => h.who === 'S30-004' && h.layer === 2)).toBe(true);
     expect(theo.some((h) => h.text.includes('storage facility'))).toBe(true);
-    // Layer 01 answers word searches from the personnel fields, never a time window.
+    // The personnel files answer word searches from the personnel fields, never a time window.
     const keycard = searchLedger({ text: 'keycard', layers: l1 });
     expect(keycard.map((h) => h.who)).toEqual(expect.arrayContaining(['S30-001', 'S30-002']));
     expect(searchLedger({ from: '2:00 AM', to: '2:30 AM', layers: l1 })).toEqual([]);
     expect(searchLedger({ text: 'unicorn', layers: both })).toEqual([]);
   });
-  it('honours the sealed layer and includes the duty log only when Layer 02 is open', () => {
+  it('leaves the duty log out until the surveillance records are released', () => {
     expect(searchLedger({ text: 'Hale', layers: l1 }).filter((h) => h.who === 'FACILITY')).toEqual([]);
     expect(searchLedger({ text: 'Hale', layers: both }).filter((h) => h.who === 'FACILITY').length).toBe(FACILITY_LOG.length);
   });
@@ -84,16 +89,19 @@ describe('mock ARCHIVE', () => {
     state.ledger.layer2 = layer2;
     return { config: DEFAULT_CONFIG, state };
   };
-  it('answers a window question from the open layers and notes the seal', () => {
+  it('answers a window question from the open records and never admits hidden ones exist', () => {
     const before = mockArchiveReply('where was everyone at 2:14', ctx(false));
-    expect(before).toContain('LAYER SEALED');
-    expect(before).toContain('personnel files, not movements');
+    expect(before).toContain('[NO RECORD]');
+    expect(before).not.toMatch(/sealed|layer|surveillance|released/i);
     expect(before).not.toContain('L2 ');
     expect(mockArchiveReply('tell me about Nina Calder', ctx(false))).toContain('Intelligence Analyst');
     const after = mockArchiveReply('who was at the safehouse between 2:00 and 2:30', ctx(true));
     expect(after).toContain("L2 2:11 AM       Nina Calder: Badge: Director's Office, in.");
     expect(after).toContain('Duty log');
-    expect(after).not.toContain('LAYER SEALED');
+    expect(after).not.toContain('[NO RECORD]');
+    const summary = mockArchiveReply('read the surveillance records', ctx(true));
+    expect(summary).toContain('2:14 AM Confirmed inside the office.');
+    expect(summary).toContain('2:12 AM Surveillance system recorded');
   });
   it('still refuses to conclude', () => {
     expect(mockArchiveReply('who is the killer', ctx(true))).toContain('records, not conclusions');

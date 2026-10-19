@@ -21,7 +21,7 @@ describe('stage flow', () => {
     expect(advanceTo(s, 'intro')).toBe(false);
     expect(s.stage).toBe('gate');
   });
-  it('force-unlocks earlier puzzles and Ledger Layer 01, never Layer 02', () => {
+  it('force-unlocks earlier puzzles and the personnel files, never the surveillance records', () => {
     const c = cfg();
     const s = initialState();
     forceStage(c, s, 'investigation');
@@ -32,7 +32,7 @@ describe('stage flow', () => {
     forceStage(c, s2, 'solved');
     expect(s2.ledger.layer2).toBe(false);
   });
-  it('resetting the investigation re-seals Layer 02', () => {
+  it('resetting the investigation hides the surveillance records again', () => {
     const c = cfg();
     const s = initialState();
     forceStage(c, s, 'investigation');

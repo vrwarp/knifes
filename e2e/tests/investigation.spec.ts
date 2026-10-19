@@ -7,7 +7,7 @@ test.describe('investigation', () => {
     await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
   });
 
-  test('Layer 01 lists the five agents and Layer 02 stays sealed', async ({ player }) => {
+  test('the personnel files list the five agents and the surveillance records do not exist yet', async ({ player }) => {
     const section = (name: string) => player.locator('.file header', { hasText: name });
     await expect(player.getByText(/ask every agent where they were/i)).toBeVisible();
     await expect(player.getByText('11:00 PM to 4:00 AM')).toBeVisible();
@@ -18,24 +18,24 @@ test.describe('investigation', () => {
     await expect(player.locator('.agent .notes', { hasText: /rarely forgets a conversation/i })).toBeVisible();
     await expect(player.getByText(/2:00/)).toHaveCount(0);
     await noHorizontalScroll(player);
-    await expect(section('LAYER 02')).toContainText(/sealed/i);
-    await section('LAYER 02').click();
-    await expect(player.getByText(/awaiting command release/i)).toBeVisible();
+    await expect(player.getByText(/SURVEILLANCE|LAYER 02|CLASSIFIED EVIDENCE/)).toHaveCount(0);
+    await expect(player.locator('.agent header .tiny')).toHaveCount(0);
     await expect(player.getByText('Silver letter opener')).toHaveCount(0);
     await section('LEDGER DECRYPTION RECORD').click();
     await expect(player.getByText(/Return to headquarters/).first()).toBeVisible();
   });
 
-  test('a GM release opens Layer 02 on the phone with a transmission', async ({ player, gm }) => {
+  test('a GM release puts the surveillance records on the phone with a transmission', async ({ player, gm }) => {
     acceptDialogs(gm);
     // He is on another tab when the release lands, so the Ledger tab lights up until he looks.
     await player.getByRole('tab', { name: 'archive' }).click();
-    await expect(gm.getByTestId('ledger-panel')).toContainText('sealed');
-    await gm.getByRole('button', { name: /^release layer 02$/i }).click();
+    await expect(gm.getByTestId('ledger-panel')).toContainText('hidden');
+    await expect(gm.getByTestId('ledger-panel')).toContainText('Call 2 · Matt');
+    await gm.getByRole('button', { name: /^release records$/i }).click();
     await expect(gm.getByTestId('ledger-panel')).toContainText('RELEASED');
     const overlay = player.getByRole('dialog', { name: /incoming transmission/i });
     await expect(overlay).toBeVisible();
-    await expect(overlay).toContainText(/CLASSIFIED EVIDENCE/);
+    await expect(overlay).toContainText(/SURVEILLANCE RECORDS/);
     await overlay.getByRole('button', { name: /acknowledge/i }).click();
     const dot = player.getByRole('tab', { name: 'ledger' }).locator('.fresh-dot');
     await expect(dot).toBeVisible();
@@ -48,15 +48,12 @@ test.describe('investigation', () => {
     await expect(player.getByText("Badge: Director's Office, in.", { exact: true })).toBeVisible();
     await expect(player.getByText(/Duty officer Hale/).first()).toBeVisible();
     await noHorizontalScroll(player);
-    // Re-sealing in rehearsal takes it away again.
-    await gm.getByRole('button', { name: /re-seal layer 02/i }).click();
-    const sealed = player.locator('.file header', { hasText: 'LAYER 02' });
-    await expect(sealed).toContainText(/sealed/i);
-    await sealed.click();
-    await expect(player.getByText(/awaiting command release/i)).toBeVisible();
+    // Hiding it again in rehearsal takes the section away entirely.
+    await gm.getByRole('button', { name: /^hide records$/i }).click();
+    await expect(player.getByText(/SURVEILLANCE RECORDS/)).toHaveCount(0);
   });
 
-  test('ARCHIVE answers from Layer 01 and refuses Layer 02 until it is released', async ({ player, app }) => {
+  test('ARCHIVE answers from the personnel files and has no record of the night until the release', async ({ player, app }) => {
     await player.getByRole('tab', { name: 'archive' }).click();
     const integrity = player.getByText(/INTEGRITY \d+%/i);
     const before = Number((await integrity.textContent())!.match(/(\d+)%/)![1]);
@@ -65,14 +62,15 @@ test.describe('investigation', () => {
     await expect(player.locator('.msg.assistant', { hasText: 'Intelligence Analyst' })).toBeVisible();
     await player.getByLabel('Query').fill('where was everyone at 2:14');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant').last()).toContainText('personnel files, not movements');
-    await player.getByLabel('Query').fill('read the classified evidence');
+    await expect(player.locator('.msg.assistant').last()).toContainText('[NO RECORD]');
+    await player.getByLabel('Query').fill('read the surveillance records');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.assistant').last()).toContainText('LAYER SEALED');
+    await expect(player.locator('.msg.assistant').last()).toContainText('[NO RECORD]');
+    await expect(player.locator('.msg.assistant').last()).not.toContainText(/sealed|layer|surveillance/i);
     await expect.poll(async () => Number((await integrity.textContent())!.match(/(\d+)%/)![1])).toBeGreaterThan(before);
     await releaseLayer2(app);
     await player.getByRole('dialog', { name: /incoming transmission/i }).getByRole('button', { name: /acknowledge/i }).click();
-    await player.getByLabel('Query').fill('read the classified evidence');
+    await player.getByLabel('Query').fill('read the surveillance records');
     await player.getByRole('button', { name: /send/i }).click();
     await expect(player.locator('.msg.assistant', { hasText: 'Confirmed time of death 2:14 AM' })).toBeVisible();
   });

@@ -67,18 +67,18 @@ export interface GameConfig {
     freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  /** The two-layer Ledger the investigation reads. Layer 01 opens with the investigation; Layer 02 waits for Phil's second call. */
+  /** The Ledger the investigation reads. The personnel files open with the investigation; the surveillance records stay hidden until the second call. */
   ledger: {
     /** Phil can read this out instead of a GM pressing Release. Case, spaces and dashes are ignored. */
-    /** The section name on the phone, e.g. CLASSIFIED EVIDENCE. */
+    /** The section name on the phone once released, e.g. SURVEILLANCE RECORDS. */
     layer2Label: string;
-    /** Pushed to the phone as a transmission when Layer 02 opens. Empty for none. */
+    /** Pushed to the phone as a transmission when the records are released. Empty for none. */
     layer2ReleasedText: string;
     /** The window Jimmy is told to establish for every agent. */
     interrogationWindow: string;
   };
-  /** Phil's two phone calls, shown in the GM console for whoever plays him. */
-  phil: { challenge: string; response: string; part1: string; part2: string };
+  /** The two phone calls, shown in the GM console for whoever plays them: Phil takes the first, `secondCaller` the second. */
+  phil: { challenge: string; response: string; part1: string; part2: string; secondCaller: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
   deduction: {
     prompt: string;

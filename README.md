@@ -44,12 +44,13 @@ Without a Claude credential the opponent is a deterministic solver, so the race 
 
 Jimmy's letter and the book safe are physical. From the QR code on: the intro, a location puzzle that
 points at a drop near Lake Elizabeth, the code gate (Phil's first call gives him `S30GHOST`), the word
-race, and then the two-layer S30 Ledger. Layer 01, the five agents' personnel files and the activity
-they reported, opens as soon as the race is won. Layer 02, labelled CLASSIFIED EVIDENCE, holds the
-recovered surveillance timestamps and confiscated belongings and stays sealed until Phil's second
-call, when a GM presses **Release Layer 02** in the console's Phil panel. The Phil panel also carries
-both call scripts.
-The ARCHIVE terminal answers from whichever layers are open, and the deduction grid closes the case.
+race, and then the S30 Ledger. The PERSONNEL FILES, the five agents' service records and profiles,
+open as soon as the race is won; Jimmy gets each agent's account of the night from the guests at the
+table. The SURVEILLANCE RECORDS, the recorded movements from 10 PM, the confiscated belongings and the
+findings, do not appear on his phone at all until the second call, which comes from Matt: a GM presses
+**Release records** in the console's calls panel. The panel also carries both call scripts. The
+ARCHIVE terminal answers from whatever is on file and never admits that more exists, and the
+deduction grid closes the case.
 
 ## Use your Claude subscription instead of an API key
 

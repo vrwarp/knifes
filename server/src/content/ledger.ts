@@ -1,9 +1,9 @@
-// The S30 Ledger, as the player and the ARCHIVE agent may see it. Layer 01 is the personnel layer:
-// who each agent is, nothing about the night. The night comes from the interviews at the table
-// (docs/ACTOR-BRIEFS.md). Layer 02 is the recorded surveillance and evidence layer that Phil's second
-// call releases: a full night in the texture of each job, one secret per agent and a couple of mildly
+// The S30 Ledger, as the player and the ARCHIVE agent may see it. The Personnel Files (layer 1 in
+// the code) say who each agent is, nothing about the night; the night comes from the interviews at
+// the table (docs/ACTOR-BRIEFS.md). The Surveillance Records (layer 2) are hidden until Phil's second
+// call releases them: a full night in the texture of each job, one secret per agent and a couple of mildly
 // odd routine lines, so density is never a tell. Nothing here names the killer: the contradiction between
-// what an agent says and what Layer 02 recorded is the clue. docs/LEDGER-DRAFT.md has the design notes.
+// what an agent says and what the surveillance recorded is the clue. docs/LEDGER-DRAFT.md has the design notes.
 
 export interface LogLine {
   time: string;
@@ -15,21 +15,21 @@ export interface LedgerEntry {
   id: string;
   name: string;
   position: string;
-  /** Layer 01: the personnel profile. Layer 02: the additional findings. */
+  /** Personnel file: the profile. Surveillance record: the additional findings. */
   notes: string;
-  /** Layer 01 only: the personnel file's fields (service, clearance, posting, and so on). */
+  /** Personnel file only: its fields (service, posting). */
   facts?: { label: string; value: string }[];
-  /** Layer 02 only: the recorded activity. Time first, 12-hour. */
+  /** Surveillance record only: the recorded activity. Time first, 12-hour. */
   log?: LogLine[];
-  /** Layer 02 only: the personal belongings confiscated at headquarters. */
+  /** Surveillance record only: the personal belongings confiscated at headquarters. */
   evidence?: string[];
 }
 
 export const LEDGER_TITLE = 'S30 LEDGER';
 
 export const LAYER_01_HEADER = {
-  title: 'S30 LEDGER // LAYER 01',
-  subtitle: 'SECTION 30 // CLASSIFIED PERSONNEL RECORDS // ACCESS LEVEL: MAGENTA',
+  title: 'S30 LEDGER // PERSONNEL FILES',
+  subtitle: 'SECTION 30 // CLASSIFIED PERSONNEL FILES // ACCESS LEVEL: MAGENTA',
   intro: 'Personnel files for the five agents under investigation. Where each of them was tonight is for the agents to tell you.',
 };
 
@@ -87,7 +87,7 @@ export const LAYER_01: LedgerEntry[] = [
 ];
 
 export const LAYER_02_HEADER = {
-  title: 'S30 LEDGER // LAYER 02',
+  title: 'S30 LEDGER // SURVEILLANCE RECORDS',
   subtitle: 'CLASSIFIED // MAGENTA CHANNEL // RECOVERED SURVEILLANCE & EVIDENCE RECORDS // STATUS: DECRYPTED',
   intro:
     "The following records were recovered from Section 30's internal surveillance network for 10 PM to 4 AM: badge, camera, terminal, radio and vehicle events, with the belongings confiscated from each agent at headquarters. Some information may contradict what the agents have told you.",
@@ -100,7 +100,7 @@ export const INCIDENT = {
   found: '4:15 AM, by duty officer Hale on the hourly round',
 };
 
-/** Layer 02 events that belong to no agent: the duty officer's rounds and the discovery. Searchable like the rest. */
+/** Surveillance records that belong to no agent: the duty officer's rounds and the discovery. Searchable like the rest. */
 export const FACILITY_LOG: LogLine[] = [
   { time: '11:02 PM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
   { time: '12:04 AM', text: 'Duty officer Hale: hourly round, safehouse inner door. Clear.' },
@@ -124,7 +124,7 @@ export const LAYER_02: LedgerEntry[] = [
       { time: '1:50 AM', text: 'Badge: security control room, in.' },
       { time: '2:08 AM', text: 'Logged into surveillance terminal.' },
       { time: '2:09 AM', text: 'Personnel database: restricted file PF-0412 opened. Clearance override used.' },
-      { time: '2:14 AM', text: 'Surveillance system recorded active monitoring, cameras 6 to 9.' },
+      { time: '2:12 AM', text: 'Surveillance system recorded active monitoring, cameras 6 to 9.' },
       { time: '2:21 AM', text: 'Personnel database: PF-0412 closed.' },
       { time: '2:32 AM', text: 'Exited security control room.' },
       { time: '3:02 AM', text: 'Document created: Overnight Incident Summary (empty).' },
@@ -148,7 +148,7 @@ export const LAYER_02: LedgerEntry[] = [
       { time: '1:40 AM', text: 'Remote session opened to archive node cluster.' },
       { time: '1:52 AM', text: 'Patch set AR-114 applied to node 1.' },
       { time: '2:06 AM', text: 'Authenticated remote connection from residence (re-auth on token expiry).' },
-      { time: '2:14 AM', text: 'Active remote maintenance session, node 3 patching.' },
+      { time: '2:16 AM', text: 'Active remote maintenance session, node 3 patching.' },
       { time: '2:17 AM', text: 'File transfer: 41 archived documents, project folder HALCYON, to USB device (personal). Not authorized.' },
       { time: '2:38 AM', text: 'Disconnected from server.' },
       { time: '2:46 AM', text: 'Reboot cycle started by scheduled job.' },
@@ -195,7 +195,7 @@ export const LAYER_02: LedgerEntry[] = [
       { time: '1:47 AM', text: 'GPS: stopped, restricted equipment storage facility. Stationary 8 min.' },
       { time: '1:56 AM', text: 'GPS: storage road, moving.' },
       { time: '2:05 AM', text: 'GPS: safehouse west perimeter road. Vehicle stationary.' },
-      { time: '2:14 AM', text: 'Body camera recorded an active perimeter inspection, west fence.' },
+      { time: '2:17 AM', text: 'Body camera recorded an active perimeter inspection, west fence.' },
       { time: '2:33 AM', text: 'GPS: west perimeter, moving.' },
       { time: '2:41 AM', text: 'Returned to headquarters. Motor pool: unit 2 in. Mileage 67.' },
       { time: '2:52 AM', text: 'GPS: unit 2 out again. East fence 2:58 AM. In 3:09 AM.' },
@@ -217,7 +217,7 @@ export const LAYER_02: LedgerEntry[] = [
       { time: '12:45 AM', text: 'Departed headquarters. Motor pool: car 1 with driver.' },
       { time: '1:03 AM', text: 'Car 1 GPS: city centre.' },
       { time: '1:58 AM', text: 'Arrived at diplomatic residence.' },
-      { time: '2:14 AM', text: 'Security cameras recorded her attending a meeting, residence reception room.' },
+      { time: '2:11 AM', text: 'Security cameras recorded her attending a meeting, residence reception room.' },
       { time: '2:40 AM', text: 'Residence visitor book: two guests, no names, "trade delegation".' },
       { time: '2:47 AM', text: 'Departed diplomatic residence.' },
       { time: '3:05 AM', text: 'Car 1 GPS: city centre.' },
@@ -239,11 +239,10 @@ export const LEDGER_FRAGMENTS: Record<string, string> = {
   pendelton:
     'Arthur Pendelton. Director. Found at 04:15 in the Director’s Office inside the secure safehouse. With his last act he locked the system down and activated the emergency failsafe recovery protocol. His final dispatch named Detective Jimmy.',
   failsafe:
-    'Emergency failsafe recovery protocol: scatters the recovery chain across physical and digital drops so no single insider can purge it. Layer 01 opens on recovery. Layer 02 needs a second authorisation.',
+    'Emergency failsafe recovery protocol: scatters the recovery chain across physical and digital drops so no single insider can purge it. The personnel files open on recovery.',
   syndicate:
     'Open file: an international syndicate has approached Section 30 personnel seeking the Ledger. The buyer wanted a hard copy and the digital archives purged. Known intermediary contact string on file.',
   jimmy: 'Detective Jimmy. Left the force ten years ago. Recovery authority granted by the Director’s final dispatch. Clearance: everything that survived.',
-  'layer 02': 'Layer 02: recovered surveillance and evidence records, sealed until a second recovery authorisation arrives.',
   compound:
     'Headquarters compound: main building (ops floor, analysis wing, archives on B1, server room, security control room, armoury, mess, gym on the lower level); the secure safehouse in the inner compound with the Director’s Office; the perimeter (north gate, west perimeter road, restricted equipment storage facility on the storage road, east fence); the motor pool.',
 };
@@ -331,7 +330,7 @@ export function searchLedger(opts: { who?: string; from?: string; to?: string; t
   };
   const matches = (text: string, time: string) => !words.length || words.some((w) => text.toLowerCase().includes(w) || time.toLowerCase().includes(w));
   const hits: SearchHit[] = [];
-  // Layer 01 has no times: its personnel fields answer a word search when no window was asked for.
+  // Personnel files have no times: their fields answer a word search when no window was asked for.
   if (opts.layers[1] && a === null && b === null)
     for (const e of findEntries(LAYER_01, opts.who)) {
       const fields = [...(e.facts ?? []).map((f) => `${f.label}: ${f.value}`), `Profile: ${e.notes}`];

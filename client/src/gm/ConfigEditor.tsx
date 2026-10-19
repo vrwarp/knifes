@@ -310,13 +310,14 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         {T(['gate', 'code'], 'Unlock code (letters/digits, case and dashes ignored)')}
         {T(['gate', 'successText'], 'Success text')}
       </Section>
-      <Section title="Phil's calls (shown in the console for whoever plays him)">
+      <Section title="The calls (shown in the console for whoever makes them)">
         <div className="two">
           {T(['phil', 'challenge'], 'Challenge phrase Jimmy says')}
           {T(['phil', 'response'], "Phil's response")}
         </div>
-        {A(['phil', 'part1'], 'Call 1 script (gives the gate code)', 10)}
-        {A(['phil', 'part2'], 'Call 2 script (releases Layer 02)', 8)}
+        {T(['phil', 'secondCaller'], 'Who makes the second call')}
+        {A(['phil', 'part1'], 'Call 1 script, Phil (gives the gate code)', 10)}
+        {A(['phil', 'part2'], 'Call 2 script (releases the surveillance records)', 8)}
       </Section>
       <Section title="Word puzzle (Ledger key)">
         {S(['hack', 'mode'], 'Mode', [
@@ -381,11 +382,11 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
         {A(['reveal', 'body'], 'Body', 10)}
         {T(['reveal', 'buttonLabel'], 'Button label')}
       </Section>
-      <Section title="Ledger Layer 02 (Phil's second call)">
-        <p className="small muted">Layer 01 opens with the investigation. Layer 02 opens from the Release button in the console.</p>
+      <Section title="Surveillance records (the second call)">
+        <p className="small muted">The personnel files open with the investigation. The surveillance records stay hidden from his phone until a GM presses Release records in the console during the second call.</p>
         {T(['ledger', 'layer2Label'], 'Section name on his phone')}
         {T(['ledger', 'interrogationWindow'], 'Interrogation window shown on the Ledger')}
-        {A(['ledger', 'layer2ReleasedText'], 'Transmission pushed to his phone when Layer 02 opens (blank for none)', 4)}
+        {A(['ledger', 'layer2ReleasedText'], 'Transmission pushed to his phone when the records are released (blank for none)', 4)}
       </Section>
       <Section title="ARCHIVE terminal">
         {B(['archive', 'enabled'], 'ARCHIVE enabled')}

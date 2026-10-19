@@ -56,7 +56,7 @@ const RESET_CONSEQUENCE: Partial<Record<StageId, string>> = {
   geo: 'clears his map attempts and shows the field transmission again',
   gate: 'clears his code attempts and shows the secure line again',
   hack: 'clears his guesses and any lockout, and sends his phone back to the key race',
-  investigation: 're-seals Ledger Layer 02 and clears deduction attempts; the ARCHIVE transcript is kept',
+  investigation: 'hides the surveillance records again and clears deduction attempts; the ARCHIVE transcript is kept',
 };
 
 export function ProgressPanel({ state, config, stages }: { state: GameState; config: GameConfig; stages: StageId[] }) {
@@ -183,7 +183,7 @@ export function ProgressPanel({ state, config, stages }: { state: GameState; con
   );
 }
 
-/** Phil's two calls for whoever plays him, with the codes in large type, and the Layer 02 release that goes with the second call. */
+/** The two calls for whoever makes them, with the codes in large type, and the surveillance-records release that goes with the second call. */
 export function LedgerPanel({ state, config }: { state: GameState; config: GameConfig }) {
   const { busy, msg, run } = useAction();
   const [part, setPart] = useState<1 | 2>(state.ledger.layer2 ? 2 : 1);
@@ -191,22 +191,26 @@ export function LedgerPanel({ state, config }: { state: GameState; config: GameC
   const script = part === 1 ? config.phil.part1 : config.phil.part2;
   return (
     <div className="panel" data-testid="ledger-panel">
-      <h2>Phil &amp; the Ledger</h2>
+      <h2>The calls &amp; the Ledger</h2>
       <dl className="kv">
         <dt>Challenge</dt>
         <dd>
           <b>{config.phil.challenge}</b> <span className="muted">→</span> <b>{config.phil.response}</b>
         </dd>
-        <dt>Call 1 code</dt>
+        <dt>Call 1 · Phil</dt>
         <dd>
           <b className="amber" style={{ fontSize: 20, letterSpacing: '0.08em' }}>{config.gate.code}</b> <span className="tiny muted">the recovery authorization code he types at the gate</span>
         </dd>
-        <dt>Layer 02</dt>
+        <dt>Call 2 · {config.phil.secondCaller}</dt>
+        <dd>
+          <span className="tiny muted">no code; press Release records below during this call</span>
+        </dd>
+        <dt>{config.ledger.layer2Label}</dt>
         <dd>
           {state.ledger.layer2 ? (
             <span className="green">RELEASED{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</span>
           ) : (
-            <span>sealed{canRelease ? '' : ' · opens once he is investigating'}</span>
+            <span>hidden{canRelease ? '' : ' · can be released once he is investigating'}</span>
           )}
         </dd>
       </dl>
@@ -215,14 +219,14 @@ export function LedgerPanel({ state, config }: { state: GameState; config: GameC
           className={`btn small ${state.ledger.layer2 ? 'ghost' : 'primary'}`}
           disabled={busy || (!state.ledger.layer2 && !canRelease)}
           onClick={() => {
-            if (!state.ledger.layer2 && !window.confirm(`Release Layer 02 (${config.ledger.layer2Label}) to his phone now? Do this during Phil's second call.`)) return;
-            if (state.ledger.layer2 && !window.confirm('Re-seal Layer 02? Only for rehearsal: his phone loses the section again.')) return;
-            void run(() => api('/api/gm/ledger/release', { json: { released: !state.ledger.layer2 } }), state.ledger.layer2 ? 'Layer 02 re-sealed' : 'Layer 02 released');
+            if (!state.ledger.layer2 && !window.confirm(`Release the ${config.ledger.layer2Label.toLowerCase()} to his phone now? Do this during ${config.phil.secondCaller}'s call.`)) return;
+            if (state.ledger.layer2 && !window.confirm('Hide the records again? Only for rehearsal: the section disappears from his phone.')) return;
+            void run(() => api('/api/gm/ledger/release', { json: { released: !state.ledger.layer2 } }), state.ledger.layer2 ? 'Records hidden' : 'Records released');
           }}
         >
-          {state.ledger.layer2 ? 'Re-seal Layer 02' : 'Release Layer 02'}
+          {state.ledger.layer2 ? 'Hide records' : 'Release records'}
         </button>
-        <span className="row" role="group" aria-label="Phil script part" style={{ gap: 4 }}>
+        <span className="row" role="group" aria-label="Call script" style={{ gap: 4 }}>
           {([1, 2] as const).map((n) => (
             <button key={n} className={`btn small ${part === n ? '' : 'ghost'}`} onClick={() => setPart(n)} aria-pressed={part === n}>
               Call {n}
@@ -232,7 +236,7 @@ export function LedgerPanel({ state, config }: { state: GameState; config: GameC
         {msg ? <span className="small amber">{msg}</span> : null}
       </div>
       <details className="section" style={{ marginTop: 10, marginBottom: 0 }} open>
-        <summary>Phil's script · call {part}</summary>
+        <summary>Call {part} script · {part === 1 ? 'Phil' : config.phil.secondCaller}</summary>
         <pre className="typed small" style={{ whiteSpace: 'pre-wrap', maxHeight: 320, overflowY: 'auto' }}>
           {script}
         </pre>
@@ -317,7 +321,7 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
         </dd>
         <dt>Ledger</dt>
         <dd>
-          Layer 01 {state.ledger.layer1 ? 'open' : 'sealed'} · Layer 02 {state.ledger.layer2 ? <b className="green">released{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</b> : 'sealed'}
+          personnel files {state.ledger.layer1 ? 'open' : 'closed'} · {config.ledger.layer2Label.toLowerCase()} {state.ledger.layer2 ? <b className="green">released{state.ledger.layer2ReleasedAt ? ` at ${fmt(state.ledger.layer2ReleasedAt)}` : ''}</b> : 'hidden'}
         </dd>
         <dt>ARCHIVE</dt>
         <dd>
@@ -496,7 +500,7 @@ function describe(e: GameEvent): { text: string; cls: string } {
     case 'hack_ai_solved':
       return { text: `adversary solved in ${s('attempts')}, Jimmy was at ${s('playerAttempts')}`, cls: 'fail' };
     case 'ledger_release':
-      return { text: `Ledger Layer ${s('layer')} released`, cls: 'ok' };
+      return { text: `${s('layer') === '2' ? 'surveillance records' : 'personnel files'} released`, cls: 'ok' };
     case 'archive_user':
       return { text: `> ${s('text')}`, cls: '' };
     case 'archive_assistant':

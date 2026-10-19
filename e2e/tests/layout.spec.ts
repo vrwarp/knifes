@@ -16,7 +16,6 @@ for (const stage of stages) {
         await noHorizontalScroll(player);
       }
       await player.getByRole('tab', { name: 'ledger' }).click();
-      await player.locator('.file header', { hasText: 'LAYER 02' }).click();
       await player.locator('.agent header', { hasText: 'Celeste Rowan' }).click();
       await noHorizontalScroll(player);
     }

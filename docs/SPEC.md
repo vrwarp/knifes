@@ -1,7 +1,7 @@
 # Section 30 web app: requirements and design
 
 Status: v2, 18 Oct 2026. Party 25 Oct. Phone-testable build target 20 Oct.
-Source material: the "Expanded Plot Dossier" (October revision: intro letter and magic square, S30 Ledger Layer 01 and Layer 02, Phil's script Parts 1 and 2) plus the decisions recorded in [PLAN-dossier-v2.md](PLAN-dossier-v2.md).
+Source material: the "Expanded Plot Dossier" (October revision: intro letter and magic square, S30 Ledger personnel files and surveillance records, the two call scripts) plus the decisions recorded in [PLAN-dossier-v2.md](PLAN-dossier-v2.md).
 
 ## 1. Purpose
 
@@ -16,17 +16,17 @@ and gives the GMs visibility and control the whole evening.
 | Stages on the site | Optional geo landing (puzzle, reveal-only, or off), code gate, Wordle-style key race, Ledger decrypted notice, investigation (two-layer Ledger, ARCHIVE terminal, deduction grid), final reveal. |
 | Physical chain | The intro letter, the magic square (combination 132), the book safe, the QR code and the Bananagram tiles (LETTER OPENER) are props, not app features. |
 | Geo puzzle | GeoGuessr-style: an embedded Google Street View panorama (address and road labels hidden, walking optional) plus a map pin on OpenStreetMap, accepted within a configurable radius. The map centres on Lake Elizabeth, Los Angeles County; the GMs pin the exact drop. Uploaded photos stand in when no Maps key is set. Switchable to reveal-only or off. |
-| Phil's calls | Two one-way calls, scripts in the config and the GM console. Call 1: Jimmy gives the challenge "Who watches the watchers?", Phil answers "Section Thirty" and reads the recovery authorization code `S30GHOST`. Call 2: Phil announces the breakthrough and a GM presses Release Layer 02. |
+| The calls | Two one-way calls, scripts in the config and the GM console. Call 1: Jimmy gives the challenge "Who watches the watchers?", Phil answers "Section Thirty" and reads the recovery authorization code `S30GHOST`. Call 2, from Matt (the caller's name is configurable): Matt announces the breakthrough; a GM presses Release records in the console. |
 | Hacking puzzle | Wordle-like key race against an AI opponent (`claude-sonnet-5-5` scripting each round in advance, 8 ± 2 guesses to the key): each round draws a fresh 7-letter word from a GM-editable bank of ten keys (STEALTH, PHANTOM, CIPHERS, COURIER, SHADOWS, SILENCE, BEACONS, TRAITOR, CAPTURE, PAYLOAD; none appears in the Ledger text); when the adversary has taken every key, a configurable free pass lets Jimmy through; the opponent guesses on a timer (10 s ± 5 s in the first round, 1.5× slower after each round it wins). Attempts are unlimited by default. Solo mode keeps a fixed secret (`LANTERN`). |
-| After the puzzle | A short LEDGER DECRYPTED notice: Layer 01 is open, the Director was found at 04:15, return to headquarters and establish every agent's movements between 11:00 PM and 4:00 AM. |
-| The Ledger | Layer 01 (personnel files only: service, posting, a two-line profile) opens with the investigation. The agents' accounts of the night come from the interviews at the table; see docs/ACTOR-BRIEFS.md. Layer 02 (CLASSIFIED EVIDENCE: verified surveillance activity, confiscated belongings, additional findings, time of death 2:14 AM in the Director's Office) opens from a GM button, and its release pushes a transmission to the phone. Both can be re-sealed in rehearsal. |
-| Nina's alibi | At the table she claims the archives from 2:00 to 2:30 AM (the dossier had her self-report in the office); Layer 02 puts her inside the office 2:11 to 2:19. The other four actors' timelines are in the briefs. |
+| After the puzzle | A short LEDGER DECRYPTED notice: the personnel files are open, the Director was found at 04:15, return to headquarters and establish every agent's movements between 11:00 PM and 4:00 AM. |
+| The Ledger | PERSONNEL FILES (service, posting, a two-line profile; name on one line, role on the next, the id inside the card) open with the investigation. The agents' accounts of the night come from the interviews at the table; see docs/ACTOR-BRIEFS.md. SURVEILLANCE RECORDS (recorded activity from 10 PM, confiscated belongings, additional findings, time of death 2:14 AM in the Director's Office) are absent from the phone until a GM presses Release records; the release pushes a transmission and the section appears. Nothing before the release says they exist. The records can be hidden again in rehearsal. |
+| Nina's alibi | At the table she claims the archives from 2:00 to 2:30 AM (the dossier had her self-report in the office); the surveillance records put her inside the office 2:11 to 2:19. The other four actors' timelines are in the briefs. |
 | Murder method | The silver letter opener found on Nina. Poison, which the first draft used, is a rejected answer. |
 | Deduction grid | Six free-text slots in one sentence: time, suspect, method, asset, motive, physical prop. Pass or fail only. AI grader with keyword fallback. The prop slot ships as a GM placeholder that the readiness check flags until the GMs decide where the hard copy is hidden. |
 | AI features | ARCHIVE terminal, GM hint copilot, grader, setup assistant, post-game case report, all on the Claude Agent SDK. |
 | Model | `claude-opus-5-5` for every feature except the word-race opponent (`claude-sonnet-5-5`, configurable). |
 | Credential | Personal Claude subscription through the bundled Claude Code binary: `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`, sign-in from the GM console, or `claude auth login` inside the container. An API key still works and outranks them. |
-| GM console | Live progress and attempt log, jump/skip, push hints, reset stage or game, Phil panel with both scripts and codes and the Layer 02 release, seal ARCHIVE, case report, edit codes and text live. |
+| GM console | Live progress and attempt log, jump/skip, push hints, reset stage or game, calls panel with both scripts and codes and the records release, seal ARCHIVE, case report, edit codes and text live. |
 | Hosting | Docker container on the Synology NAS, already exposed through the existing reverse proxy. |
 | Content | Written in code from the dossier (`server/src/content/ledger.ts`). No audio clip. |
 
@@ -34,7 +34,7 @@ and gives the GMs visibility and control the whole evening.
 
 ```
 intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal ─► investigation ─► solved
-                                                                   ├─ Ledger: Layer 01 (open) · Layer 02 (sealed until released)
+                                                                   ├─ Ledger: personnel files (open) · surveillance records (absent until released)
                                                                    ├─ ARCHIVE terminal
                                                                    └─ deduction grid
 ```
@@ -43,19 +43,19 @@ intro ─► geo (puzzle | reveal | off) ─► gate ─► hack ─► reveal �
 2. **Geo.** A Street View panorama to look around in (or field photos without a Maps key) and a map. Tap to place a marker, "Triangulate". Within the radius the drop-point text appears. Reveal mode skips the map. Off mode skips the stage.
 3. **Gate.** Enter the recovery authorization code Phil gives over the phone on the console's on-screen keyboard (letters and digits). Case, spaces and dashes are ignored.
 4. **Hack.** Seven-letter keys in a terminal window: a one-time briefing dialog, one interleaved transcript of both sides' attempts, the on-screen keyboard pinned to the bottom. In race mode (default) the adversary's attempts show on the same transcript and it reads THINKING... between them. Jimmy finds the key first: key accepted, on to the reveal. The adversary finds it first: a new key is drawn at once and a banner names the lost round. When the adversary has taken every key and the free pass is on, the configured failsafe text shows and the stage moves on.
-5. **Reveal.** LEDGER DECRYPTED // LAYER 01 RELEASED, the 04:15 discovery, the directive to return to headquarters and the 11 PM to 4 AM window. Button RETURN TO HEADQUARTERS.
+5. **Reveal.** RECOVERY COMPLETE // LEDGER DECRYPTED, the 04:15 discovery, the directive to return to headquarters and the 11 PM to 4 AM window. Button RETURN TO HEADQUARTERS.
 6. **Investigation.** Three tabs.
-   - Ledger: a header with the interrogation window; LAYER 01 // PERSONNEL RECORDS (five agent cards: id, name, position, service, posting, profile; the first opens by default); LAYER 02 // CLASSIFIED EVIDENCE (sealed until a GM releases it, then the incident line and five cards with verified activity, recovered evidence and findings); the decryption notice for re-reading. The tab carries an amber dot from the moment Layer 02 opens until he looks.
+   - Ledger: a header with the interrogation window; PERSONNEL FILES (five agent cards: name, position, service, posting, profile, the id inside; the first opens by default); SURVEILLANCE RECORDS (not rendered until released, then the incident line, five cards with recorded activity, recovered evidence and findings, and the duty log); the decryption notice for re-reading. The tab carries an amber dot from the moment the records are released until he looks.
    - ARCHIVE: chat with the records mainframe.
    - Deduction: the sentence with six inputs. Status lines cycle while the grader runs.
 7. **Solved.** The reveal in beats (Nina Calder, the letter opener, the hard copy, happy thirtieth), the case file when published, and the case materials for re-reading.
 
-Transmissions from the GMs (and the Layer 02 release) arrive as an "incoming transmission" overlay and stay listed under "Transmissions".
+Transmissions from the GMs (and the records release) arrive as an "incoming transmission" overlay and stay listed under "Transmissions".
 Progress lives on the server, so a dead phone or a refresh loses nothing; any device on the link continues.
 
 ## 4. GM console (`/gm`)
 
-Password login. Panels: NOW strip, progress chips with jump/unlock and reset controls, seal/unseal ARCHIVE, **Phil & the Ledger** (challenge and response, both codes in large type, Layer 02 state, Release / Re-seal button, the two call scripts), player status (attempts, guesses, the word in play, Ledger layers, last deduction with per-slot verdicts), hint panel (type, pick a quick hint, or draft with AI, then push), live event log, ARCHIVE transcript, case report, setup assistant with the readiness list, and the full configuration editor with photo uploads. Everything updates live over WebSocket.
+Password login. Panels: NOW strip, progress chips with jump/unlock and reset controls, seal/unseal ARCHIVE, **The calls & the Ledger** (challenge and response, both codes in large type with the caller's name, records state, Release / Hide button, the two call scripts), player status (attempts, guesses, the word in play, Ledger files, last deduction with per-slot verdicts), hint panel (type, pick a quick hint, or draft with AI, then push), live event log, ARCHIVE transcript, case report, setup assistant with the readiness list, and the full configuration editor with photo uploads. Everything updates live over WebSocket.
 
 ## 5. AI features (Claude Agent SDK)
 
@@ -63,8 +63,8 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 | Feature | Mechanics | Guardrails |
 | - | - | - |
-| ARCHIVE terminal | One `query()` per player message, resumed by `session_id`. In-process MCP tools: `read_personnel` (Layer 01), `read_classified` (Layer 02, lock notice until released), `search_activity` (Layer 02 records by agent, time window, place and keyword; Layer 01 fields by keyword), `ledger_lookup` (index fragments). | Persona prompt forbids naming the culprit, ranking suspects, saying a record contradicts another, inventing facts or leaving the fiction. Max 8 turns, low effort, one query at a time, 400-char input cap, GM seal switch. |
-| GM copilot | `query()` with structured output `{hint, rationale}` from stage, attempts, recent log and the configured solution, at a chosen strength. Told whether Layer 02 is released so a hint never leaks it early. | GM edits and approves before anything reaches the player. |
+| ARCHIVE terminal | One `query()` per player message, resumed by `session_id`. In-process MCP tools: `read_personnel` (personnel files), `read_classified` (surveillance records; a plain [NO RECORD] until released, never a hint that they exist), `search_activity` (surveillance records by agent, time window, place and keyword; personnel fields by keyword), `ledger_lookup` (index fragments). | Persona prompt forbids naming the culprit, ranking suspects, saying a record contradicts another, inventing facts or leaving the fiction. Max 8 turns, low effort, one query at a time, 400-char input cap, GM seal switch. |
+| GM copilot | `query()` with structured output `{hint, rationale}` from stage, attempts, recent log and the configured solution, at a chosen strength. Told whether the surveillance records are released so a hint never leaks that they exist. | GM edits and approves before anything reaches the player. |
 | Grader | `query()` with structured output per slot, given canonical answer, accept and reject lists and guidance. | Every slot must pass. Any failure of the AI path drops to keyword grading. GMs see per-slot reasons. |
 | Setup assistant | `query()` over the live config, the case files (both layers), the readiness list and uploaded photos; proposes edits a GM applies. | Never edits on its own; proposals are versions only once applied. |
 | Case report | `query()` over the full event log and transcript, Markdown out, headings CASE FILE 30-0214 and following. | GM previews and publishes explicitly. |
@@ -72,10 +72,10 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 ## 6. Content and solution logic
 
-- Layer 01: five personnel files, no times. The agents' accounts come from the actors (docs/ACTOR-BRIEFS.md); Nina claims the archives for 2:00 to 2:30.
-- Layer 02: recorded activity from 10 PM to 4 AM for all five, dense around 2:14 AM, confiscated belongings, and one unrelated secret each (Mara's restricted file at 2:09, Elias's unauthorised USB copy at 2:17, Theo's omitted 1:47 stop, Celeste's private negotiation). Nina badged into the Director's Office at 2:11, was inside at 2:14 and left at 2:19; a silver letter opener was on her.
+- Personnel files: five, no times. The agents' accounts come from the actors (docs/ACTOR-BRIEFS.md); Nina claims the archives for 2:00 to 2:30.
+- Surveillance records: recorded activity from 10 PM to 4 AM for all five, dense around 2:14 AM but only Nina has a line at exactly 2:14 (the others sit 2:11 to 2:17), confiscated belongings, and one unrelated secret each (Mara's restricted file at 2:09, Elias's unauthorised USB copy at 2:17, Theo's omitted 1:47 stop, Celeste's private negotiation). Nina badged into the Director's Office at 2:11, was inside at 2:14 and left at 2:19; a silver letter opener was on her.
 - Canonical deduction: 2:14 AM, Nina Calder, the silver letter opener, the hard copy of the S30 Ledger, to sell it to the international syndicate, and the GM-chosen hiding place.
-- The intro letter says safehouse and Layer 02 says Director's Office; the app says "the Director's Office inside the secure safehouse".
+- The intro letter says safehouse and the surveillance records say Director's Office; the app says "the Director's Office inside the secure safehouse".
 
 ## 7. Architecture
 
@@ -83,7 +83,7 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 - `client/`: React SPA, terminal styling, Leaflet map, no external fonts or CDNs besides OpenStreetMap tiles and, with a key, Google Street View.
 - Auth: GM cookie signed with HMAC; optional player key in the QR link; GM password compared in constant time.
 - Deployment: multi-stage Dockerfile on `node:22-bookworm-slim`, non-root user, `/data` volume for SQLite, uploads and SDK session files. Health check on `/healthz`.
-- Upgrades: a configuration saved before this revision loses its evidence-vault block and picks up the `ledger` and `phil` defaults; a saved game state gains Layer 01 if it was already investigating.
+- Upgrades: a configuration saved before this revision loses its evidence-vault block and picks up the `ledger` and `phil` defaults; a saved game state gains the personnel files if it was already investigating.
 
 ### API summary
 
@@ -101,7 +101,7 @@ WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIV
 
 ## 9. Test plan
 
-- Unit: word scoring, geo distance, fallback grader with the new slots (letter opener passes, poison and the other four agents fail, the placeholder prop fails), state machine including Layer 01 and Layer 02 unlock and re-seal, config and state migration, player-view redaction, bank solver, race loop with fake timers (`server`, vitest).
-- End to end in mock mode: full run from intro to solved through the real HTTP and WebSocket paths, Layer 02 release from the GM console, ARCHIVE refusing Layer 02 until released, GM login, jump, reset, hint push (`e2e/`, Playwright).
-- Live AI: with a credential set, exercise the ARCHIVE with the canonical questions (where was everyone at 2:14, tell me about Nina Calder, read the classified evidence before and after release, who did it), the grader with the canonical answers and a poison answer, one hint draft before and after the release, one case report.
-- Dry run on real phones before the 23rd, over cellular, through the reverse proxy, including Phil's second call and the release.
+- Unit: word scoring, geo distance, fallback grader with the new slots (letter opener passes, poison and the other four agents fail, the placeholder prop fails), state machine including the personnel and surveillance releases and hiding again, config and state migration, player-view redaction, bank solver, race loop with fake timers (`server`, vitest).
+- End to end in mock mode: full run from intro to solved through the real HTTP and WebSocket paths, records release from the GM console, ARCHIVE having no record of the night until released, GM login, jump, reset, hint push (`e2e/`, Playwright).
+- Live AI: with a credential set, exercise the ARCHIVE with the canonical questions (where was everyone at 2:14, tell me about Nina Calder, read the surveillance records before and after release, who did it), the grader with the canonical answers and a poison answer, one hint draft before and after the release, one case report.
+- Dry run on real phones before the 23rd, over cellular, through the reverse proxy, including Matt's call and the release.

@@ -214,7 +214,7 @@ describe('prepared scripts and the free pass', () => {
 });
 
 describe('the two-layer Ledger', () => {
-  it('opens Layer 01 with the investigation and keeps Layer 02 sealed', () => {
+  it('opens the personnel files with the investigation and keeps the surveillance records hidden', () => {
     svc.setStage('investigation');
     expect(svc.state.ledger).toMatchObject({ layer1: true, layer2: false });
     const files = svc.ledgerFiles();
@@ -226,7 +226,7 @@ describe('the two-layer Ledger', () => {
     expect(() => svc.ledgerFiles()).toThrow(/not reachable/);
     expect(() => svc.releaseLayer2(true)).toThrow(/only be released/);
   });
-  it('a GM release opens Layer 02 and pushes the transmission', () => {
+  it('a GM release opens the surveillance records and pushes the transmission', () => {
     svc.setStage('investigation');
     svc.releaseLayer2(true);
     expect(svc.state.ledger.layer2).toBe(true);
@@ -237,7 +237,7 @@ describe('the two-layer Ledger', () => {
     expect(svc.state.ledger.layer2).toBe(false);
     expect(svc.ledgerFiles().layer2).toBeNull();
   });
-  it('a reset of the investigation re-seals Layer 02, and a game reset clears it', () => {
+  it('a reset of the investigation hides the surveillance records again, and a game reset clears them', () => {
     svc.setStage('investigation');
     svc.releaseLayer2(true);
     svc.reset('investigation');

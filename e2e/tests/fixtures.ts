@@ -221,7 +221,7 @@ export const RIGHT_ANSWERS = {
 };
 export const WRONG_SUSPECT = 'Mara Voss';
 
-/** A GM releases Ledger Layer 02 through the API, as the Release button does. */
+/** A GM releases the surveillance records through the API, as the Release button does. */
 export async function releaseLayer2(app: Server) {
   const r = await app.gmApi('/api/gm/ledger/release', { json: { released: true } });
   if (!r.ok) throw new Error(`release ${r.status}: ${await r.text()}`);
