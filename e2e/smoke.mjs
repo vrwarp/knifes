@@ -167,17 +167,17 @@ try {
   await step('Ledger Layer 01 lists the five agents and Layer 02 is sealed', async () => {
     await player.getByRole('tab', { name: 'ledger' }).waitFor();
     await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-    await player.getByText('Working in the archives.').waitFor();
+    await player.getByText(/Rarely forgets a conversation/).waitFor();
     await player.locator('.file header', { hasText: 'LAYER 02' }).click();
     await player.getByLabel('Passcode').waitFor();
     await shot(player, '05-ledger-layer1');
   });
 
-  await step('ARCHIVE answers a where-was-everyone question (mock)', async () => {
+  await step('ARCHIVE answers a personnel question (mock)', async () => {
     await player.getByRole('tab', { name: 'archive' }).click();
-    await player.getByLabel('Query').fill('where was everyone at 2:14');
+    await player.getByLabel('Query').fill('tell me about Nina Calder');
     await player.getByRole('button', { name: /send/i }).click();
-    await player.locator('.msg.assistant', { hasText: 'Nina Calder' }).waitFor({ timeout: 10_000 });
+    await player.locator('.msg.assistant', { hasText: 'Intelligence Analyst' }).waitFor({ timeout: 10_000 });
     await shot(player, '06-archive');
   });
 

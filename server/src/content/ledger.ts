@@ -1,8 +1,9 @@
-// The S30 Ledger, as the player and the ARCHIVE agent may see it. Layer 01 is the personnel layer
-// with each agent's self-reported night; Layer 02 is the recorded surveillance and evidence layer that
-// Phil's second call releases. Every agent gets a full night in the texture of their job, one secret in
-// Layer 02 and a couple of mildly odd routine lines, so density is never a tell. Nothing here names the
-// killer: the contradiction between the two layers is the clue. docs/LEDGER-DRAFT.md has the design notes.
+// The S30 Ledger, as the player and the ARCHIVE agent may see it. Layer 01 is the personnel layer:
+// who each agent is, nothing about the night. The night comes from the interviews at the table
+// (docs/ACTOR-BRIEFS.md). Layer 02 is the recorded surveillance and evidence layer that Phil's second
+// call releases: a full night in the texture of each job, one secret per agent and a couple of mildly
+// odd routine lines, so density is never a tell. Nothing here names the killer: the contradiction between
+// what an agent says and what Layer 02 recorded is the clue. docs/LEDGER-DRAFT.md has the design notes.
 
 export interface LogLine {
   time: string;
@@ -16,8 +17,10 @@ export interface LedgerEntry {
   position: string;
   /** Layer 01: the personnel profile. Layer 02: the additional findings. */
   notes: string;
-  /** Layer 01: the self-reported activity. Layer 02: the recorded activity. Time first, 12-hour. */
-  log: LogLine[];
+  /** Layer 01 only: the personnel file's fields (service, clearance, posting, and so on). */
+  facts?: { label: string; value: string }[];
+  /** Layer 02 only: the recorded activity. Time first, 12-hour. */
+  log?: LogLine[];
   /** Layer 02 only: the personal belongings confiscated at headquarters. */
   evidence?: string[];
 }
@@ -27,7 +30,7 @@ export const LEDGER_TITLE = 'S30 LEDGER';
 export const LAYER_01_HEADER = {
   title: 'S30 LEDGER // LAYER 01',
   subtitle: 'SECTION 30 // CLASSIFIED PERSONNEL RECORDS // ACCESS LEVEL: MAGENTA',
-  intro: 'Personnel dossiers and self-reported activity for the five agents under investigation, 6 PM to 4 AM.',
+  intro: 'Personnel files for the five agents under investigation. Where each of them was tonight is for the agents to tell you.',
 };
 
 export const LAYER_01: LedgerEntry[] = [
@@ -37,24 +40,12 @@ export const LAYER_01: LedgerEntry[] = [
     position: 'Security Director',
     notes:
       'A veteran of Section 30, Mara has overseen internal security for over 15 years. Known for her strict adherence to protocol, she rarely trusts anyone outside her department. She maintains a collection of antique military memorabilia in her office.',
-    log: [
-      { time: '6:00 PM', text: 'Shift handover from day security. Nothing outstanding.' },
-      { time: '6:30 PM', text: 'Met Pendelton in his office. Weekly security review.' },
-      { time: '7:10 PM', text: 'Walked the inner compound. Safehouse doors and locks checked.' },
-      { time: '8:00 PM', text: "Reviewed visitor list for tomorrow's liaison meeting." },
-      { time: '9:10 PM', text: 'Mess with the night shift.' },
-      { time: '9:45 PM', text: 'Signed the armoury count. R-14 still out to Blackwood since 6:40.' },
-      { time: '10:45 PM', text: 'Inspected security systems. Camera 7 (storage road) flickering; ticket raised.' },
-      { time: '11:30 PM', text: "Approved Mercer's overnight maintenance window on the servers." },
-      { time: '12:00 AM', text: 'Perimeter round with the night guard. All gates secure.' },
-      { time: '12:30 AM', text: 'Radio check with Blackwood before his patrol.' },
-      { time: '1:00 AM', text: 'Paperwork in my office.' },
-      { time: '1:50 AM', text: 'Entered security control room.' },
-      { time: '2:00–2:30 AM', text: 'Reviewing surveillance footage, camera 7 fault.' },
-      { time: '2:35 AM', text: 'Returned to my office.' },
-      { time: '3:00 AM', text: 'Began the overnight incident summary. Nothing to report.' },
-      { time: '3:45 AM', text: 'Rounds to the north gate and back.' },
-      { time: '4:15 AM', text: 'Called to the safehouse by duty officer Hale.' },
+    facts: [
+      { label: 'Service', value: '15 years, internal security. Section 30 since the Ledger\'s first decade.' },
+      { label: 'Clearance', value: 'Magenta. Holds the security master keycard.' },
+      { label: 'Posting', value: 'Security Director\'s office, main building. Oversees the control room, the armoury and the perimeter guard.' },
+      { label: 'Reports to', value: 'The Director, weekly security review.' },
+      { label: 'On file', value: 'Keeps antique military memorabilia in her office. Raises a ticket for every fault, however small.' },
     ],
   },
   {
@@ -63,21 +54,12 @@ export const LAYER_01: LedgerEntry[] = [
     position: 'Systems Architect',
     notes:
       'Elias helped design the original S30 Ledger infrastructure. Brilliant but absent-minded, he prefers working alone and has a habit of repairing outdated equipment rather than replacing it. He collects vintage fountain pens and mechanical writing instruments.',
-    log: [
-      { time: '6:20 PM', text: 'Arrived. Coffee. Read overnight alerts from the Ledger cluster.' },
-      { time: '7:15 PM', text: 'Worked in the server room. Replaced a failing drive in rack 3.' },
-      { time: '8:40 PM', text: 'Rebuilt the array. Waited for the parity check.' },
-      { time: '9:30 PM', text: 'Ate at my desk.' },
-      { time: '10:20 PM', text: 'Wrote the upgrade proposal for the archive indexer.' },
-      { time: '11:30 PM', text: 'Met Pendelton about system upgrades. He wants the indexer done this quarter.' },
-      { time: '12:10 AM', text: 'Packed up. Left the proposal on his desk.' },
-      { time: '12:40 AM', text: 'Left headquarters. Drove home.' },
-      { time: '1:10 AM', text: 'Home. Tea.' },
-      { time: '1:40 AM', text: 'Began server maintenance from my home workstation.' },
-      { time: '2:00–2:30 AM', text: 'Working remotely from home. Patching the archive nodes.' },
-      { time: '2:45 AM', text: 'Patching complete. Reboot cycle.' },
-      { time: '3:00 AM', text: 'Watched the nodes come back. All green.' },
-      { time: '3:20 AM', text: 'Logged off. Bed.' },
+    facts: [
+      { label: 'Service', value: '11 years, systems.' },
+      { label: 'Clearance', value: 'Magenta. Server room keycard. Authorised for remote maintenance from his residence.' },
+      { label: 'Posting', value: 'Server room, main building. Designed the original S30 Ledger infrastructure and still maintains the archive node cluster.' },
+      { label: 'Reports to', value: 'The Director, upgrade proposals and maintenance windows.' },
+      { label: 'On file', value: 'Repairs outdated equipment rather than replacing it. Collects vintage fountain pens and mechanical writing instruments.' },
     ],
   },
   {
@@ -86,23 +68,12 @@ export const LAYER_01: LedgerEntry[] = [
     position: 'Intelligence Analyst',
     notes:
       "Nina specializes in decoding encrypted communications and analyzing intelligence reports. She joined Section 30 following her brother's death during a classified operation. Quiet and observant, she is known for keeping detailed handwritten notes and rarely forgetting a conversation.",
-    log: [
-      { time: '6:15 PM', text: 'Analysis wing. Picked up the overnight decrypt queue.' },
-      { time: '7:00 PM', text: 'Decrypt batch 1 of 3. Routine traffic.' },
-      { time: '8:00 PM', text: 'Reviewed classified mission files for the quarterly audit.' },
-      { time: '9:00 PM', text: 'Mess. Alone.' },
-      { time: '9:40 PM', text: 'Decrypt batch 2 of 3.' },
-      { time: '10:30 PM', text: 'Pulled three files from the archives for the audit.' },
-      { time: '11:20 PM', text: 'Discussed an investigation with Pendelton.' },
-      { time: '12:00 AM', text: 'Back in the analysis wing. Wrote up the audit notes.' },
-      { time: '12:50 AM', text: 'Decrypt batch 3 of 3. One malformed message, flagged.' },
-      { time: '1:30 AM', text: 'Returned the audit files to the archives.' },
-      { time: '1:55 AM', text: 'Passed the safehouse on the way back from the archives.' },
-      // The dossier's self-report had her in the Director's office here. It now claims the archives, so Layer 02 catches the lie.
-      { time: '2:00–2:30 AM', text: 'Working in the archives. Re-shelving and cross-referencing.' },
-      { time: '2:40 AM', text: 'Analysis wing. Closed out the decrypt queue.' },
-      { time: '3:15 AM', text: 'Filed the audit notes.' },
-      { time: '3:40 AM', text: 'Left for the night.' },
+    facts: [
+      { label: 'Service', value: '3 years, analysis. Joined after her brother\'s death on a classified operation.' },
+      { label: 'Clearance', value: 'Magenta. Analysis wing, classified reading room and archives B1.' },
+      { label: 'Posting', value: 'Analysis wing, main building. Decrypt queue and intelligence reports; quarterly audit of classified mission files.' },
+      { label: 'Reports to', value: 'The Director, open investigations.' },
+      { label: 'On file', value: 'Keeps detailed handwritten notes. Rarely forgets a conversation.' },
     ],
   },
   {
@@ -111,23 +82,12 @@ export const LAYER_01: LedgerEntry[] = [
     position: 'Field Operative',
     notes:
       'A decorated field operative, Theo specializes in reconnaissance and extraction missions. He spent two years missing in action before returning to Section 30. He is highly resourceful, skilled with improvised tools, and prefers fieldwork over administrative duties.',
-    log: [
-      { time: '6:10 PM', text: 'Vehicle check, patrol unit 2. Fuel, radio, body camera battery.' },
-      { time: '6:40 PM', text: 'Armoury: signed out handheld radio R-14.' },
-      { time: '7:45 PM', text: 'Returned to headquarters from the Ridgeway reconnaissance.' },
-      { time: '8:30 PM', text: 'Filed the reconnaissance summary.' },
-      { time: '9:15 PM', text: 'Mess. Ate with the night shift.' },
-      { time: '10:15 PM', text: 'Met Pendelton for a mission debriefing.' },
-      { time: '11:05 PM', text: 'Gym, lower level.' },
-      { time: '11:50 PM', text: 'Prepared the patrol route: north gate, west perimeter, storage road, east fence.' },
-      { time: '12:30 AM', text: 'Radio check with security control.' },
-      { time: '1:30 AM', text: 'Departed on security patrol.' },
-      { time: '1:40 AM', text: 'North gate, clear.' },
-      { time: '2:00–2:30 AM', text: 'Vehicle GPS places him outside the safehouse, west perimeter.' },
-      { time: '2:50 AM', text: 'East fence, clear.' },
-      { time: '3:10 AM', text: 'Returned, logged mileage.' },
-      { time: '3:30 AM', text: 'Radio R-14 returned to armoury.' },
-      { time: '3:45 AM', text: 'Patrol report filed.' },
+    facts: [
+      { label: 'Service', value: '9 years, field operations, of which two listed missing in action.' },
+      { label: 'Clearance', value: 'Magenta. Armoury access, patrol unit 2, body camera on patrol.' },
+      { label: 'Posting', value: 'Field operations. Reconnaissance and extraction; night security patrol of the perimeter.' },
+      { label: 'Reports to', value: 'The Director, mission debriefings.' },
+      { label: 'On file', value: 'Decorated. Resourceful and skilled with improvised tools. Prefers fieldwork to administrative duties.' },
     ],
   },
   {
@@ -136,20 +96,12 @@ export const LAYER_01: LedgerEntry[] = [
     position: 'Diplomatic Liaison',
     notes:
       "Celeste manages Section 30's international intelligence partnerships. Fluent in six languages, she is known for her diplomatic charm and extensive network of contacts. She frequently exchanges handwritten correspondence and keeps a personalized stationery set in her office.",
-    log: [
-      { time: '6:00 PM', text: 'Attended the executive briefing.' },
-      { time: '6:50 PM', text: 'Office. Replied to three partner services by letter.' },
-      { time: '7:40 PM', text: 'Call with the Lisbon desk. Scheduling.' },
-      { time: '8:30 PM', text: "Prepared the brief for tomorrow's liaison meeting." },
-      { time: '9:20 PM', text: 'Mess, briefly.' },
-      { time: '10:30 PM', text: 'Met privately with Pendelton. Partner matters.' },
-      { time: '11:15 PM', text: 'Office. Sealed the diplomatic pouch for the morning courier.' },
-      { time: '11:50 PM', text: 'Changed for the evening meeting.' },
-      { time: '12:45 AM', text: 'Left for a diplomatic meeting.' },
-      { time: '1:15 AM', text: 'Driver. Across town.' },
-      { time: '2:00–2:30 AM', text: 'Attending a meeting across town. Routine intelligence briefing.' },
-      { time: '2:45 AM', text: 'Meeting over. Driver took me home.' },
-      { time: '3:30 AM', text: 'Home.' },
+    facts: [
+      { label: 'Service', value: '8 years, liaison.' },
+      { label: 'Clearance', value: 'Magenta. Diplomatic identification; use of car 1 with driver and of the diplomatic residence across town.' },
+      { label: 'Posting', value: 'Liaison office, main building. Manages Section 30\'s international intelligence partnerships; fluent in six languages.' },
+      { label: 'Reports to', value: 'The Director, partner matters.' },
+      { label: 'On file', value: 'Frequently exchanges handwritten correspondence. Keeps a personalised stationery set in her office.' },
     ],
   },
 ];
@@ -422,9 +374,14 @@ export function searchLedger(opts: { who?: string; from?: string; to?: string; t
   };
   const matches = (text: string, time: string) => !words.length || words.some((w) => text.toLowerCase().includes(w) || time.toLowerCase().includes(w));
   const hits: SearchHit[] = [];
-  if (opts.layers[1]) for (const e of findEntries(LAYER_01, opts.who)) for (const l of e.log) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 1, who: e.id, name: e.name, time: l.time, text: l.text });
+  // Layer 01 has no times: its personnel fields answer a word search when no window was asked for.
+  if (opts.layers[1] && a === null && b === null)
+    for (const e of findEntries(LAYER_01, opts.who)) {
+      const fields = [...(e.facts ?? []).map((f) => `${f.label}: ${f.value}`), `Profile: ${e.notes}`];
+      for (const f of fields) if (words.length && matches(f, '')) hits.push({ layer: 1, who: e.id, name: e.name, time: 'file', text: f });
+    }
   if (opts.layers[2]) {
-    for (const e of findEntries(LAYER_02, opts.who)) for (const l of e.log) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: e.id, name: e.name, time: l.time, text: l.text });
+    for (const e of findEntries(LAYER_02, opts.who)) for (const l of e.log ?? []) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: e.id, name: e.name, time: l.time, text: l.text });
     if (!opts.who || /hale|duty|facility/i.test(opts.who)) for (const l of FACILITY_LOG) if (inWindow(l.time) && matches(l.text, l.time)) hits.push({ layer: 2, who: 'FACILITY', name: 'Duty log', time: l.time, text: l.text });
   }
   return hits.sort((x, y) => (ledgerMinutes(x.time) ?? 0) - (ledgerMinutes(y.time) ?? 0) || x.layer - y.layer);
@@ -439,7 +396,7 @@ export function formatHits(hits: SearchHit[], max = 60): string {
 
 export function formatEntry(e: LedgerEntry, layer: 1 | 2): string {
   const head = `${e.id} :: ${e.name} :: ${e.position}`;
-  const log = e.log.map((l) => `${l.time} ${l.text}`).join('\n');
-  if (layer === 1) return `${head}\nProfile: ${e.notes}\nSelf-reported activity:\n${log}`;
+  const log = (e.log ?? []).map((l) => `${l.time} ${l.text}`).join('\n');
+  if (layer === 1) return `${head}\n${(e.facts ?? []).map((f) => `${f.label}: ${f.value}`).join('\n')}\nProfile: ${e.notes}`;
   return `${head}\nRecorded activity:\n${log}\nRecovered evidence: ${(e.evidence ?? []).join('; ')}\nAdditional findings: ${e.notes}`;
 }

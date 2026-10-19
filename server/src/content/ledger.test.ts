@@ -8,14 +8,21 @@ const both = { 1: true, 2: true } as const;
 const l1 = { 1: true, 2: false } as const;
 
 describe('ledger content', () => {
-  it('has five agents in each layer with the same ids, and a full night each', () => {
+  it('has five agents in each layer with the same ids: personnel files in Layer 01, a full night in Layer 02', () => {
     expect(LAYER_01.map((e) => e.id)).toEqual(LAYER_02.map((e) => e.id));
-    for (const e of [...LAYER_01, ...LAYER_02]) expect(e.log.length).toBeGreaterThanOrEqual(13);
-    for (const e of LAYER_02) expect(e.evidence).toHaveLength(4);
+    for (const e of LAYER_01) {
+      expect(e.log ?? []).toEqual([]);
+      expect(e.facts?.length).toBeGreaterThanOrEqual(4);
+      expect(JSON.stringify(e)).not.toMatch(/\b\d{1,2}:\d{2}\s*(AM|PM)/);
+    }
+    for (const e of LAYER_02) {
+      expect(e.log!.length).toBeGreaterThanOrEqual(13);
+      expect(e.evidence).toHaveLength(4);
+    }
   });
-  it('keeps every log in time order from 6 PM to 4 AM', () => {
-    for (const e of [...LAYER_01, ...LAYER_02]) {
-      const mins = e.log.map((l) => ledgerMinutes(l.time)!);
+  it('keeps every Layer 02 log in time order from 6 PM to 4 AM', () => {
+    for (const e of LAYER_02) {
+      const mins = e.log!.map((l) => ledgerMinutes(l.time)!);
       expect(mins.every((m) => m !== null && m >= -5 && m <= 10 * 60 + 30)).toBe(true);
       expect([...mins].sort((a, b) => a - b)).toEqual(mins);
     }
@@ -55,11 +62,12 @@ describe('time parsing', () => {
 describe('searchLedger', () => {
   it('filters by agent, window and words, and a range overlaps the window', () => {
     const theo = searchLedger({ who: 'theo', from: '1:30 AM', to: '2:30 AM', layers: both });
-    expect(theo.every((h) => h.who === 'S30-004')).toBe(true);
-    expect(theo.some((h) => h.layer === 1 && h.time.startsWith('2:00'))).toBe(true);
+    expect(theo.every((h) => h.who === 'S30-004' && h.layer === 2)).toBe(true);
     expect(theo.some((h) => h.text.includes('storage facility'))).toBe(true);
-    const radio = searchLedger({ text: 'radio', layers: l1 });
-    expect(radio.map((h) => h.who)).toEqual(expect.arrayContaining(['S30-001', 'S30-004']));
+    // Layer 01 answers word searches from the personnel fields, never a time window.
+    const keycard = searchLedger({ text: 'keycard', layers: l1 });
+    expect(keycard.map((h) => h.who)).toEqual(expect.arrayContaining(['S30-001', 'S30-002']));
+    expect(searchLedger({ from: '2:00 AM', to: '2:30 AM', layers: l1 })).toEqual([]);
     expect(searchLedger({ text: 'unicorn', layers: both })).toEqual([]);
   });
   it('honours the sealed layer and includes the duty log only when Layer 02 is open', () => {
@@ -77,9 +85,10 @@ describe('mock ARCHIVE', () => {
   };
   it('answers a window question from the open layers and notes the seal', () => {
     const before = mockArchiveReply('where was everyone at 2:14', ctx(false));
-    expect(before).toContain('Nina Calder');
     expect(before).toContain('LAYER SEALED');
+    expect(before).toContain('personnel files, not movements');
     expect(before).not.toContain('L2 ');
+    expect(mockArchiveReply('tell me about Nina Calder', ctx(false))).toContain('Intelligence Analyst');
     const after = mockArchiveReply('who was at the safehouse between 2:00 and 2:30', ctx(true));
     expect(after).toContain("L2 2:11 AM       Nina Calder: Badge: Director's Office, in.");
     expect(after).toContain('Duty log');

@@ -70,14 +70,23 @@ function Agent({ e, layer, defaultOpen = false }: { e: LedgerEntry; layer: 1 | 2
         <div className="body">
           {layer === 1 ? (
             <>
+              <dl className="facts">
+                {(e.facts ?? []).map((f) => (
+                  <div key={f.label}>
+                    <dt>{f.label}</dt>
+                    <dd>{f.value}</dd>
+                  </div>
+                ))}
+              </dl>
               <h4>Personnel profile</h4>
               <p className="notes">{e.notes}</p>
-              <h4>Activity log (self-reported)</h4>
             </>
           ) : (
-            <h4>Recorded activity</h4>
+            <>
+              <h4>Recorded activity</h4>
+              <Log lines={e.log ?? []} />
+            </>
           )}
-          <Log lines={e.log} />
           {layer === 2 ? (
             <>
               <h4>Recovered evidence</h4>
@@ -208,7 +217,7 @@ export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; activ
   return (
     <div>
       <p className="ledger-head">
-        S30 Ledger · access level magenta · establish every agent&rsquo;s movements, <b>{files.interrogationWindow}</b>
+        S30 Ledger · access level magenta · ask every agent where they were, <b>{files.interrogationWindow}</b>
       </p>
       <Section name="LAYER 01 // PERSONNEL RECORDS" locked={!l1} defaultOpen>
         {l1 ? (

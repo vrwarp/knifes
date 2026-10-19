@@ -225,17 +225,17 @@ try {
   await player.getByRole('button', { name: /return to headquarters/i }).click();
 
   await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
-  await shot(player, 'Ledger Layer 01', 'Dinner begins. Investigation has three tabs. The Ledger opens on the five personnel files; the header names the window he must establish for each agent.');
+  await shot(player, 'Ledger Layer 01', 'Dinner begins. Investigation has three tabs. The Ledger opens on the five personnel files; the header names the window he must ask each agent about.');
   await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-  await player.getByText('Working in the archives.').waitFor();
-  await shot(player, 'A personnel file', 'Each agent: profile and the activity they reported for the night. Nina claims the archives from 2:00 to 2:30.');
+  await player.getByText(/Rarely forgets a conversation/).waitFor();
+  await shot(player, 'A personnel file', 'Each agent: service, clearance, posting and profile. Nothing about the night; Jimmy gets that from the agents at the table.');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
   await shot(player, 'Layer 02 sealed', 'The classified evidence waits for Phil\u2019s second call: a GM presses Release, or Phil reads Jimmy the passcode.');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
 
   await player.getByRole('tab', { name: 'archive' }).click();
-  await shot(player, 'ARCHIVE terminal', 'An in-world AI that answers from the Ledger through tools. It never names the culprit, and it refuses Layer 02 until it is released.');
-  for (const q of ['where was everyone at 2:14', 'tell me about Nina Calder', 'read the classified evidence']) {
+  await shot(player, 'ARCHIVE terminal', 'An in-world AI that answers from the Ledger through tools. It knows the personnel files, refuses Layer 02 until it is released, and never names the culprit.');
+  for (const q of ['tell me about Nina Calder', 'where was everyone at 2:14', 'read the classified evidence']) {
     await player.getByLabel('Query').fill(q);
     await player.getByRole('button', { name: /send/i }).click();
     await sleep(700);

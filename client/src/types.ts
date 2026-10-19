@@ -96,7 +96,8 @@ export interface LedgerEntry {
   position: string;
   /** Layer 01: the personnel profile. Layer 02: the additional findings. */
   notes: string;
-  log: { time: string; text: string }[];
+  facts?: { label: string; value: string }[];
+  log?: { time: string; text: string }[];
   /** Layer 02 only. */
   evidence?: string[];
 }
