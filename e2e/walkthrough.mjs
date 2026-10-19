@@ -227,7 +227,7 @@ try {
   await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
   await shot(player, 'Ledger Layer 01', 'Dinner begins. Investigation has three tabs. The Ledger opens on the five personnel files; the header names the window he must ask each agent about.');
   await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
-  await player.getByText(/Rarely forgets a conversation/).waitFor();
+  await player.getByText(/rarely forgets a conversation/i).waitFor();
   await shot(player, 'A personnel file', 'Each agent: service, clearance, posting and profile. Nothing about the night; Jimmy gets that from the agents at the table.');
   await player.locator('.file header', { hasText: 'LAYER 02' }).click();
   await shot(player, 'Layer 02 sealed', 'The classified evidence waits for Phil\u2019s second call: a GM presses Release, or Phil reads Jimmy the passcode.');
