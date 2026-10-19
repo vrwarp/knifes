@@ -147,9 +147,9 @@ export const LAYER_01: LedgerEntry[] = [
       { time: '11:50 PM', text: 'Changed for the evening meeting.' },
       { time: '12:45 AM', text: 'Left for a diplomatic meeting.' },
       { time: '1:15 AM', text: 'Driver. Across town.' },
-      { time: '2:00–2:30 AM', text: 'Attending a meeting across town.' },
-      { time: '3:00 AM', text: 'Meeting continued. Routine intelligence briefing.' },
-      { time: '3:30 AM', text: 'Departed. Home.' },
+      { time: '2:00–2:30 AM', text: 'Attending a meeting across town. Routine intelligence briefing.' },
+      { time: '2:45 AM', text: 'Meeting over. Driver took me home.' },
+      { time: '3:30 AM', text: 'Home.' },
     ],
   },
 ];

@@ -251,9 +251,9 @@ Decisions applied 19 Oct after the simulations: full ARCHIVE search over both la
 11:50 PM  Changed for the evening meeting.
 12:45 AM  Left for a diplomatic meeting.
 1:15 AM   Driver. Across town.
-2:00–2:30 AM  Attending a meeting across town.
-3:00 AM   Meeting continued. Routine intelligence briefing.
-3:30 AM   Departed. Home.
+2:00–2:30 AM  Attending a meeting across town. Routine intelligence briefing.
+2:45 AM   Meeting over. Driver took me home.
+3:30 AM   Home.
 ```
 
 ### Layer 02, recorded
@@ -291,7 +291,7 @@ Questions worth testing against it once built: "who badged into the safehouse af
 ## Known soft spots
 
 - Nina's Layer 01 has her "pass the safehouse" at 1:55, which she needs because camera 3 sees her; it is the one line in her self-report that a careful reader could use against her before Layer 02. It is there so her account is a lie of omission, not a fabrication, and so an actor playing her has something to say.
-- Celeste's 3:00 AM "meeting continued" versus her 2:47 departure is a second small discrepancy on top of her secret. Remove it if one secret per agent should be strict.
+- Celeste's log was tidied on 19 Oct so her only discrepancy is the nature of the meeting. The motive slot no longer rejects "brother"; only a motive with no sale in it fails.
 - Elias's Layer 01 says he "left the proposal on his desk" at 12:10; Layer 02 has him badge into the server room then, not the office. Harmless, but an actor should know.
 
 ## Simulation, 19 Oct 2026
