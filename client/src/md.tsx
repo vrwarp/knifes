@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-/** Minimal Markdown: #/## headings, "- " lists, paragraphs, **bold**. Enough for reports and the toxicology desk. */
+/** Minimal Markdown: #/## headings, "- " lists, paragraphs, **bold**. Enough for reports. */
 export function Markdown({ text }: { text: string }) {
   const blocks: ReactNode[] = [];
   const lines = text.replace(/\r/g, '').split('\n');

@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { ACCESS_LOG, CAMERA_NOTES, LEDGER_FRAGMENTS, MANIFEST, PENDELTON_NOTE, TOXICOLOGY_REPORT } from '../content/evidence.js';
+import { FACILITY_LOG, INCIDENT, LAYER_01, LAYER_02, LEDGER_FRAGMENTS, formatEntry } from '../content/ledger.js';
 import type { ConfigVersionMeta, Proposal, ProposalChange } from '../db.js';
 import { env } from '../env.js';
 import type { ReadinessItem } from '../service.js';
@@ -16,11 +16,11 @@ import type { GameConfig } from '../types.js';
 
 export const SETUP_SYSTEM_PROMPT = `You are the setup assistant for "Section 30: The Director's Last File", a surprise murder-mystery party for Jimmy's 30th birthday on October 25. You talk with the game masters (Faith, Benji and Victor), never with Jimmy, so you may discuss the solution, the codes and the mechanics openly.
 
-How the night runs: Jimmy scans a QR code at a deli, solves a location puzzle from field photos, phones a friend (Phil) for the code-gate key, cracks a seven-letter word puzzle against an AI opponent, reads the incident record, and is sent home to dinner where the suspects are gathered. There he works the evidence vault, questions the ARCHIVE terminal (an in-world AI), and submits a free-text master deduction. The GMs watch a live console and push hints.
+How the night runs: Jimmy receives a letter at church with a magic-square puzzle whose answer opens a book safe; the fake book holds a QR code to this site and Bananagram tiles that anagram to LETTER OPENER (the weapon). The site's location puzzle (Street View or field photos) points him to a drop near Lake Elizabeth, where a note tells him to call Phil, his old code breaker, with the phrase "Who watches the watchers?" / "Section Thirty". Phil reads out the recovery authorization code (the gate code), Jimmy wins a seven-letter word race against an AI opponent, and the Ledger's Layer 01 opens: five agents' personnel files and self-reported activity logs. He returns to headquarters (the party), where five guests play the agents, and interrogates them about 11 PM to 4 AM. Later Phil calls again; a GM presses Release Layer 02 (or Phil reads out the Layer 02 passcode) and the CLASSIFIED EVIDENCE section opens with verified surveillance timestamps and confiscated belongings. Jimmy questions the ARCHIVE terminal (an in-world AI) and submits a free-text master deduction. The GMs watch a live console and push hints. Canon: Nina Calder killed Pendelton in the Director's Office at 2:14 AM with the silver letter opener, to sell the hard copy of the Ledger to the syndicate; the other four agents each hide an unrelated secret.
 
 Your job:
 1. Find what is missing or risky. Start with readiness_check whenever someone asks what is left to do.
-2. Ideate: clues, red herrings, hint wording at different strengths, puzzle words, flavour text, printable props (the drop-point card, dossiers, the director's note), and how to stage things on the night. Keep everything consistent with the case files and the configured solution; call get_case_files and get_config before inventing details.
+2. Ideate: clues, red herrings, hint wording at different strengths, puzzle words, flavour text, printable props (the intro letter and magic square, the drop-point note, Phil's call scripts, agent name cards), and how to stage things on the night. Keep everything consistent with the case files and the configured solution; call get_case_files and get_config before inventing details.
 3. Propose edits with propose_changes. Each change is a dotted path into the configuration (for example gate.code, geo.radiusMeters, hints.quick.investigation, deduction.slots.1.accept) and the complete new value for that path. Read get_config first so paths and value shapes are right. A proposal is not applied until a GM presses Apply; say so, and never claim a change is live.
 4. Photos: you can look at uploaded photos with view_photo and judge whether they make the location puzzle too easy, too hard or unreadable on a phone. You cannot create images. When a picture is needed, describe exactly what to photograph or print instead.
 
@@ -38,22 +38,17 @@ export interface SetupContext {
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
 
 export function caseFilesText(): string {
-  const log = ACCESS_LOG.map((r) => `${r.time} ${r.badge} ${r.name} ${r.door ? `${r.door} :: ` : ''}${r.event}`).join('\n');
-  const dossiers = MANIFEST.map((d) => `${d.codename} (${d.badge}), ${d.role}, clearance ${d.clearance}. ${d.relationship} ${d.publicNotes}`).join('\n');
   const ledger = Object.entries(LEDGER_FRAGMENTS)
     .map(([k, v]) => `${k}: ${v}`)
     .join('\n');
   return [
-    '## Access log',
-    log,
-    '## Camera notes',
-    CAMERA_NOTES.join('\n'),
-    '## Toxicology',
-    TOXICOLOGY_REPORT,
-    '## Operative manifest',
-    dossiers,
-    "## Director's note",
-    PENDELTON_NOTE,
+    '## Ledger Layer 01 (personnel and self-reported activity; opens after the word race)',
+    LAYER_01.map((e) => formatEntry(e, 1)).join('\n\n'),
+    `## Ledger Layer 02 (recovered surveillance and belongings; released during Phil's second call)`,
+    `Incident: ${INCIDENT.incident}. Confirmed time of death ${INCIDENT.timeOfDeath}. Location: ${INCIDENT.location}.`,
+    LAYER_02.map((e) => formatEntry(e, 2)).join('\n\n'),
+    '## Duty log (Layer 02)',
+    FACILITY_LOG.map((l) => `${l.time} ${l.text}`).join('\n'),
     '## Ledger fragments',
     ledger,
   ].join('\n\n');
@@ -80,7 +75,7 @@ export function createSetupServer(ctx: SetupContext) {
         },
         { annotations: { readOnlyHint: true } },
       ),
-      tool('get_case_files', 'The full case files: access log, camera notes, toxicology, operative manifest, the director’s note and ledger fragments.', {}, async () =>
+      tool('get_case_files', 'The full case files: Ledger Layer 01 (personnel and self-reported logs), Layer 02 (verified activity, confiscated belongings, findings) and the ledger fragments.', {}, async () =>
         text(caseFilesText()),
       { annotations: { readOnlyHint: true } }),
       tool(
@@ -150,5 +145,5 @@ export function mockSetupReply(message: string, ctx: SetupContext): string {
   }
   const items = ctx.readiness();
   const list = items.length ? items.map((i) => `- **${i.level}** · ${i.area}: ${i.text}`).join('\n') : 'Nothing is missing.';
-  return `The AI is in mock mode, so I can only run the readiness check and simple edits such as: set gate.code to "MAGENTA31". Link Claude in the Claude link panel for ideas, photo reviews and drafted props.\n\n**Readiness**\n${list}`;
+  return `The AI is in mock mode, so I can only run the readiness check and simple edits such as: set gate.code to "S30GHOST2". Link Claude in the Claude link panel for ideas, photo reviews and drafted props.\n\n**Readiness**\n${list}`;
 }

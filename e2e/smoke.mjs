@@ -105,6 +105,16 @@ try {
     await finishTyping(page);
   };
 
+  await step('GM sets the hiding place of the Ledger hard copy (the prop slot ships as a placeholder)', async () => {
+    const login = await fetch(`${base}/api/gm/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'test' }) });
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const gmApi = (p, init = {}) => fetch(`${base}${p}`, { ...init, headers: { cookie, ...(init.json ? { 'content-type': 'application/json' } : {}) }, body: init.json ? JSON.stringify(init.json) : undefined });
+    const c = await (await gmApi('/api/gm/overview')).json();
+    const cfg = c.config;
+    Object.assign(cfg.deduction.slots.find((s) => s.id === 'prop'), { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle'] });
+    await gmApi('/api/gm/config', { method: 'PUT', json: cfg });
+  });
+
   await step('player sees the intro', async () => {
     await player.goto(base);
     await player.locator('h1', { hasText: 'MAGENTA CHANNEL' }).waitFor();
@@ -125,13 +135,13 @@ try {
     await player.getByRole('button', { name: /proceed/i }).click();
   });
 
-  await step('gate rejects a wrong code and accepts MAGENTA30', async () => {
+  await step('gate rejects a wrong code and accepts S30GHOST', async () => {
     await player.locator('h1', { hasText: 'Secure line' }).waitFor();
     await typeWord(player, 'WRONG');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.getByText('KEY REJECTED').waitFor();
     await clearWord(player);
-    await typeWord(player, 'magenta30');
+    await typeWord(player, 's30ghost');
     await player.getByRole('button', { name: /submit key/i }).click();
     await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
   });
@@ -148,24 +158,26 @@ try {
     const st = await (await fetch(`${base}/api/gm/overview`, { headers: { cookie } })).json();
     await typeWord(player, st.state.hack.secret);
     await player.getByRole('button', { name: /attempt key/i }).click();
-    await player.locator('h1', { hasText: 'INCIDENT RECORD' }).waitFor({ timeout: 10_000 });
+    await player.locator('h1', { hasText: 'LEDGER DECRYPTED' }).waitFor({ timeout: 10_000 });
     await finishTyping(player);
     await shot(player, '04-reveal');
-    await player.getByRole('button', { name: /return to base/i }).click();
+    await player.getByRole('button', { name: /return to headquarters/i }).click();
   });
 
-  await step('evidence vault lists the access log', async () => {
-    await player.getByRole('tab', { name: 'evidence' }).waitFor();
-    await player.locator('.file header', { hasText: '01_Vault' }).click();
-    await player.getByText('03:42').first().waitFor();
-    await shot(player, '05-evidence');
+  await step('Ledger Layer 01 lists the five agents and Layer 02 is sealed', async () => {
+    await player.getByRole('tab', { name: 'ledger' }).waitFor();
+    await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
+    await player.getByText('Working in the archives.').waitFor();
+    await player.locator('.file header', { hasText: 'LAYER 02' }).click();
+    await player.getByLabel('Passcode').waitFor();
+    await shot(player, '05-ledger-layer1');
   });
 
-  await step('ARCHIVE answers an office-log question (mock)', async () => {
+  await step('ARCHIVE answers a where-was-everyone question (mock)', async () => {
     await player.getByRole('tab', { name: 'archive' }).click();
-    await player.getByLabel('Query').fill('who was in the office at 03:45');
+    await player.getByLabel('Query').fill('where was everyone at 2:14');
     await player.getByRole('button', { name: /send/i }).click();
-    await player.locator('.msg.assistant', { hasText: 'Vector' }).waitFor({ timeout: 10_000 });
+    await player.locator('.msg.assistant', { hasText: 'Nina Calder' }).waitFor({ timeout: 10_000 });
     await shot(player, '06-archive');
   });
 
@@ -179,8 +191,20 @@ try {
     await shot(gm, '07-gm');
   });
 
+  await step('GM releases Ledger Layer 02 and the phone shows the classified evidence', async () => {
+    gm.once('dialog', (d) => d.accept());
+    await gm.getByRole('button', { name: /^release layer 02$/i }).click();
+    await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
+    await player.getByRole('button', { name: /acknowledge/i }).click();
+    await player.getByRole('tab', { name: 'ledger' }).click();
+    await player.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
+    await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
+    await player.getByText('Silver letter opener').waitFor();
+    await shot(player, '07b-ledger-layer2');
+  });
+
   await step('GM pushes a hint and the player sees the transmission', async () => {
-    await gm.getByLabel('Transmission text').fill('Count back thirty minutes from the time of death.');
+    await gm.getByLabel('Transmission text').fill('Hold what they told you against what the Ledger recorded.');
     await gm.getByRole('button', { name: /push to his screen/i }).click();
     await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
     await shot(player, '08-hint');
@@ -192,10 +216,10 @@ try {
     const fill = async (answers) => {
       for (const [label, value] of Object.entries(answers)) await player.getByLabel(label, { exact: true }).fill(value);
     };
-    await fill({ TIME: '3:45 am', SUSPECT: 'Agent Cipher', METHOD: 'poisoned tea', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
+    await fill({ TIME: '2:14 am', SUSPECT: 'Mara Voss', METHOD: 'the letter opener', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
     await player.getByRole('button', { name: /submit deduction/i }).click();
     await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
-    await fill({ SUSPECT: 'Agent Vector' });
+    await fill({ SUSPECT: 'Nina Calder' });
     await player.getByRole('button', { name: /submit deduction/i }).click();
     await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
     await finishBeats(player);
@@ -206,7 +230,7 @@ try {
     await gm.getByRole('button', { name: /generate with ai/i }).click();
     await gm.getByText('Report generated').waitFor({ timeout: 15_000 });
     await gm.getByRole('button', { name: /publish to player/i }).click();
-    await player.getByText('CASE FILE 30-0415').first().waitFor({ timeout: 10_000 });
+    await player.getByText('CASE FILE 30-0214').first().waitFor({ timeout: 10_000 });
     await shot(player, '10-report');
   });
 
@@ -214,24 +238,24 @@ try {
     await gm.locator('summary', { hasText: 'Code gate' }).click();
     const code = gm.getByLabel('Unlock code (letters/digits, case and dashes ignored)', { exact: true });
     await code.fill('');
-    await code.pressSequentially('MAGENTA31');
-    if ((await code.inputValue()) !== 'MAGENTA31') throw new Error('typed value lost');
+    await code.pressSequentially('S30GHOST2');
+    if ((await code.inputValue()) !== 'S30GHOST2') throw new Error('typed value lost');
     if (!(await code.evaluate((el) => document.activeElement === el))) throw new Error('focus lost while typing');
     const saved = gm.waitForResponse((r) => r.url().includes('/api/gm/config') && r.ok());
     await gm.getByRole('button', { name: /save config/i }).click();
     await saved;
     await gm.getByText('Saved and pushed').waitFor({ timeout: 10_000 });
     const st = await (await fetch(`${base}/api/gm/overview`, { headers: { cookie: (await desk.cookies()).map((c) => `${c.name}=${c.value}`).join('; ') } })).json();
-    if (st.config.gate.code !== 'MAGENTA31') throw new Error(`server kept ${st.config.gate.code}`);
+    if (st.config.gate.code !== 'S30GHOST2') throw new Error(`server kept ${st.config.gate.code}`);
     const restored = gm.waitForResponse((r) => r.url().includes('/api/gm/config') && r.ok());
-    await code.fill('MAGENTA30');
+    await code.fill('S30GHOST');
     await gm.getByRole('button', { name: /save config/i }).click();
     await restored;
   });
 
   await step('GM can type into the coordinate and list fields key by key', async () => {
     await gm.locator('summary', { hasText: 'Location puzzle' }).click();
-    const coords = gm.getByPlaceholder('34.0522, -118.2437');
+    const coords = gm.getByPlaceholder('34.66, -118.41');
     await coords.fill('');
     await coords.pressSequentially('34.05, -118.24');
     if ((await coords.inputValue()) !== '34.05, -118.24') throw new Error(`coordinates lost keystrokes: ${await coords.inputValue()}`);
@@ -239,8 +263,8 @@ try {
     await gm.locator('summary', { hasText: 'time:' }).click();
     const accept = gm.getByLabel('Accepted phrasings (comma separated)', { exact: true }).first();
     await accept.fill('');
-    await accept.pressSequentially('03:45, 3:45,');
-    if ((await accept.inputValue()) !== '03:45, 3:45,') throw new Error(`list field lost keystrokes: ${await accept.inputValue()}`);
+    await accept.pressSequentially('02:14, 2:14,');
+    if ((await accept.inputValue()) !== '02:14, 2:14,') throw new Error(`list field lost keystrokes: ${await accept.inputValue()}`);
     await gm.getByRole('button', { name: /discard/i }).click();
   });
 
@@ -254,7 +278,7 @@ try {
   await step('player view never leaks secrets', async () => {
     const res = await fetch(`${base}/api/player/state`);
     const text = await res.text();
-    for (const secret of ['MAGENTA30', 'CANIS30', '"ALPHA"', 'Agent Vector', 'canonical']) {
+    for (const secret of ['S30GHOST', 'MAGENTA30', '"ALPHA"', 'Nina Calder', 'canonical']) {
       if (text.includes(secret)) throw new Error(`leaked ${secret}`);
     }
   });

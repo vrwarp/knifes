@@ -1,5 +1,4 @@
 export type GeoMode = 'puzzle' | 'reveal' | 'off';
-export type EvidenceGateMode = 'after_hack' | 'passcodes';
 export type HackMode = 'solo' | 'race';
 export type StageId = 'intro' | 'geo' | 'gate' | 'hack' | 'reveal' | 'investigation' | 'solved';
 export const STAGE_ORDER: StageId[] = ['intro', 'geo', 'gate', 'hack', 'reveal', 'investigation', 'solved'];
@@ -68,12 +67,19 @@ export interface GameConfig {
     freePass: { enabled: boolean; text: string };
   };
   reveal: { title: string; body: string; buttonLabel: string };
-  evidence: {
-    gateMode: EvidenceGateMode;
-    passcodes: { audio: string; toxicology: string };
-    audioUploadId: string | null;
-    audioNotes: string;
+  /** The two-layer Ledger the investigation reads. Layer 01 opens with the investigation; Layer 02 waits for Phil's second call. */
+  ledger: {
+    /** Phil can read this out instead of a GM pressing Release. Case, spaces and dashes are ignored. */
+    layer2Passcode: string;
+    /** The section name on the phone, e.g. CLASSIFIED EVIDENCE. */
+    layer2Label: string;
+    /** Pushed to the phone as a transmission when Layer 02 opens. Empty for none. */
+    layer2ReleasedText: string;
+    /** The window Jimmy is told to establish for every agent. */
+    interrogationWindow: string;
   };
+  /** Phil's two phone calls, shown in the GM console for whoever plays him. */
+  phil: { challenge: string; response: string; part1: string; part2: string };
   archive: { enabled: boolean; maxMessageChars: number; welcome: string };
   deduction: {
     prompt: string;
@@ -171,7 +177,7 @@ export interface GameState {
   hack: HackState;
   /** Survives a game reset: it belongs to the configuration, not the evening. */
   hackScripts: HackScripts;
-  evidence: { unlocked: { logs: boolean; audio: boolean; toxicology: boolean; manifest: boolean } };
+  ledger: { layer1: boolean; layer2: boolean; layer2ReleasedAt: number | null; layer2Source: 'gm' | 'passcode' | null };
   archive: { sessionId: string | null; locked: boolean; messageCount: number; busy: boolean; /** Bumped when the GM starts a new ARCHIVE session. */ epoch?: number };
   deduction: { attempts: number; passed: boolean; lastResult: GradeResult | null; lastAnswers: Record<SlotId, string> | null };
   hints: HintPush[];
@@ -193,7 +199,8 @@ export type EventType =
   | 'hack_scripts'
   | 'hack_ai_guess'
   | 'hack_ai_solved'
-  | 'evidence_unlock'
+  | 'ledger_release'
+  | 'ledger_passcode'
   | 'archive_user'
   | 'archive_assistant'
   | 'archive_tool'

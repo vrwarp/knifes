@@ -6,7 +6,7 @@ import { useSocket } from '../ws';
 import { AssistantPanel } from './AssistantPanel';
 import { ClaudePanel } from './ClaudePanel';
 import { ConfigEditor } from './ConfigEditor';
-import { ArchivePanel, HintsPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel, STAGE_NAME, elapsed, fmt, plural, useNow } from './panels';
+import { ArchivePanel, HintsPanel, LedgerPanel, LiveLog, PlayerStatus, ProgressPanel, ReportPanel, STAGE_NAME, elapsed, fmt, plural, useNow } from './panels';
 
 const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
   auth_token: 'bearer token',
@@ -16,7 +16,7 @@ const CRED_LABEL: Record<Overview['ai']['credential'], string> = {
   none: 'no credential',
 };
 
-const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'evidence_unlock', 'archive_user', 'deduction_submit']);
+const PLAYER_TYPES = new Set(['game_start', 'stage', 'geo_guess', 'gate_attempt', 'hack_guess', 'hack_lockout', 'hack_solved', 'ledger_passcode', 'archive_user', 'deduction_submit']);
 const PUZZLE_STAGES = new Set(['geo', 'gate', 'hack', 'investigation']);
 
 /** The across-the-room strip: where he is, how long since he last did anything, what is happening. */
@@ -53,11 +53,10 @@ function NowStrip({ state, config, events, players, streetViewKeySet }: { state:
       break;
     }
     case 'reveal':
-      facts.push('reading the incident record');
+      facts.push('reading the Ledger decryption notice');
       break;
     case 'investigation': {
-      const open = Object.values(state.evidence.unlocked).filter(Boolean).length;
-      facts.push(`evidence ${open}/4 open · ARCHIVE ${plural(state.archive.messageCount, 'query').replace('querys', 'queries')}${state.archive.busy ? ' (answering)' : ''}${state.archive.locked ? ' SEALED' : ''} · ${plural(state.deduction.attempts, 'deduction')}`);
+      facts.push(`Ledger ${state.ledger.layer2 ? 'Layer 02 RELEASED' : 'Layer 01 only'} · ARCHIVE ${plural(state.archive.messageCount, 'query').replace('querys', 'queries')}${state.archive.busy ? ' (answering)' : ''}${state.archive.locked ? ' SEALED' : ''} · ${plural(state.deduction.attempts, 'deduction')}`);
       break;
     }
     case 'solved':
@@ -237,6 +236,7 @@ export function GmApp() {
         <div className="cols">
           <div className="col">
             <ProgressPanel state={state} config={config} stages={data.stages} />
+            <LedgerPanel state={state} config={config} />
             <LiveLog events={events} />
           </div>
           <div className="col">

@@ -7,7 +7,7 @@ import { reduceMotion } from './common';
 type Submit = { pass: boolean; title: string | null; body: string | null; failText: string; verified: number | null; total: number };
 
 const DRAFT_KEY = 's30.deduction.draft';
-const VERIFY_LINES = ['CROSS-REFERENCING ACCESS LOG', 'MATCHING INTERCEPT SIGNATURES', 'CHECKING TOXICOLOGY WINDOW', 'ARCHIVE VERIFYING'];
+const VERIFY_LINES = ['CROSS-REFERENCING PERSONNEL RECORDS', 'MATCHING SURVEILLANCE TIMESTAMPS', 'CHECKING RECOVERED EVIDENCE', 'ARCHIVE VERIFYING'];
 
 export function Deduction({ view, refresh }: StageProps) {
   const d = view.deduction;

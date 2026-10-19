@@ -39,6 +39,10 @@ export function freshRound(h: HackState): HackState {
   return { ...initialHack(), used: h.used, rounds: h.rounds, round: h.round, lastWord: h.lastWord, lastRound: h.lastRound };
 }
 
+export function initialLedger(): GameState['ledger'] {
+  return { layer1: false, layer2: false, layer2ReleasedAt: null, layer2Source: null };
+}
+
 export function initialState(): GameState {
   return {
     stage: 'intro',
@@ -48,7 +52,7 @@ export function initialState(): GameState {
     gate: { attempts: 0, passed: false },
     hack: initialHack(),
     hackScripts: { key: '', byWord: {}, busy: false },
-    evidence: { unlocked: { logs: false, audio: false, toxicology: false, manifest: false } },
+    ledger: initialLedger(),
     archive: { sessionId: null, locked: false, messageCount: 0, busy: false, epoch: 0 },
     deduction: { attempts: 0, passed: false, lastResult: null, lastAnswers: null },
     hints: [],
@@ -95,13 +99,9 @@ export function forceStage(config: GameConfig, state: GameState, stage: StageId,
   if (state.startedAt === null) state.startedAt = now;
 }
 
-export function applyInvestigationUnlocks(config: GameConfig, state: GameState): void {
-  state.evidence.unlocked.logs = true;
-  state.evidence.unlocked.manifest = true;
-  if (config.evidence.gateMode === 'after_hack') {
-    state.evidence.unlocked.audio = true;
-    state.evidence.unlocked.toxicology = true;
-  }
+/** Layer 01 opens with the investigation. Layer 02 waits for Phil's second call (a GM release or the passcode). */
+export function applyInvestigationUnlocks(_config: GameConfig, state: GameState): void {
+  state.ledger.layer1 = true;
 }
 
 export function resetStage(config: GameConfig, state: GameState, stage: StageId): void {
@@ -116,7 +116,7 @@ export function resetStage(config: GameConfig, state: GameState, stage: StageId)
       state.hack = initialHack();
       break;
     case 'investigation':
-      state.evidence = { unlocked: { logs: false, audio: false, toxicology: false, manifest: false } };
+      state.ledger = initialLedger();
       applyInvestigationUnlocks(config, state);
       state.deduction = { attempts: 0, passed: false, lastResult: null, lastAnswers: null };
       break;
@@ -188,7 +188,6 @@ export function playerView(config: GameConfig, state: GameState, googleMapsApiKe
     title: config.title,
     stage: state.stage,
     geoMode: config.geo.mode,
-    evidenceGateMode: config.evidence.gateMode,
     intro: config.intro,
     geo: {
       briefing: config.geo.briefing,
@@ -206,10 +205,11 @@ export function playerView(config: GameConfig, state: GameState, googleMapsApiKe
     gate: { prompt: config.gate.prompt, successText: config.gate.successText, attempts: state.gate.attempts, passed: state.gate.passed },
     hack: hackView(config, state),
     reveal: config.reveal,
-    evidence: {
-      unlocked: state.evidence.unlocked,
-      hasAudio: config.evidence.audioUploadId !== null,
-      audioNotes: config.evidence.audioNotes,
+    ledger: {
+      layer1: state.ledger.layer1,
+      layer2: state.ledger.layer2,
+      layer2Label: config.ledger.layer2Label,
+      interrogationWindow: config.ledger.interrogationWindow,
     },
     archive: {
       enabled: config.archive.enabled,

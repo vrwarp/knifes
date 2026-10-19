@@ -34,9 +34,22 @@ Without a Claude credential the opponent is a deterministic solver, so the race 
 4. Point your existing reverse proxy at the container's port 8080 with WebSocket support enabled
    (Synology reverse proxy: add the `Upgrade` and `Connection` custom headers, or use the WebSocket preset).
 5. Open `https://your-host/gm`, log in, and walk through the configuration panel.
-   Set the deli coordinates (Street View starts there unless you give it its own spot), upload the
-   audio clip, and check the codes. Without a Maps key, upload field photos instead.
+   Pin the Lake Elizabeth drop point (Street View starts there unless you give it its own spot), decide
+   where the hard copy of the Ledger is hidden at the party and fill in the PHYSICAL PROP answer, and
+   check Phil's two codes. Without a Maps key, upload field photos instead. The readiness list in the
+   setup assistant panel names anything still missing.
 6. The QR code in the fake book points at `https://your-host/` (or `https://your-host/?k=PLAYER_KEY` when a key is set).
+
+## How the evening runs on the site
+
+Jimmy's letter and the book safe are physical. From the QR code on: the intro, a location puzzle that
+points at a drop near Lake Elizabeth, the code gate (Phil's first call gives him `S30GHOST`), the word
+race, and then the two-layer S30 Ledger. Layer 01, the five agents' personnel files and the activity
+they reported, opens as soon as the race is won. Layer 02, labelled CLASSIFIED EVIDENCE, holds the
+recovered surveillance timestamps and confiscated belongings and stays sealed until Phil's second
+call: a GM presses **Release Layer 02** in the console's Phil panel, or Phil reads Jimmy the Layer 02
+passcode (`MAGENTA30` by default) and he types it in. The Phil panel also carries both call scripts.
+The ARCHIVE terminal answers from whichever layers are open, and the deduction grid closes the case.
 
 ## Use your Claude subscription instead of an API key
 
@@ -94,8 +107,8 @@ Its messages go only to GMs, never to the player's phone.
 version, whether it comes from a GM save, an upload, an applied proposal or a restore. Database
 triggers refuse to edit or delete an old version. Under **Version history** in the config editor,
 open any version to see what restoring it would change, then press **Restore**. A restore adds a
-copy of that version as the newest one, so it can be undone the same way. Removing a photo or the
-audio takes it out of the game but keeps the file, so older versions still restore completely.
+copy of that version as the newest one, so it can be undone the same way. Removing a photo
+takes it out of the game but keeps the file, so older versions still restore completely.
 
 ## Run it locally
 

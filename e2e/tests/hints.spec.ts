@@ -4,11 +4,11 @@ test.describe('hints', () => {
   test.beforeEach(async ({ player, app }) => {
     await app.setStage('investigation');
     await player.goto(app.base);
-    await expect(player.getByRole('tab', { name: 'evidence' })).toBeVisible();
+    await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
   });
 
   test('a written hint takes over the phone and lands in the transmissions list', async ({ player, gm }) => {
-    await gm.getByLabel('Transmission text').fill('Count back thirty minutes from the time of death.');
+    await gm.getByLabel('Transmission text').fill('Hold what they told you against what they wrote down.');
     await gm.getByRole('button', { name: /push to his screen/i }).click();
     const overlay = player.getByRole('dialog', { name: /incoming transmission/i });
     await expect(overlay).toBeVisible();
@@ -17,7 +17,7 @@ test.describe('hints', () => {
     await expect(overlay).toHaveCount(0);
     await player.getByRole('button', { name: /transmissions \(1\)/i }).click();
     const list = player.getByRole('dialog', { name: /transmissions received/i });
-    await expect(list.getByText('Count back thirty minutes from the time of death.')).toBeVisible();
+    await expect(list.getByText('Hold what they told you against what they wrote down.')).toBeVisible();
     await list.getByRole('button', { name: /^close$/i }).click();
   });
 
@@ -31,12 +31,12 @@ test.describe('hints', () => {
   });
 
   test('an acknowledged hint does not come back after a reload', async ({ player, app }) => {
-    await app.gmApi('/api/gm/hint', { json: { text: 'Check the property log.' } });
+    await app.gmApi('/api/gm/hint', { json: { text: 'Ask who badged into the office.' } });
     const overlay = player.getByRole('dialog', { name: /incoming transmission/i });
     await expect(overlay).toBeVisible();
     await overlay.getByRole('button', { name: /acknowledge/i }).click();
     await player.reload();
-    await expect(player.getByRole('tab', { name: 'evidence' })).toBeVisible();
+    await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
     await player.waitForTimeout(800);
     await expect(overlay).toHaveCount(0);
   });

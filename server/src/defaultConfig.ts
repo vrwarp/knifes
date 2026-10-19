@@ -2,20 +2,51 @@ import { DEFAULT_WORD_BANK } from './content/words.js';
 import type { GameConfig } from './types.js';
 
 export const DEDUCTION_TEMPLATE =
-  'At [TIME], [SUSPECT] poisoned Director Pendelton using [METHOD] to exfiltrate [ASSET] because [MOTIVE], and concealed Drive 30-ALPHA inside [PHYSICAL PROP].';
+  'At [TIME], [SUSPECT] killed Director Pendelton with [METHOD] to take [ASSET] because [MOTIVE], and hid it in [PHYSICAL PROP].';
+
+/** The prop slot ships unset: the GMs decide where the hard copy is hidden at the party. The readiness check flags this. */
+export const PROP_PLACEHOLDER = '[GM: SET THE HIDING PLACE]';
+
+export const PHIL_PART_1 = `PHIL: Identify yourself.
+JIMMY: Who watches the watchers?
+PHIL: Section Thirty.
+
+(Brief pause.)
+
+PHIL: Detective Jimmy. Good, you've made contact. We've managed to gather all five Section 30 agents at headquarters. They're being held there while we investigate Pendelton's murder. We believe one of them is responsible, but we don't have enough evidence to determine who.
+
+That's where you come in.
+
+Pendelton left behind the digital S30 Ledger containing classified personnel records and activity logs that could help identify the killer. Unfortunately, he locked the system behind an emergency security protocol before his death. I'm transmitting your recovery authorization code now.
+
+S30GHOST
+
+Enter that code into the website's recovery terminal. It'll initiate a hacking sequence you'll need to complete to bypass the Ledger's security. Once you've successfully accessed the Ledger, review the agents' files carefully. Then return to headquarters. The suspects will be waiting for you there.
+
+You'll need to piece everything together and determine who murdered Pendelton. Remember, Detective. Everyone has secrets. But only one of them is a killer. Good luck, Jimmy. Section Thirty is counting on you.`;
+
+export const PHIL_PART_2 = `PHIL: Jimmy... it's Phil. We've got a breakthrough. Our team managed to crack another layer of Pendelton's encryption. Turns out, the Ledger you accessed earlier was only a partial archive.
+
+The original personnel files contained the agents' self-reported activity logs. But Pendelton kept a separate set of records that automatically tracked their actual movements using an advanced biometric tracker. We've managed to recover those records. Additionally, we finished processing their inventory of personal belongings confiscated from each agent when they were brought into headquarters.
+
+And Jimmy... there are some discrepancies. At least one of the agents wasn't where they claimed to be on the night of the murder. I've uploaded the recovered information to your Ledger. You should have access to a new section labeled CLASSIFIED EVIDENCE. Compare the recovered timestamps against what the agents told you during their interrogations. I think we're getting close.
+
+(GM: press Release Layer 02 now, or read him the passcode.)
+
+Good luck, Detective.`;
 
 export const DEFAULT_CONFIG: GameConfig = {
   version: 1,
   title: "Section 30: The Director's Last File",
   intro: {
     headline: 'SECTION 30 // MAGENTA CHANNEL',
-    body: `RECOVERY PROTOCOL 30-A ENGAGED.
+    body: `EMERGENCY FAILSAFE RECOVERY PROTOCOL ENGAGED.
 
 Detective Jimmy. Authentication accepted.
 
-Director Pendelton's final lockdown scattered the evidence across an emergency recovery chain. This terminal is the first link.
+Director Pendelton's last act scattered the recovery chain across physical and digital drops so that no one inside the division could purge it. This terminal is the first digital link.
 
-The primary mainframe is wiped. Drive 30-ALPHA is missing. What survives is fragmented, and someone inside the division wants it to stay that way.
+The S30 Ledger survives, locked. Someone in the inner circle wanted it sold and the archives wiped. They do not yet know the failsafe fired.
 
 Follow the chain. Do not announce your investigation. Trust no one.`,
     buttonLabel: 'INITIATE RECOVERY PROTOCOL',
@@ -23,30 +54,29 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
   geo: {
     mode: 'puzzle',
     briefing:
-      "Pendelton's last outbound transmission carried a live feed from a field contact's camera. Look around, work out where the feed is coming from, and drop a marker on the map. The next link in the chain is waiting there.",
+      "The failsafe's first physical drop was placed by a field contact near Lake Elizabeth. His camera feed is the only record of the spot. Look around, work out where the feed is coming from, and drop a marker on the map. The coordinates follow.",
     target: null,
     radiusMeters: 200,
-    mapCenter: { lat: 34.0522, lng: -118.2437 },
-    mapZoom: 11,
+    mapCenter: { lat: 34.66, lng: -118.41 },
+    mapZoom: 13,
     photos: [],
     streetView: { location: null, heading: 0, pitch: 0, allowMoving: true },
     revealTitle: 'LOCATION CONFIRMED',
     revealBody:
-      'Field contact drop point confirmed. Proceed to the location now. Look for Section 30 markings. Further instructions are waiting on site.',
+      'Drop point confirmed. Proceed to the location now. Look for Section 30 markings. A note is waiting on site with your next instruction.',
   },
   gate: {
     prompt:
-      'The drop-point instructions carry a number. Call it. Whoever answers holds the recovery key. Enter it here.',
-    code: 'MAGENTA30',
-    successText: 'Recovery key accepted. Mirror partition 30-BETA located. Encryption active.',
+      'The note tells you to call your old code breaker and give him the phrase. Whoever answers holds the recovery authorization code. Enter it here.',
+    code: 'S30GHOST',
+    successText: 'Recovery authorization accepted. Ledger security located. Initiating hacking sequence.',
   },
   hack: {
     mode: 'race',
     secret: 'LANTERN',
     maxAttempts: null,
     lockoutSeconds: 45,
-    intro:
-      'Seven-character key. Green placed, amber misplaced, dim absent.',
+    intro: 'Seven-character key. Green placed, amber misplaced, dim absent.',
     wordBank: DEFAULT_WORD_BANK,
     aiStyle: 'scripted',
     aiModel: 'claude-sonnet-5-5',
@@ -59,122 +89,126 @@ Follow the chain. Do not announce your investigation. Trust no one.`,
     aiThinking: true,
     freePass: {
       enabled: true,
-      text: 'ADVERSARY PROCESS OVERHEATED. PARTITION FAILSAFE TRIGGERED. KEY RELEASED TO OPERATOR.',
+      text: 'ADVERSARY PROCESS OVERHEATED. LEDGER FAILSAFE TRIGGERED. KEY RELEASED TO OPERATOR.',
     },
   },
   reveal: {
-    title: 'PARTITION DECRYPTED // INCIDENT RECORD 30-0415',
-    body: `INCIDENT: Director Arthur Pendelton. Secure safehouse, Director's office, inner wing.
+    title: 'RECOVERY COMPLETE // LEDGER DECRYPTED',
+    body: `S30 LEDGER. ACCESS LEVEL: MAGENTA.
 
-TIME OF DEATH: 04:15.
+Layer 01 is open: the classified personnel records of the five Section 30 agents now held at headquarters, with the activity each of them reported for the night Director Pendelton died.
 
-CAUSE: Synthetic neurotoxin, delayed onset. Preliminary toxicology indicates ingestion approximately thirty minutes prior.
+Pendelton was found at 04:15 in the Director's Office inside the secure safehouse. The killer is one of the five.
 
-The office door logged three badge entries between 03:30 and 04:00. The full access log, the ambient intercept and the operative manifest are held in the ARCHIVE, which this terminal can now reach.
-
-DIRECTIVE: Return to base. Every operative with inner-circle clearance has been recalled to your location for debrief. They are gathering now. Among them is the one who sold us.
-
-Interrogate them. Cross-reference the ARCHIVE. Find Drive 30-ALPHA.
+DIRECTIVE: Return to headquarters. Question each agent. Establish where every one of them was between 11:00 PM and 4:00 AM, and hold their answers against the Ledger.
 
 Recovery chain complete. The rest is detective work.`,
-    buttonLabel: 'RETURN TO BASE',
+    buttonLabel: 'RETURN TO HEADQUARTERS',
   },
-  evidence: {
-    gateMode: 'after_hack',
-    passcodes: { audio: 'CANIS30', toxicology: '1996' },
-    audioUploadId: null,
-    audioNotes:
-      "Ambient intercept, Director's office, 03:44:50 to 03:47:10. Waveform notes: heavy metallic vessel set down at 0:12. Paper rustle, envelope-weight, at 0:29. Liquid poured at 0:31. Perimeter alarm tone over a handheld radio at 0:38. Door at 0:41. Door at 1:50.",
+  ledger: {
+    layer2Passcode: 'MAGENTA30',
+    layer2Label: 'CLASSIFIED EVIDENCE',
+    layer2ReleasedText:
+      'SECOND AUTHORIZATION RECEIVED. Ledger Layer 02 decrypted: recovered surveillance records and confiscated belongings for all five agents. A new section, CLASSIFIED EVIDENCE, is open in your Ledger. Compare the recovered timestamps against what they told you.',
+    interrogationWindow: '11:00 PM to 4:00 AM',
+  },
+  phil: {
+    challenge: 'Who watches the watchers?',
+    response: 'Section Thirty',
+    part1: PHIL_PART_1,
+    part2: PHIL_PART_2,
   },
   archive: {
     enabled: true,
     maxMessageChars: 400,
     welcome:
-      'ARCHIVE ONLINE. Partition integrity degraded. I hold what survived the wipe: the access log, the manifest, the toxicology desk, the intercept notes, fragments of the Ledger index. Ask. I answer what the records support. I do not guess.',
+      'ARCHIVE ONLINE. Ledger partition mounted. I hold what the failsafe recovered: the personnel layer, the activity logs, and whatever further layers are released to you. Ask. I answer what the records support. I do not guess.',
   },
   deduction: {
-    prompt: 'Complete the master deduction. Every field must verify against the ARCHIVE.',
+    prompt: 'Complete the master deduction. Every field must verify against the Ledger.',
     template: DEDUCTION_TEMPLATE,
     slots: [
       {
         id: 'time',
         label: 'TIME',
-        placeholder: 'e.g. 02:10 AM',
-        canonical: '03:45 AM',
-        accept: ['03:45', '3:45', '345', '3.45', 'quarter to four', 'quarter to 4', 'three forty five', 'three forty-five'],
-        reject: ['04:15', '4:15', '03:42', '3:42', '03:30', '3:30'],
-        guidance: 'Any phrasing of 3:45 in the morning passes. 4:15 is the time of death and fails. 3:42 and 3:30 are badge times and fail.',
+        placeholder: 'e.g. 1:50 AM',
+        canonical: '2:14 AM',
+        accept: ['2:14', '02:14', '214', '2.14', 'fourteen past two', 'fourteen minutes past two', 'two fourteen'],
+        reject: ['4:15', '04:15', '2:11', '2:19', '1:50', '2:05', '2:08', '2:17'],
+        guidance:
+          'Any phrasing of 2:14 in the morning passes. 4:15 is when the body was found and fails. 2:11 and 2:19 are the badge times either side and fail; other logged times fail.',
       },
       {
         id: 'suspect',
         label: 'SUSPECT',
-        placeholder: 'Agent codename',
-        canonical: 'Agent Vector',
-        accept: ['vector'],
-        reject: ['cipher', 'sentinel', 'ledger', 'echo', 'horizon', 'trace', 'apex'],
-        guidance: 'Must identify Agent Vector, the cyber threat analyst, badge S30-404. Any other operative fails.',
+        placeholder: 'Agent name',
+        canonical: 'Nina Calder',
+        accept: ['nina', 'calder', 's30-003', 'the intelligence analyst'],
+        reject: ['mara', 'voss', 'elias', 'mercer', 'theo', 'blackwood', 'celeste', 'rowan'],
+        guidance: 'Must identify Nina Calder, the intelligence analyst, Ledger id S30-003. Any other agent fails.',
       },
       {
         id: 'method',
         label: 'METHOD',
         placeholder: 'how it was done',
-        canonical: 'a neurotoxin in his Earl Grey tea',
-        accept: ['poison', 'tea', 'neurotoxin', 'toxin', 'earl grey', 'nightshade', 'poisoned cup', 'poisoned drink', 'spiked'],
-        reject: ['letter opener', 'stab', 'knife', 'shot', 'gun', 'strangle', 'choke'],
-        guidance: 'Poisoned tea, a neurotoxin, or simply poison in any wording passes. The letter opener was a red herring and fails, as does any violent method.',
+        canonical: 'the silver letter opener',
+        accept: ['letter opener', 'opener', 'stabbed', 'stab', 'stabbing', 'blade'],
+        reject: ['poison', 'tea', 'knife', 'scissors', 'screwdriver', 'gun', 'shot', 'strangle', 'choke', 'fountain pen'],
+        guidance:
+          'The letter opener, or stabbing with it, in any wording passes. A knife, the scissors, the screwdriver or a fountain pen names another agent’s belongings and fails, as does poison or any other method.',
       },
       {
         id: 'asset',
         label: 'ASSET',
         placeholder: 'what they were after',
-        canonical: 'the Section 30 Ledger on Drive 30-ALPHA',
-        accept: ['ledger', 'drive 30-alpha', '30-alpha', 'alpha', 'the drive', 'flash drive', 'usb', 'master index', 'dossiers'],
+        canonical: 'the hard copy of the S30 Ledger',
+        accept: ['ledger', 'hard copy', 'hardcopy', 'master index', 'dossiers', 'personnel records', 'the files'],
         reject: [],
-        guidance: 'The Ledger, the master index, the dossiers, or Drive 30-ALPHA all pass.',
+        guidance: 'The Ledger, its hard copy, the master index, the dossiers or the personnel records all pass.',
       },
       {
         id: 'motive',
         label: 'MOTIVE',
         placeholder: 'they wanted to…',
-        canonical: 'to sell it to an international syndicate',
+        canonical: 'to sell it to the international syndicate',
         accept: ['sell', 'sale', 'syndicate', 'money', 'buyer', 'profit', 'cash', 'paid', 'rich', 'payout', 'payday'],
         reject: ['revenge', 'love', 'accident'],
-        guidance: 'Selling the Ledger to a syndicate or any buyer, or doing it for money, passes. Revenge or an accident fails.',
+        guidance: 'Selling the Ledger to the syndicate or any buyer, or doing it for money, passes. Mentioning her brother alongside the sale is fine. Revenge alone, love or an accident fails.',
       },
       {
         id: 'prop',
         label: 'PHYSICAL PROP',
-        placeholder: 'where the drive is now',
-        canonical: 'the birthday card envelope on the gift table',
-        accept: ['birthday card', 'card', 'envelope', 'gift table', 'lining'],
-        reject: ['book', 'water bottle', 'bottle', 'tea tin', 'tumbler', 'notebook', 'planner', 'folder', 'lanyard', 'flashlight', 'headphones', 'cassette'],
-        guidance: 'The birthday card or its envelope passes. Any other guest prop fails.',
+        placeholder: 'where the hard copy is now',
+        canonical: PROP_PLACEHOLDER,
+        accept: [],
+        reject: [],
+        guidance: 'The GMs decide where the hard copy of the Ledger is hidden at the party and set the canonical answer and its phrasings here.',
       },
     ],
     successTitle: 'DEDUCTION VERIFIED',
-    successBody: `Access log, intercept and toxicology converge on one operative. Agent Vector. Badge S30-404. Inner-circle clearance revoked.
+    successBody: `Personnel records, recovered surveillance and the confiscated belongings converge on one agent. Nina Calder. Ledger id S30-003. Inside the Director's Office at 2:14 AM, silver letter opener on her person, a hard copy of the Ledger promised to the syndicate. Clearance revoked.
 
-Drive 30-ALPHA is concealed in the lining of the birthday card envelope on the gift table. Recover it now.
+The hard copy is where you said it was. Recover it now.
 
-Pendelton wrote: you are the last decision. He was right. Section 30 opened its first file in 1996. So did you.
+Pendelton wrote: his last decision was you. He was right. Section 30 opened its first file thirty years ago. So did you.
 
-Case 30-0415 closed. Happy thirtieth, Detective.`,
+Case closed. Happy thirtieth, Detective.`,
     failText:
-      'DEDUCTION REJECTED. Somewhere in this room, someone just breathed out. Re-examine the evidence and resubmit.',
+      'DEDUCTION REJECTED. Somewhere in this room, someone just breathed out. Re-examine the Ledger and resubmit.',
     maxAttempts: null,
     feedback: 'pass_fail',
   },
   hints: {
     quick: {
-      geo: ['Turn towards the shopfronts. One of the signs carries a street name.'],
-      gate: ['The remote asset is expecting your call. Use the number on the drop-point card.'],
+      geo: ['Turn towards the water. One of the signs carries a name you can put on the map.'],
+      gate: ['Your old code breaker is expecting the phrase. Give it exactly as the note has it, and write down what he reads back.'],
       hack: [
-        'The partition key is a seven-letter designation. Field-craft vocabulary is worth a try.',
+        'The Ledger key is a seven-letter designation. Field-craft vocabulary is worth a try.',
         'Spend the first two attempts on vowels and the common consonants, then narrow.',
       ],
       investigation: [
-        'The toxin needs thirty minutes. Count back from the time of death, then ask the ARCHIVE who was in the office at that minute.',
-        "The intercept has a paper rustle right before the pour. Ask the ARCHIVE what the property check at the inner-wing door logged.",
+        'Every agent told you where they were between 11 PM and 4 AM. The Ledger holds what they wrote down. Hold the two against each other.',
+        'The recovered records put exactly one agent inside the Director’s Office at the time of death. Then look at what was found in that agent’s pockets.',
       ],
       solved: [],
     },

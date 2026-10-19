@@ -65,11 +65,18 @@ async function startServer(extraEnv: Record<string, string>): Promise<{ server: 
       body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
     });
   const config = async () => (await (await gmApi('/api/gm/overview')).json()).config as Json;
-  const defaults = await config();
   const put = async (c: Json) => {
     const r = await gmApi('/api/gm/config', { method: 'PUT', json: c });
     if (!r.ok) throw new Error(`config ${r.status}: ${await r.text()}`);
   };
+  // The prop slot ships as a GM placeholder; the tests stand in for the GMs and hide the hard copy in the card envelope.
+  {
+    const c = await config();
+    const prop = (c.deduction.slots as Json[]).find((s) => s.id === 'prop')!;
+    Object.assign(prop, { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle', 'teapot'] });
+    await put(c);
+  }
+  const defaults = await config();
   const server: Server = {
     base: baseUrl,
     gmCookie,
@@ -205,13 +212,20 @@ export async function fillDeduction(page: Page, answers: Record<string, string>)
 }
 
 export const RIGHT_ANSWERS = {
-  TIME: '3:45 am',
-  SUSPECT: 'Agent Vector',
-  METHOD: 'poisoned tea',
+  TIME: '2:14 am',
+  SUSPECT: 'Nina Calder',
+  METHOD: 'the letter opener',
   ASSET: 'the ledger',
   MOTIVE: 'to sell it',
   'PHYSICAL PROP': 'birthday card envelope',
 };
+export const WRONG_SUSPECT = 'Mara Voss';
+
+/** A GM releases Ledger Layer 02 through the API, as the Release button does. */
+export async function releaseLayer2(app: Server) {
+  const r = await app.gmApi('/api/gm/ledger/release', { json: { released: true } });
+  if (!r.ok) throw new Error(`release ${r.status}: ${await r.text()}`);
+}
 
 /** The verdict plays in beats separated by CONTINUE. */
 export async function finishBeats(page: Page) {

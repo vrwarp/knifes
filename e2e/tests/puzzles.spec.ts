@@ -11,7 +11,7 @@ test.describe('code gate', () => {
     await player.waitForTimeout(1500);
     await expect(player.getByText('KEY REJECTED'), 'the rejection does not vanish on its own').toBeVisible();
     await clearWord(player);
-    await typeWord(player, 'magenta30');
+    await typeWord(player, 's30ghost');
     await player.getByRole('button', { name: /submit key/i }).click();
     await expect(player.locator('h1', { hasText: 'Brute-force key' })).toBeVisible();
   });
@@ -129,7 +129,7 @@ test.describe('key race', () => {
     await app.setStage('hack');
     await player.goto(app.base);
     await expect(player.getByText('FAILSAFE TRIGGERED. KEY RELEASED.')).toBeVisible({ timeout: 25_000 });
-    await expect(player.locator('h1', { hasText: 'INCIDENT RECORD' })).toBeVisible({ timeout: 15_000 });
+    await expect(player.locator('h1', { hasText: 'LEDGER DECRYPTED' })).toBeVisible({ timeout: 15_000 });
     const { state } = await (await app.gmApi('/api/gm/overview')).json();
     expect(state.hack.freePass).toBe(true);
     expect(state.hack.rounds).toBe(2);

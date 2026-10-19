@@ -72,7 +72,7 @@ test.describe('setup assistant (mock mode)', () => {
     const proposal = panel.locator('.proposal');
     await expect(proposal).toContainText('gate.code');
     await expect(proposal).toContainText('"PHIL2026"');
-    expect((await app.config()).gate.code).toBe('MAGENTA30');
+    expect((await app.config()).gate.code).toBe('S30GHOST');
 
     await proposal.getByRole('button', { name: /^apply$/i }).click();
     await expect(proposal).toHaveCount(0);
@@ -108,16 +108,16 @@ test.describe('setup assistant (mock mode)', () => {
     await expect(second.page.locator('.panel.assistant')).toBeVisible();
 
     const panel = gm.locator('.panel.assistant');
-    await panel.getByLabel('Message the setup assistant').fill('The culprit is Agent Vector, right?');
+    await panel.getByLabel('Message the setup assistant').fill('The culprit is Nina Calder, right?');
     await panel.getByRole('button', { name: /^send$/i }).click();
-    await expect(second.page.locator('.panel.assistant .msg.user')).toContainText('The culprit is Agent Vector, right?');
+    await expect(second.page.locator('.panel.assistant .msg.user')).toContainText('The culprit is Nina Calder, right?');
     await expect(second.page.locator('.panel.assistant .msg.assistant').last()).toBeVisible();
     await second.context.close();
 
     expect(frames.length).toBeGreaterThan(0);
     for (const f of frames) {
       expect(f).not.toContain('"assistant');
-      expect(f).not.toContain('Agent Vector');
+      expect(f).not.toContain('Nina Calder');
     }
   });
 

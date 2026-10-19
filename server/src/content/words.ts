@@ -1,5 +1,5 @@
 /** The ten seven-letter keys of the race by default, in the order the GM sees them; each game draws them without repeats. */
-export const DEFAULT_WORD_BANK: string[] = ['STEALTH', 'PHANTOM', 'DOSSIER', 'COURIER', 'NETWORK', 'SILENCE', 'MISSION', 'TRAITOR', 'CAPTURE', 'PAYLOAD'];
+export const DEFAULT_WORD_BANK: string[] = ['STEALTH', 'PHANTOM', 'CIPHERS', 'COURIER', 'SHADOWS', 'SILENCE', 'BEACONS', 'TRAITOR', 'CAPTURE', 'PAYLOAD'];
 
 /**
  * Common five-letter English words, used only as the vocabulary for generated (non-model) scripts

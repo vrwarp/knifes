@@ -21,18 +21,26 @@ describe('stage flow', () => {
     expect(advanceTo(s, 'intro')).toBe(false);
     expect(s.stage).toBe('gate');
   });
-  it('force-unlocks earlier puzzles and evidence by gate mode', () => {
+  it('force-unlocks earlier puzzles and Ledger Layer 01, never Layer 02', () => {
     const c = cfg();
     const s = initialState();
     forceStage(c, s, 'investigation');
     expect(s.gate.passed).toBe(true);
     expect(s.hack.solved).toBe(true);
-    expect(s.evidence.unlocked).toEqual({ logs: true, audio: true, toxicology: true, manifest: true });
-    const c2 = cfg();
-    c2.evidence.gateMode = 'passcodes';
+    expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null, layer2Source: null });
     const s2 = initialState();
-    forceStage(c2, s2, 'investigation');
-    expect(s2.evidence.unlocked).toEqual({ logs: true, audio: false, toxicology: false, manifest: true });
+    forceStage(c, s2, 'solved');
+    expect(s2.ledger.layer2).toBe(false);
+  });
+  it('resetting the investigation re-seals Layer 02', () => {
+    const c = cfg();
+    const s = initialState();
+    forceStage(c, s, 'investigation');
+    s.ledger.layer2 = true;
+    s.ledger.layer2ReleasedAt = 5;
+    s.ledger.layer2Source = 'gm';
+    resetStage(c, s, 'investigation');
+    expect(s.ledger).toEqual({ layer1: true, layer2: false, layer2ReleasedAt: null, layer2Source: null });
   });
   it('resetting a stage rewinds the pointer and clears that puzzle', () => {
     const c = cfg();
@@ -53,9 +61,11 @@ describe('playerView', () => {
     const json = JSON.stringify(playerView(c, s));
     expect(json).not.toContain(c.gate.code);
     expect(json).not.toContain('"secret"');
-    expect(json).not.toContain('CANIS30');
+    expect(json).not.toContain(c.ledger.layer2Passcode);
     expect(json).not.toContain('canonical');
-    expect(json).not.toContain('Agent Vector');
+    expect(json).not.toContain('Nina Calder');
+    expect(json).not.toContain('letter opener');
+    expect(json).not.toContain('Section Thirty');
   });
   it('scores guesses for the client without exposing the secret', () => {
     const c = cfg();
@@ -98,5 +108,20 @@ describe('streetViewForPlayer', () => {
     const saved = structuredClone(DEFAULT_CONFIG) as unknown as { geo: Record<string, unknown> };
     delete saved.geo.streetView;
     expect(mergeConfig(saved).geo.streetView).toEqual(DEFAULT_CONFIG.geo.streetView);
+  });
+});
+
+describe('configs saved before the two-layer Ledger', () => {
+  it('drop the evidence vault block and pick up the Ledger and Phil defaults', () => {
+    const saved = structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>;
+    delete saved.ledger;
+    delete saved.phil;
+    saved.evidence = { gateMode: 'passcodes', passcodes: { audio: 'CANIS30', toxicology: '1996' }, audioUploadId: null, audioNotes: 'x' };
+    (saved.gate as { code: string }).code = 'KEPT1';
+    const merged = mergeConfig(saved);
+    expect(merged.ledger).toEqual(DEFAULT_CONFIG.ledger);
+    expect(merged.phil).toEqual(DEFAULT_CONFIG.phil);
+    expect(merged.gate.code).toBe('KEPT1');
+    expect('evidence' in merged).toBe(false);
   });
 });

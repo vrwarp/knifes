@@ -88,7 +88,7 @@ async function gmLogin(page, base) {
 }
 async function uploadPhotos(app) {
   const art = await browser.newPage({ viewport: { width: 800, height: 600 } });
-  for (const [name, hue, label] of [['a', 200, 'DELI'], ['b', 30, 'W 3RD ST']]) {
+  for (const [name, hue, label] of [['a', 200, 'LAKE'], ['b', 30, 'ELIZABETH LK RD']]) {
     await art.setContent(`<canvas id=c width=800 height=600></canvas><script>(() => {
       const x=document.getElementById('c').getContext('2d');
       x.fillStyle='hsl(${hue},30%,70%)';x.fillRect(0,0,800,600);
@@ -151,6 +151,8 @@ try {
   // ============================================================================================
   begin('main', 'The full game, start to finish', 'One continuous run on the phone with the GM console open on a laptop: every stage in its default mode, a wrong answer at each gate, a hint pushed mid-investigation, and the case report at the end.');
   const phoneCtx = await browser.newContext(phoneOpts);
+  // The prop slot ships as a GM placeholder; this recording hides the hard copy in the card envelope.
+  await app.patch((c) => Object.assign(c.deduction.slots.find((x) => x.id === 'prop'), { canonical: 'the birthday card envelope', accept: ['card', 'envelope'], reject: ['book', 'bottle'] }));
   const player = await phoneCtx.newPage();
   const deskCtx = await browser.newContext(deskOpts);
   const gm = await deskCtx.newPage();
@@ -166,7 +168,7 @@ try {
   await sleep(1500);
   await shot(player, 'QR landing, text still typing', 'The briefing types out like a terminal. The button stays disabled until it finishes; a tap on the text skips ahead.', { full: false, wait: 0 });
   await finishTyping(player);
-  await shot(player, 'QR landing', 'The first thing Jimmy sees after scanning the QR code at the deli.');
+  await shot(player, 'QR landing', 'The first thing Jimmy sees after scanning the QR code hidden in the book safe.');
   await shot(gm, 'GM console: phone linked', 'As soon as the phone opens the link, the console shows it as linked.', { device: 'desktop', full: false });
   await player.getByRole('button', { name: /initiate recovery protocol/i }).click();
 
@@ -189,15 +191,15 @@ try {
 
   await player.locator('h1', { hasText: 'Secure line' }).waitFor();
   await finishTyping(player);
-  await shot(player, 'Code gate', 'Jimmy has to call the number on the drop-point card. Phil answers and reads out the recovery key.');
+  await shot(player, 'Code gate', 'The note at the drop tells Jimmy to call Phil with the challenge phrase. Phil reads out the recovery authorization code.');
   await typeWord(player, 'WRONGKEY');
   await player.getByRole('button', { name: /submit key/i }).click();
   await player.getByText('KEY REJECTED').waitFor();
   await shot(player, 'Wrong key', 'The rejection stays on screen until Jimmy types again.');
   await clearWord(player);
-  await typeWord(player, 'MAGENTA30');
+  await typeWord(player, 'S30GHOST');
   await player.getByRole('button', { name: /submit key/i }).click();
-  await player.getByText('Recovery key accepted').waitFor();
+  await player.getByText('Recovery authorization accepted').waitFor();
   await shot(player, 'Key accepted', 'The success state holds for a beat before the next stage arrives.', { wait: 150 });
 
   await player.locator('h1', { hasText: 'Brute-force key' }).waitFor({ timeout: 10_000 });
@@ -217,42 +219,48 @@ try {
   await sleep(900);
   await shot(player, 'Partition unlocked', 'The winning row flips green and the screen holds for two seconds.', { wait: 0 });
 
-  await player.locator('h1', { hasText: 'INCIDENT RECORD' }).waitFor({ timeout: 10_000 });
+  await player.locator('h1', { hasText: 'LEDGER DECRYPTED' }).waitFor({ timeout: 10_000 });
   await finishTyping(player);
-  await shot(player, 'Incident record', 'The murder is revealed and Jimmy is ordered home, where the suspects are gathering. RETURN TO BASE scrolls into view once the text finishes.');
-  await player.getByRole('button', { name: /return to base/i }).click();
+  await shot(player, 'Ledger decrypted', 'Layer 01 of the Ledger is open and Jimmy is ordered back to headquarters, where the five agents are held. RETURN TO HEADQUARTERS scrolls into view once the text finishes.');
+  await player.getByRole('button', { name: /return to headquarters/i }).click();
 
-  await player.locator('.file header', { hasText: '00_Directors' }).waitFor();
-  await shot(player, 'Evidence vault', 'Dinner begins. Investigation has three tabs. The director’s note opens first.');
-  await player.locator('.file header', { hasText: '00_Directors' }).click();
-  await player.locator('.file header', { hasText: '01_Vault' }).click();
-  await player.getByText('03:42').first().waitFor();
-  await shot(player, 'Vault access logs', 'Badge entries for the night. Rows inside the 03:30 to 04:00 window carry an amber edge. The 03:48 property check mentions the card envelope.');
-  await player.locator('.file header', { hasText: '01_Vault' }).click();
-  await player.locator('.file header', { hasText: '02_Audio' }).click();
-  await shot(player, 'Audio intercept', 'The GMs record this clip and upload it from the config. Until then the file shows the waveform analysis notes, which carry the paper rustle and the pour.');
-  await player.locator('.file header', { hasText: '02_Audio' }).click();
-  await player.locator('.file header', { hasText: '03_Toxicology' }).click();
-  await player.getByText('PRELIMINARY TOXICOLOGY').waitFor();
-  await shot(player, 'Toxicology and manifest', 'The poison, its thirty-minute onset, and the dossiers of all eight operatives.');
-  await player.locator('.file header', { hasText: '03_Toxicology' }).click();
+  await player.locator('.agent header', { hasText: 'Mara Voss' }).waitFor();
+  await shot(player, 'Ledger Layer 01', 'Dinner begins. Investigation has three tabs. The Ledger opens on the five personnel files; the header names the window he must establish for each agent.');
+  await player.locator('.agent header', { hasText: 'Nina Calder' }).click();
+  await player.getByText('Working in the archives.').waitFor();
+  await shot(player, 'A personnel file', 'Each agent: profile and the activity they reported for the night. Nina claims the archives from 2:00 to 2:30.');
+  await player.locator('.file header', { hasText: 'LAYER 02' }).click();
+  await shot(player, 'Layer 02 sealed', 'The classified evidence waits for Phil\u2019s second call: a GM presses Release, or Phil reads Jimmy the passcode.');
+  await player.locator('.file header', { hasText: 'LAYER 02' }).click();
 
   await player.getByRole('tab', { name: 'archive' }).click();
-  await shot(player, 'ARCHIVE terminal', 'An in-world AI that answers from the case files through tools. It never names the culprit.');
-  for (const q of ['who was in the office at 03:45', 'read the toxicology report', 'what did the property check at the inner-wing door log']) {
+  await shot(player, 'ARCHIVE terminal', 'An in-world AI that answers from the Ledger through tools. It never names the culprit, and it refuses Layer 02 until it is released.');
+  for (const q of ['where was everyone at 2:14', 'tell me about Nina Calder', 'read the classified evidence']) {
     await player.getByLabel('Query').fill(q);
     await player.getByRole('button', { name: /send/i }).click();
     await sleep(700);
     await finishTyping(player);
   }
-  await player.locator('.msg.assistant', { hasText: 'Nightshade' }).waitFor({ timeout: 10_000 });
+  await player.locator('.msg.assistant', { hasText: 'LAYER SEALED' }).last().waitFor({ timeout: 10_000 });
   await finishTyping(player);
   await shot(player, 'ARCHIVE answering questions', 'Integrity rises with every question. These replies come from the scripted mock; on the night they come from Claude on the organizer’s subscription.');
+
+  await shot(gm, 'Phil and the Ledger panel', 'Whoever plays Phil reads from the console: the challenge phrase, both codes in large type, the call scripts, and the Release Layer 02 button for the second call.', { device: 'desktop', full: false });
+  await gm.getByRole('button', { name: /^release layer 02$/i }).click();
+  await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
+  await finishTyping(player);
+  await shot(player, 'Layer 02 released', 'The release lands on the phone as a transmission and the Ledger tab lights up.', { full: false, wait: 0 });
+  await player.getByRole('button', { name: /acknowledge/i }).click();
+  await player.getByRole('tab', { name: 'ledger' }).click();
+  await player.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
+  await player.locator('.agent.l2 header', { hasText: 'Nina Calder' }).click();
+  await player.getByText('Silver letter opener').waitFor();
+  await shot(player, 'Classified evidence', 'Verified movements, confiscated belongings and findings for every agent. Nina\u2019s badge opened the Director\u2019s Office at 2:11; a silver letter opener was on her.');
 
   await shot(gm, 'GM console during the investigation', 'Live log, ARCHIVE transcript and player status update live.', { device: 'desktop' });
   await gm.getByRole('button', { name: /^draft$/i }).click();
   await gm.getByText(/Copilot:/).waitFor({ timeout: 15_000 });
-  await shot(gm, 'AI hint draft', 'The copilot reads the player’s progress and drafts a hint at the chosen strength. The GM edits it or pushes it as is.', { device: 'desktop', full: false });
+  await shot(gm, 'AI hint draft', "The copilot reads the player's progress and drafts a hint at the chosen strength. The GM edits it or pushes it as is.", { device: 'desktop', full: false });
   await gm.getByRole('button', { name: /push to his screen/i }).click();
   await player.getByRole('dialog', { name: /incoming transmission/i }).waitFor({ timeout: 10_000 });
   await sleep(800);
@@ -266,7 +274,7 @@ try {
   await player.getByRole('tab', { name: 'deduction' }).click();
   await shot(player, 'Master deduction, empty', 'Free text in each blank. The draft survives tab switches and reloads.');
   const fill = async (answers) => { for (const [label, value] of Object.entries(answers)) await player.getByLabel(label, { exact: true }).fill(value); };
-  await fill({ TIME: '3:45 am', SUSPECT: 'Agent Cipher', METHOD: 'poisoned tea', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
+  await fill({ TIME: '2:14 am', SUSPECT: 'Mara Voss', METHOD: 'the letter opener', ASSET: 'the ledger', MOTIVE: 'to sell it', 'PHYSICAL PROP': 'birthday card envelope' });
   await shot(player, 'Deduction filled in, wrong suspect', 'Everything right except the suspect.');
   await player.getByRole('button', { name: /submit deduction/i }).click();
   await sleep(900);
@@ -274,7 +282,7 @@ try {
   await player.getByText('DEDUCTION REJECTED').waitFor({ timeout: 15_000 });
   await shot(player, 'Deduction rejected', 'Pass or fail only: it does not say which field is wrong. The frame shakes and turns red.');
   await shot(gm, 'GM sees exactly what failed', 'The console shows the per-field result, which the player never sees, so the GMs can steer with a hint.', { device: 'desktop' });
-  await fill({ SUSPECT: 'Agent Vector' });
+  await fill({ SUSPECT: 'Nina Calder' });
   await player.getByRole('button', { name: /submit deduction/i }).click();
   await player.locator('h1', { hasText: 'DEDUCTION VERIFIED' }).first().waitFor({ timeout: 15_000 });
   await sleep(600);
@@ -293,7 +301,7 @@ try {
   await gm.getByRole('button', { name: /^preview$/i }).click();
   await shot(gm, 'Case report preview', 'After the win the GM generates a case file from the whole game log and previews it before publishing.', { device: 'desktop' });
   await gm.getByRole('button', { name: /publish to player/i }).click();
-  await player.getByText('CASE FILE 30-0415').first().waitFor({ timeout: 10_000 });
+  await player.getByText('CASE FILE 30-0214').first().waitFor({ timeout: 10_000 });
   await finishTyping(player);
   await shot(player, 'Case file on the phone', 'Published, the report appears under the verdict. The GM can also print it.');
   await sleep(1500);
@@ -330,7 +338,7 @@ try {
   await p.getByRole('button', { name: /initiate recovery protocol/i }).click();
   await sleep(2500);
   await finishTyping(p);
-  await shot(p, 'Reveal-only mode', 'No puzzle: the location is shown and Jimmy proceeds. Useful if the deli address must not be guessed.');
+  await shot(p, 'Reveal-only mode', 'No puzzle: the location is shown and Jimmy proceeds. Useful if the drop point must not be guessed.');
   await ctx.close();
 
   await app.resetGame();
@@ -388,35 +396,26 @@ try {
   await app.patch((c) => { c.hack.aiIntervalSeconds = 10; c.hack.aiJitterSeconds = 5; c.hack.lockoutSeconds = 45; });
 
   // ============================================================================================
-  begin('vault', 'Evidence vault with passcodes', 'The alternative vault mode: the audio and toxicology files stay sealed until Jimmy gets passcodes from out-of-town contacts (CANIS30 and 1996 by default).');
+  begin('ledger', 'Layer 02 by passcode', 'If no GM is at the console during Phil\u2019s second call, Phil reads Jimmy the Layer 02 passcode (MAGENTA30 by default) and he types it into the sealed section himself.');
   await app.resetGame();
-  await app.patch((c) => { c.evidence.gateMode = 'passcodes'; });
   await app.gmApi('/api/gm/stage', { method: 'POST', json: { stage: 'investigation' } });
   ctx = await browser.newContext(phoneOpts);
   p = await ctx.newPage();
   await p.goto(app.base);
-  await p.locator('.file header', { hasText: '00_Directors' }).waitFor();
-  await p.locator('.file header', { hasText: '00_Directors' }).click();
-  await shot(p, 'Sealed files', 'Two files read SEALED. The operative manifest is split out so the dossiers stay readable.');
-  await p.locator('.file header', { hasText: '02_Audio' }).click();
-  const audio = p.locator('.file', { has: p.locator('header', { hasText: '02_Audio' }) });
-  await typeWord(p, 'WRONG', audio);
-  await audio.getByRole('button', { name: /^unlock$/i }).click();
-  await audio.getByRole('alert').waitFor();
-  await shot(p, 'Wrong passcode', 'A wrong passcode is rejected in place.');
-  await clearWord(p, audio);
-  await typeWord(p, 'CANIS30', audio);
-  await audio.getByRole('button', { name: /^unlock$/i }).click();
-  await sleep(800);
-  await shot(p, 'Audio unsealed', 'CANIS30 opens the intercept.');
-  await p.locator('.file header', { hasText: '03_Toxicology' }).click();
-  const tox = p.locator('.file', { has: p.locator('header', { hasText: '03_Toxicology' }) });
-  await typeWord(p, '1996', tox);
-  await tox.getByRole('button', { name: /^unlock$/i }).click();
-  await p.getByText('PRELIMINARY TOXICOLOGY').waitFor();
-  await shot(p, 'Toxicology unsealed', '1996 opens the toxicology report. ARCHIVE respects the same seals until then.');
+  await p.locator('.file header', { hasText: 'LAYER 02' }).waitFor();
+  await p.locator('.file header', { hasText: 'LAYER 02' }).click();
+  await shot(p, 'Sealed layer', 'Layer 02 reads SEALED and offers a passcode field.');
+  const sealedFile = p.locator('.file', { has: p.locator('header', { hasText: 'LAYER 02' }) });
+  await typeWord(p, 'WRONG', sealedFile);
+  await sealedFile.getByRole('button', { name: /^unlock$/i }).click();
+  await p.getByRole('alert').first().waitFor();
+  await shot(p, 'Wrong passcode', 'A wrong passcode is rejected in place and logged for the GMs.');
+  await clearWord(p, sealedFile);
+  await typeWord(p, 'MAGENTA30', sealedFile);
+  await sealedFile.getByRole('button', { name: /^unlock$/i }).click();
+  await p.getByText('Confirmed time of death:').waitFor({ timeout: 10_000 });
+  await shot(p, 'Layer 02 unsealed', 'The passcode opens the same classified evidence the GM button releases. ARCHIVE respects the seal until then.');
   await ctx.close();
-  await app.patch((c) => { c.evidence.gateMode = 'after_hack'; });
 
   // ============================================================================================
   begin('gm', 'Running the night from the GM console', 'Every control the three GMs have: what the NOW strip shows across a room, skipping and rewinding stages, sealing ARCHIVE, the live log, the danger zone, and the configuration editor.');
@@ -475,7 +474,7 @@ try {
 
   await g.getByLabel('Stage to jump to').selectOption('investigation');
   await g.getByRole('button', { name: /unlock \/ skip to/i }).click();
-  await pp.getByRole('tab', { name: 'evidence' }).waitFor({ timeout: 10_000 });
+  await pp.getByRole('tab', { name: 'ledger' }).waitFor({ timeout: 10_000 });
   await sleep(600);
   await shot(g, 'Skipping ahead', `Skips ask first: “${lastDialog()}”`, { device: 'desktop', full: false });
   await shot(pp, 'The phone after the skip', 'The phone moves to the new stage straight away.', { full: false });
@@ -515,9 +514,10 @@ try {
     ['Intro (QR landing)', 'Headline, briefing and button label for the QR landing.'],
     ['Location puzzle (geo)', 'Mode, target pin on a map, radius, Street View start, heading, pitch and walking, photos with upload and delete, and the confirmation text.'],
     ['Code gate (Phil', 'The code Phil reads out, the prompt, and the success line.'],
-    ['Word puzzle (mirror partition)', 'The secret word, attempts and lockout length.'],
-    ['Incident reveal', 'The incident record shown after the puzzle.'],
-    ['Evidence vault', 'Unlock mode (after the puzzle or passcodes), the passcodes, and the audio upload.'],
+    ['Phil\'s calls', 'The challenge phrase and both call scripts, shown in the Phil panel for whoever plays him.'],
+    ['Word puzzle (Ledger key)', 'The key bank, race pace, attempts and lockout length.'],
+    ['Ledger decrypted', 'The notice shown after the puzzle, with the interrogation directive.'],
+    ['Ledger Layer 02', 'The passcode Phil can read out, the section name on the phone, and the transmission pushed when it opens.'],
     ['ARCHIVE terminal', 'Welcome line and the model ARCHIVE runs on.'],
     ['Deduction grid', 'The sentence template, each blank’s canonical answer, accepted and rejected phrasings, grader guidance, attempts and feedback mode.'],
     ['Quick hints per stage', 'The one-tap hints for each stage, one per line.'],
@@ -540,7 +540,7 @@ try {
   await unstick.evaluate((el) => el.remove());
   await g.locator('details.section > summary', { hasText: 'Code gate' }).first().click();
   const codeInput = g.locator('details.section', { has: g.locator('summary', { hasText: 'Code gate' }) }).locator('input').nth(0);
-  await codeInput.fill('MAGENTA31');
+  await codeInput.fill('S30GHOST2');
   const other = await (await browser.newContext(deskOpts)).newPage();
   await gmLogin(other, app.base);
   await app.patch((c) => { c.archive.welcome = c.archive.welcome + ' '; });
