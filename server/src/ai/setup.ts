@@ -53,11 +53,12 @@ export function caseFilesText(config: GameConfig): string {
 const MIME: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 
 export function createSetupServer(ctx: SetupContext) {
-  return createSdkMcpServer({
-    name: 'setup',
-    version: '1.0.0',
-    alwaysLoad: true,
-    tools: [
+  return createSdkMcpServer({ name: 'setup', version: '1.0.0', alwaysLoad: true, tools: setupTools(ctx) });
+}
+
+/** The assistant's tools, also exported on their own so tests can call each one directly. */
+export function setupTools(ctx: SetupContext) {
+  return [
       tool('get_config', 'The live game configuration as JSON: every text, code, puzzle setting and hint.', {}, async () =>
         text(JSON.stringify(ctx.config(), null, 2)),
       { annotations: { readOnlyHint: true } }),
@@ -118,8 +119,7 @@ export function createSetupServer(ctx: SetupContext) {
           }
         },
       ),
-    ],
-  });
+  ];
 }
 
 /** Mock-mode stand-in: the readiness list, plus a literal "set PATH to VALUE" command for quick edits. */

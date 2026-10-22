@@ -18,7 +18,7 @@ import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshR
 import { isSolved, normalizeGuess, scoreGuess } from './game/wordle.js';
 import { aiOpponentGuess, aiOpponentPlan, opponentLive } from './ai/opponent.js';
 import { vocabularyFor } from './content/words.js';
-import { STAGE_ORDER, type HackScript, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type StageId } from './types.js';
+import { STAGE_ORDER, type HackScript, type HackState, type ArchiveMessage, type EventType, type GameConfig, type GameEvent, type GameState, type HintPush, type StageId } from './types.js';
 
 export class HttpError extends Error {
   constructor(
@@ -405,7 +405,7 @@ export class GameService {
     h.guesses.push(guess);
     h.guessAt.push(now);
     const scores = scoreGuess(guess, secret);
-    const solved = isSolved(scores);
+    const solved = isSolved(scores, secret.length);
     this.event('hack_guess', { guess, scores: scores.map((s) => s.state), attempt: h.guesses.length, solved });
     if (solved) {
       h.solved = true;
@@ -426,6 +426,8 @@ export class GameService {
     const h = this.state.hack;
     if (h.solved) return;
     if (h.lockedUntil && h.lockedUntil > Date.now()) throw new HttpError(423, 'Partition still locked');
+    // A race only ever moves to a new key by winning or losing it; a retry would skip keys towards the free pass.
+    if (this.config.hack.mode === 'race' && !h.lockedUntil) return;
     // A race draws a new word (touch() starts the round); solo mode keeps the same secret.
     this.state.hack = this.config.hack.mode === 'race' ? freshRound(h) : { ...h, guesses: [], guessAt: [], lockedUntil: null };
     this.touch();
@@ -434,6 +436,8 @@ export class GameService {
   // ------------------------------------------------------------ opponent
 
   private opponentTimer: NodeJS.Timeout | null = null;
+  /** The round the pending timer was set for: a round is one hack object, replaced when the next key is drawn. */
+  private timerFor: HackState | null = null;
 
   /** Race mode and a round that is still open: nobody has the key, the partition is not locked, attempts remain. */
   private raceOpen(): boolean {
@@ -464,11 +468,18 @@ export class GameService {
       if (h.ai.nextAt !== null && !h.ai.thinking) h.ai.nextAt = null;
       return;
     }
+    // A timer set in an earlier round (a GM reset, a new bank, a lost round) would play into this one on
+    // that round's clock: the first guess on a fresh key could come a second after it appeared.
+    if (this.opponentTimer && this.timerFor !== h) {
+      clearTimeout(this.opponentTimer);
+      this.opponentTimer = null;
+    }
     if (this.opponentTimer || h.ai.thinking) return;
     const pace = opponentPace(this.config.hack, h.rounds);
     const due = (h.ai.lastAt ?? Date.now()) + opponentDelayMs(pace.intervalSeconds, pace.jitterSeconds);
     const delay = Math.max(500, due - Date.now());
     h.ai.nextAt = Date.now() + delay;
+    this.timerFor = h;
     this.opponentTimer = setTimeout(() => {
       this.opponentTimer = null;
       this.background(this.opponentTurn(), 'opponent');
@@ -562,6 +573,12 @@ export class GameService {
         }
         plan ??= generatedPlan(vocabulary, secret, n);
         if (h !== this.state.hack || h.round !== round) return;
+        // Jimmy can win (in place, same round) while the plan is written: a plan for a finished round is dropped.
+        if (!this.raceOpen()) {
+          h.ai.thinking = false;
+          this.touch();
+          return;
+        }
         h.ai.plan = plan;
         h.ai.planSource = planSource;
         this.event('hack_ai_plan', { round, guesses: plan.length, asked: n, source: planSource, costUsd, plan });
@@ -595,7 +612,7 @@ export class GameService {
     h.ai.guesses.push(guess);
     h.ai.guessAt.push(Date.now());
     const scores = scoreGuess(guess, secret);
-    const solved = isSolved(scores);
+    const solved = isSolved(scores, secret.length);
     this.event('hack_ai_guess', { guess, scores: scores.map((s) => s.state), attempt: h.ai.guesses.length, solved, source, costUsd });
     if (solved) {
       h.ai.solved = true;
@@ -769,9 +786,10 @@ export class GameService {
     next.hack.wordBank = [...new Set(next.hack.wordBank.map((w) => w.toUpperCase()))];
     const changes = diffPaths(this.config, next);
     if (!changes.length) return this.config;
-    // A new bank or a mode switch mid-puzzle: redraw so the word in play comes from the current bank.
-    const bankChanged = JSON.stringify(next.hack.wordBank) !== JSON.stringify(this.config.hack.wordBank) || next.hack.mode !== this.config.hack.mode;
-    if (bankChanged && this.state.stage === 'hack' && !this.state.hack.solved) this.state.hack = freshRound(this.state.hack);
+    // A new bank (in a race) or a mode switch: the word in play has to come from what is configured now. Not
+    // only mid-puzzle: a round left open by a jump back would otherwise resume with an old key when he returns.
+    const wordsChanged = next.hack.mode !== this.config.hack.mode || (next.hack.mode === 'race' && JSON.stringify(next.hack.wordBank) !== JSON.stringify(this.config.hack.wordBank));
+    if (wordsChanged && !this.state.hack.solved) this.state.hack = freshRound(this.state.hack);
     next.version = this.db.appendConfig(next, source, note, changes);
     this.config = next;
     this.event('gm_action', { action: 'config_update', version: next.version, source, note, changes: changes.slice(0, 12) });

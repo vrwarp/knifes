@@ -11,7 +11,8 @@ export interface ArchiveContext {
 }
 
 
-export function createArchiveServer(getCtx: () => ArchiveContext) {
+/** The ARCHIVE's tools, also exported on their own so tests can call each one directly. */
+export function archiveTools(getCtx: () => ArchiveContext) {
   const ledger = () => getCtx().state.ledger;
   const content = () => getCtx().config.ledger.content;
   const notOnFile = () => getCtx().config.archive.notOnFile;
@@ -80,12 +81,11 @@ export function createArchiveServer(getCtx: () => ArchiveContext) {
     { annotations: { readOnlyHint: true } },
   );
 
-  return createSdkMcpServer({
-    name: 'archive',
-    version: '2.0.0',
-    alwaysLoad: true,
-    tools: [readPersonnel, readClassified, searchActivity, ledgerLookup],
-  });
+  return [readPersonnel, readClassified, searchActivity, ledgerLookup];
+}
+
+export function createArchiveServer(getCtx: () => ArchiveContext) {
+  return createSdkMcpServer({ name: 'archive', version: '2.0.0', alwaysLoad: true, tools: archiveTools(getCtx) });
 }
 
 export const ARCHIVE_ALLOWED_TOOLS = ['mcp__archive__*'];

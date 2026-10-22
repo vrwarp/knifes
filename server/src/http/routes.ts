@@ -218,8 +218,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return;
   }
   const e = err as { status?: number; type?: string; message?: string };
-  if (e?.type === 'entity.parse.failed' || e?.status === 400) {
-    res.status(400).json({ error: 'Bad request' });
+  // The body parser's own refusals (malformed JSON, too large, wrong charset) are the client's to fix, not a server fault.
+  if (e?.type === 'entity.parse.failed' || (typeof e?.status === 'number' && e.status >= 400 && e.status < 500)) {
+    res.status(e.status && e.status !== 400 ? e.status : 400).json({ error: e.status === 413 ? 'Request too large' : 'Bad request' });
     return;
   }
   console.error('unhandled error', err);

@@ -117,7 +117,7 @@ export function applyInvestigationUnlocks(_config: GameConfig, state: GameState)
   state.ledger.layer1 = true;
 }
 
-export function resetStage(config: GameConfig, state: GameState, stage: StageId): void {
+export function resetStage(config: GameConfig, state: GameState, stage: StageId, now = Date.now()): void {
   switch (stage) {
     case 'geo':
       state.geo = { attempts: 0, solved: false, lastDistanceM: null };
@@ -140,6 +140,8 @@ export function resetStage(config: GameConfig, state: GameState, stage: StageId)
     reopenFrom(state, stage);
     state.stage = stage;
   }
+  // The puzzle he is on starts over, so does its clock; otherwise the console counts him idle since before the reset.
+  if (state.stage === stage && stage !== 'intro') state.stageTimes[stage] = now;
 }
 
 function hackView(config: GameConfig, state: GameState) {

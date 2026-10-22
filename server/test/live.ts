@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 process.env.AI_MODE = 'auto';
 process.env.ANTHROPIC_API_KEY = 'sk-ant-test-not-a-real-key';
 process.env.CLAUDE_BINARY = fileURLToPath(new URL('./fake-claude.mjs', import.meta.url));
+// The ARCHIVE's per-call limit; short, so a hung call is given up on within a test.
+process.env.AI_TIMEOUT_MS ||= '4000';
 for (const d of ['agent-cwd', 'uploads', 'claude']) fs.mkdirSync(path.join(process.env.DATA_DIR ?? os.tmpdir(), d), { recursive: true });
 
 export const FAKE_CLAUDE = process.env.CLAUDE_BINARY;
@@ -61,6 +63,15 @@ export function callLog(): () => Turn[] {
           .filter(Boolean)
           .map((l) => JSON.parse(l) as Turn)
       : [];
+}
+
+/** Polls until `fn` is true, for live runs that settle on real timers. */
+export async function until(fn: () => boolean, timeoutMs = 15_000, label = 'condition'): Promise<void> {
+  const end = Date.now() + timeoutMs;
+  while (!fn()) {
+    if (Date.now() > end) throw new Error(`timed out waiting for ${label}`);
+    await new Promise((r) => setTimeout(r, 25));
+  }
 }
 
 /** `--name=value` from a recorded argv. */
