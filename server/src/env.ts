@@ -33,6 +33,8 @@ export const env = {
   cookieSecure: str('COOKIE_SECURE', '0') === '1',
   /** Browser key for the Maps JavaScript API; the location puzzle embeds Street View when it is set. */
   googleMapsApiKey: str('GOOGLE_MAPS_API_KEY', '').trim(),
+  /** How often the live link is checked both ways; a page that hears nothing for two and a half of these redials. */
+  wsHeartbeatMs: Math.max(200, int('WS_HEARTBEAT_MS', 30_000)),
 };
 
 export function ensureDirs(): void {

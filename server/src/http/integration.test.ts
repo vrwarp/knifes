@@ -48,9 +48,21 @@ describe('who may call what', () => {
     expect((await s.request('/api/gm/login', { json: { password: ['vitest-password'] } })).status).toBe(401);
     const ok = await s.request('/api/gm/login', { json: { password: env.gmPassword } });
     expect(ok.status).toBe(200);
-    expect(ok.headers.get('set-cookie')).toMatch(/^s30gm=[^;]+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=259200/);
+    expect(ok.headers.get('set-cookie')).toMatch(/^s30gm=[^;]+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=2592000$/);
     const out = await s.gm('/api/gm/logout', { method: 'POST' });
     expect(out.headers.get('set-cookie')).toMatch(/^s30gm=; .*Max-Age=0/);
+  });
+
+  it('keeps a console signed in for a month from its last request, so a login from setup day holds on the night', async () => {
+    const login = await s.request('/api/gm/login', { json: { password: env.gmPassword } });
+    const cookie = login.headers.get('set-cookie')!.split(';')[0];
+    for (const p of ['/api/gm/me', '/api/gm/overview']) {
+      const renewed = (await s.request(p, { cookie })).headers.get('set-cookie');
+      expect(renewed, p).toBe(`${cookie}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+    }
+    // A request that is refused renews nothing, and logging out still wins over the renewal.
+    expect((await s.request('/api/gm/me', { cookie: 's30gm=forged.token' })).headers.get('set-cookie')).toBeNull();
+    expect((await s.request('/api/gm/logout', { method: 'POST', cookie })).headers.get('set-cookie')).toMatch(/^s30gm=; .*Max-Age=0/);
   });
 });
 
@@ -154,7 +166,7 @@ describe('live pushes', () => {
     await phone.next((m) => m.type === 'archive' && (m.message as { role: string }).role === 'assistant');
     await console_.next((m) => m.type === 'assistant');
     const types = new Set(phone.messages.map((m) => m.type));
-    expect([...types].sort()).toEqual(['archive', 'archive_status', 'hint', 'state']);
+    expect([...types].sort()).toEqual(['archive', 'archive_status', 'heartbeat', 'hint', 'state']);
     const raw = JSON.stringify(phone.messages);
     for (const secret of ['S30GHOST', 'Section Thirty', '"gate"', 'hackScripts', 'culprit', 'wordBank']) {
       if (secret === '"gate"') expect(phone.messages.some((m) => m.type === 'gm')).toBe(false);
@@ -191,6 +203,19 @@ describe('live pushes', () => {
     expect(s.hub.counts().players, 'one that answers stays').toBe(1);
     expect(alive.ws.readyState).toBe(WebSocket.OPEN);
     expect((gm.messages.filter((m) => m.type === 'gm').at(-1) as { players: number }).players).toBe(1);
+  });
+
+  it('beats on connect and with every ping, so a page can tell a dead link from a quiet game', async () => {
+    await s.close();
+    s = await startServer({ heartbeatMs: 150 });
+    const phone = await s.socket('player');
+    const gm = await s.socket('gm');
+    // First, before the state: the page knows how long a silence it may allow from the start.
+    expect(phone.messages[0]).toEqual({ type: 'heartbeat', everyMs: 150 });
+    expect(gm.messages[0]).toEqual({ type: 'heartbeat', everyMs: 150 });
+    expect(phone.messages[1]?.type).toBe('state');
+    await until(() => phone.messages.filter((m) => m.type === 'heartbeat').length >= 4, 3000, 'phone beats');
+    await until(() => gm.messages.filter((m) => m.type === 'heartbeat').length >= 4, 3000, 'console beats');
   });
 
   it('refuses a GM socket without the cookie, and other paths, and survives a cookie no browser should send', async () => {

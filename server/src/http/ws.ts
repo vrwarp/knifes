@@ -12,21 +12,30 @@ export class Hub {
   /** Whether each socket answered the last ping; one that did not is gone (a phone that slept without closing). */
   private readonly alive = new WeakMap<WebSocket, boolean>();
 
+  /** Sent on connect and with every ping. Browsers never see a ping, so this is how a page learns its link is still there. */
+  private readonly beat: string;
+
   constructor(
     private readonly service: GameService,
     heartbeatMs = 30_000,
   ) {
+    this.beat = JSON.stringify({ type: 'heartbeat', everyMs: heartbeatMs });
     service.subscribe((m) => this.route(m));
     const timer = setInterval(() => {
       for (const ws of this.sockets.keys()) {
-        if (ws.readyState !== WebSocket.OPEN) continue;
-        if (this.alive.get(ws) === false) {
-          // No pong since the last ping: drop it, so the console stops counting a phone that is not there.
-          ws.terminate();
-          continue;
+        try {
+          if (ws.readyState !== WebSocket.OPEN) continue;
+          if (this.alive.get(ws) === false) {
+            // No pong since the last ping: drop it, so the console stops counting a phone that is not there.
+            ws.terminate();
+            continue;
+          }
+          this.alive.set(ws, false);
+          ws.ping();
+          ws.send(this.beat);
+        } catch (err) {
+          console.error('[section30] websocket heartbeat failed', err);
         }
-        this.alive.set(ws, false);
-        ws.ping();
       }
     }, heartbeatMs);
     timer.unref();
@@ -67,6 +76,7 @@ export class Hub {
       };
       ws.on('close', gone);
       ws.on('error', gone);
+      ws.send(this.beat);
       this.send(ws, role, this.service.snapshotMessage());
       if (role === 'player') this.route(this.service.snapshotMessage());
     });

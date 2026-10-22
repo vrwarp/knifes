@@ -8,7 +8,7 @@ import { ClaudeLogin, LoginError, envCredentialShadowsLogin, readAccount } from 
 import { CREDENTIAL_LABEL, detectCredential, env } from '../env.js';
 import { HttpError, type GameService } from '../service.js';
 import { STAGE_ORDER, type StageId } from '../types.js';
-import { GM_COOKIE, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
+import { GM_COOKIE, GM_LOGIN_SECONDS, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
 
 const IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -69,7 +69,7 @@ export function gmRouter(service: GameService): Router {
   r.post('/login', (req, res) => {
     if (!env.gmPassword) throw new HttpError(503, 'GM_PASSWORD is not set on the server');
     if (!checkGmPassword(str(req.body?.password, 200))) throw new HttpError(401, 'Wrong password');
-    res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), 60 * 60 * 24 * 3));
+    res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), GM_LOGIN_SECONDS));
     res.json({ ok: true });
   });
   r.post('/logout', (_req, res) => {

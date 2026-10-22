@@ -70,11 +70,16 @@ export function verifyPlayerToken(token: string | undefined): boolean {
   return safeEqual(token, playerToken());
 }
 
+/** A month, renewed by every console request: a laptop signed in during setup is still signed in on the night. */
+export const GM_LOGIN_SECONDS = 60 * 60 * 24 * 30;
+
 export function gmAuth(req: Request, res: Response, next: NextFunction): void {
-  if (!verifyGmToken(parseCookies(req.headers.cookie)[GM_COOKIE])) {
+  const token = parseCookies(req.headers.cookie)[GM_COOKIE];
+  if (!verifyGmToken(token)) {
     res.status(401).json({ error: 'GM login required' });
     return;
   }
+  res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, token!, GM_LOGIN_SECONDS));
   next();
 }
 

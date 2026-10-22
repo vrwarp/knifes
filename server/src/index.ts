@@ -21,7 +21,7 @@ const db = new Db(env.dbPath);
 const service = new GameService(db);
 const app = createApp(service);
 const server = http.createServer(app);
-const hub = new Hub(service);
+const hub = new Hub(service, env.wsHeartbeatMs);
 hub.attach(server);
 server.on('error', (err) => {
   console.error('[section30] server error', err);
