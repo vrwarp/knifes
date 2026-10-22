@@ -194,6 +194,14 @@ export class Db {
     return rows.map((r) => ({ id: r.id, ts: r.ts, type: r.type, payload: JSON.parse(r.payload) as Record<string, unknown> }));
   }
 
+  /** The latest `limit` events, oldest first: what the console, the copilot and the report want late in the evening. */
+  recentEvents(limit = 500): GameEvent[] {
+    const rows = this.db
+      .prepare('SELECT id, ts, type, payload FROM (SELECT * FROM events ORDER BY id DESC LIMIT ?) ORDER BY id ASC')
+      .all(limit) as { id: number; ts: number; type: EventType; payload: string }[];
+    return rows.map((r) => ({ id: r.id, ts: r.ts, type: r.type, payload: JSON.parse(r.payload) as Record<string, unknown> }));
+  }
+
   clearEvents(): void {
     this.db.exec('DELETE FROM events');
   }
@@ -205,9 +213,10 @@ export class Db {
     return { id: Number(res.lastInsertRowid), ts, role, text, meta };
   }
 
+  /** The latest `limit` messages of the transcript, oldest first. */
   listArchive(limit = 400): ArchiveMessage[] {
     const rows = this.db
-      .prepare('SELECT id, ts, role, text, meta FROM archive ORDER BY id ASC LIMIT ?')
+      .prepare('SELECT id, ts, role, text, meta FROM (SELECT * FROM archive ORDER BY id DESC LIMIT ?) ORDER BY id ASC')
       .all(limit) as { id: number; ts: number; role: ArchiveMessage['role']; text: string; meta: string | null }[];
     return rows.map((r) => ({ id: r.id, ts: r.ts, role: r.role, text: r.text, meta: r.meta ? (JSON.parse(r.meta) as Record<string, unknown>) : undefined }));
   }

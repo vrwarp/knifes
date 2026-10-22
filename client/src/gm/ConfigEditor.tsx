@@ -116,8 +116,10 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
     setBusy(true);
     setMsg(null);
     try {
-      const r = await api<{ id: string }>(`/api/gm/upload?kind=${kind}`, { method: 'POST', body: fd });
+      const r = await api<{ id: string; version?: number }>(`/api/gm/upload?kind=${kind}`, { method: 'POST', body: fd });
       setDraft((d) => ({ ...d, geo: { ...d.geo, photos: d.geo.photos.includes(r.id) ? d.geo.photos : [...d.geo.photos, r.id] } }));
+      // The upload saved a version of its own; when it is the only one since this draft began, it is no conflict.
+      if (r.version === baseVersion + 1) setBaseVersion(r.version);
       setMsg(`Uploaded ${r.id}`);
     } catch (e) {
       setMsg(errorText(e));
@@ -129,8 +131,9 @@ export function ConfigEditor({ config, onSaved, streetViewKeySet }: { config: Ga
     if (!window.confirm('Remove this file from the game? It stays in the version history, so restoring an older version brings it back.')) return;
     setBusy(true);
     try {
-      await api(`/api/gm/upload/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const r = await api<{ version?: number }>(`/api/gm/upload/${encodeURIComponent(id)}`, { method: 'DELETE' });
       setDraft((d) => ({ ...d, geo: { ...d.geo, photos: d.geo.photos.filter((p) => p !== id) } }));
+      if (r.version === baseVersion + 1) setBaseVersion(r.version);
     } catch (e) {
       setMsg(errorText(e));
     } finally {

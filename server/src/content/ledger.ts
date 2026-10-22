@@ -316,7 +316,11 @@ export function ledgerRange(time: string): [number, number] | null {
   return [start, end === null || end < start ? start : end];
 }
 
-/** Parses "2:14", "2:14 AM", "02:14", "14:30" as the ARCHIVE's window bounds. Bare hours 0 to 11 are taken as AM, 12 to 23 as PM. */
+/**
+ * Parses "2:14", "2:14 AM", "02:14", "14:30" as the ARCHIVE's window bounds. A time without AM or PM reads as the
+ * night of the murder, the way the detective means it: 6 to 11 are the evening, 12 is midnight, 1 to 5 the small
+ * hours; 0 and 13 to 23 read as a 24-hour clock.
+ */
 export function parseWindow(s?: string): number | null {
   if (!s) return null;
   const t = s.trim().replace(/^(\d{1,2})\s*(AM|PM)$/i, '$1:00 $2');
@@ -325,8 +329,9 @@ export function parseWindow(s?: string): number | null {
   if (!m) return null;
   const h = Number(m[1]);
   const mm = Number(m[2] ?? '0');
-  if (h > 23) return null;
-  return ledgerMinutes(`${h % 12 || 12}:${String(mm).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`);
+  if (h > 23 || mm > 59) return null;
+  const pm = h >= 13 || (h >= 6 && h <= 11);
+  return ledgerMinutes(`${h % 12 || 12}:${String(mm).padStart(2, '0')} ${pm ? 'PM' : 'AM'}`);
 }
 
 /** Place words widen to the records that belong to that place, so "safehouse" finds the Director's Office badges. */

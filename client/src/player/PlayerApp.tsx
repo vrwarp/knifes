@@ -109,17 +109,21 @@ export function PlayerApp() {
   const connected = useSocket(
     'player',
     (m) => {
+      // A hint also arrives as its own message, but always after the state that carries it: the effect
+      // below puts transmissions up in order, so the message itself changes nothing here.
       if (m.type === 'state') applyView(m.player);
-      else if (m.type === 'hint') setToast(m.hint);
       else if (m.type === 'archive') setArchiveFeed((f) => (f.some((x) => x.id === m.message.id) ? f : [...f, m.message]));
       else if (m.type === 'archive_status') setArchiveBusy(m.busy);
     },
     !denied,
   );
 
+  /** Counts the times the live link came back or the screen woke, for parts that hold more than the view (the ARCHIVE transcript). */
+  const [resync, setResync] = useState(0);
   useEffect(() => {
     if (connected) {
       setEverConnected(true);
+      setResync((n) => n + 1);
       void refresh();
     }
   }, [connected, refresh]);
@@ -154,20 +158,21 @@ export function PlayerApp() {
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
+      if (document.visibilityState !== 'visible') return;
+      setResync((n) => n + 1);
+      void refresh();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refresh]);
 
-  // A transmission that arrived while he was on the phone pops up when he comes back.
-  const hintCount = view?.hints.length ?? 0;
+  // Transmissions he has not acknowledged come up one at a time, oldest first, so none is lost under the
+  // next one, including those that arrived while he was on the phone with the screen off.
   useEffect(() => {
     if (!view || toast) return;
-    const unseen = view.hints.filter((h) => h.id > seen);
-    if (unseen.length) setToast(unseen[unseen.length - 1]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hintCount]);
+    const next = view.hints.filter((h) => h.id > seen).sort((a, b) => a.id - b.id)[0];
+    if (next) setToast(next);
+  }, [view, toast, seen]);
 
   const markSeen = (id: number) => {
     const next = Math.max(seen, id);
@@ -232,7 +237,7 @@ export function PlayerApp() {
       screen = <Reveal {...props} />;
       break;
     case 'investigation':
-      screen = <Investigation {...props} feed={archiveFeed} busy={archiveBusy} />;
+      screen = <Investigation {...props} feed={archiveFeed} busy={archiveBusy} resync={resync} />;
       break;
   }
 

@@ -1,12 +1,9 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { acceptDialogs, expect, test } from './fixtures';
+import { FAKE_CLAUDE, acceptDialogs, expect, test } from './fixtures';
 
 // A server whose Claude Code binary is a stand-in, with no credential in the environment,
 // so the GM console's web sign-in is the only way to link the AI.
-const fake = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fake-claude.mjs');
 test.use({
-  serverEnv: { AI_MODE: 'auto', CLAUDE_BINARY: fake, CLAUDE_CODE_OAUTH_TOKEN: '', ANTHROPIC_API_KEY: '', ANTHROPIC_AUTH_TOKEN: '' },
+  serverEnv: { AI_MODE: 'auto', CLAUDE_BINARY: FAKE_CLAUDE, CLAUDE_CODE_OAUTH_TOKEN: '', ANTHROPIC_API_KEY: '', ANTHROPIC_AUTH_TOKEN: '' },
 });
 
 test.describe('Claude link', () => {
@@ -54,7 +51,8 @@ test.describe('Claude link', () => {
     await expect(panel.getByRole('link', { name: /open claude sign-in/i })).toBeVisible();
     await panel.getByRole('button', { name: /^cancel$/i }).click();
     await expect(panel.getByRole('button', { name: /sign in with claude/i })).toBeVisible();
-    expect((await (await app.gmApi('/api/gm/claude')).json()).inProgress).toBeNull();
+    // The panel clears before the cancel request lands on the server.
+    await expect.poll(async () => (await (await app.gmApi('/api/gm/claude')).json()).inProgress).toBeNull();
   });
 
   test('the sign-in endpoints need the GM password', async ({ app, request }) => {

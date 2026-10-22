@@ -31,8 +31,8 @@ function Agent({ e, layer, t, defaultOpen = false }: { e: LedgerEntry; layer: 1 
           {layer === 1 ? (
             <>
               <dl className="facts">
-                {(e.facts ?? []).map((f) => (
-                  <div key={f.label}>
+                {(e.facts ?? []).map((f, i) => (
+                  <div key={i}>
                     <dt>{f.label}</dt>
                     <dd>{f.value}</dd>
                   </div>
@@ -51,8 +51,8 @@ function Agent({ e, layer, t, defaultOpen = false }: { e: LedgerEntry; layer: 1 
             <>
               <h4>{t.evidenceHeading}</h4>
               <ul className="items">
-                {(e.evidence ?? []).map((x) => (
-                  <li key={x}>{x}</li>
+                {(e.evidence ?? []).map((x, i) => (
+                  <li key={i}>{x}</li>
                 ))}
               </ul>
               <h4>{t.findingsHeading}</h4>
@@ -81,7 +81,8 @@ function Section({ name, locked, children, defaultOpen = false }: { name: string
 export function Ledger({ view, active, onSeenLayer2 }: { view: PlayerView; active: boolean; onSeenLayer2: () => void }) {
   const [files, setFiles] = useState<LedgerFiles | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const key = `${view.ledger.layer1}:${view.ledger.layer2}`;
+  // The files come over HTTP, not with the state: fetch again when a layer opens or a GM edits them.
+  const key = `${view.ledger.layer1}:${view.ledger.layer2}:${view.configVersion}`;
   const t = view.text.ledger;
   const load = async () => {
     try {

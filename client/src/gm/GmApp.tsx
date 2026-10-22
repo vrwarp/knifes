@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, errorText } from '../api';
+import { ApiError, GM_LOGGED_OUT, api, errorText } from '../api';
 import { Markdown } from '../md';
 import type { ArchiveMessage, GameConfig, GameEvent, GameState, Overview } from '../types';
 import { useSocket } from '../ws';
@@ -115,13 +115,32 @@ export function GmApp() {
       setArchive(o.archive);
       setErr(null);
     } catch (e) {
-      setErr(errorText(e));
+      // A login that ran out (or a cookie the browser would not keep) goes back to the password form, not a dead end.
+      if (e instanceof ApiError && e.status === 401) {
+        setAuthed(false);
+        setData(null);
+        setLoginErr('Your login is no longer valid. Enter the password again.');
+      } else setErr(errorText(e));
     }
   }, []);
 
   useEffect(() => {
     if (authed) void load();
   }, [authed, load]);
+
+  // Any panel's request can find the login gone (the live link may still be up): back to the password form, with the reason.
+  const authedNow = useRef(authed);
+  authedNow.current = authed;
+  useEffect(() => {
+    const out = () => {
+      if (authedNow.current !== true) return;
+      setAuthed(false);
+      setData(null);
+      setLoginErr('Your login is no longer valid. Enter the password again.');
+    };
+    window.addEventListener(GM_LOGGED_OUT, out);
+    return () => window.removeEventListener(GM_LOGGED_OUT, out);
+  }, []);
 
   // Assistant updates go to the assistant panel through this bus instead of console state.
   const assistantBus = useRef(new EventTarget());
@@ -166,7 +185,15 @@ export function GmApp() {
     setLoginErr(null);
     try {
       await api('/api/gm/login', { json: { password: pw } });
+      // The password was right; check the browser kept the login (it drops a Secure cookie over plain http).
+      try {
+        await api('/api/gm/me');
+      } catch {
+        setLoginErr('The password is right, but this browser did not keep the login. With COOKIE_SECURE=1, open the console over https.');
+        return;
+      }
       setAuthed(true);
+      setLoginErr(null);
       setPw('');
     } catch (e2) {
       setLoginErr(errorText(e2));

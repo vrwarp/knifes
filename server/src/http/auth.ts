@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { env } from '../env.js';
+import { env, sessionSecret } from '../env.js';
 
-const secret = env.sessionSecret || crypto.randomBytes(32).toString('hex');
+const secret = sessionSecret().value;
 
 export const GM_COOKIE = 's30gm';
 export const PLAYER_COOKIE = 's30p';
@@ -25,9 +25,18 @@ export function parseCookies(header: string | undefined): Record<string, string>
     if (i < 0) continue;
     const k = part.slice(0, i).trim();
     const v = part.slice(i + 1).trim();
-    if (k) out[k] = decodeURIComponent(v);
+    if (k) out[k] = safeDecode(v);
   }
   return out;
+}
+
+/** Another app on the same host may set a cookie such as `progress=100%`; that must not break this one. */
+function safeDecode(v: string): string {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
 }
 
 export function cookieHeader(name: string, value: string, maxAgeSec: number): string {
@@ -61,11 +70,25 @@ export function verifyPlayerToken(token: string | undefined): boolean {
   return safeEqual(token, playerToken());
 }
 
+/** A month, renewed while the console is in use: a laptop signed in during setup is still signed in on the night. */
+export const GM_LOGIN_SECONDS = 60 * 60 * 24 * 30;
+const RENEW_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/** When a GM token was issued, or 0 when it does not say. */
+function gmTokenTime(token: string): number {
+  const ts = parseInt(token.slice(0, token.lastIndexOf('.')), 36);
+  return Number.isFinite(ts) ? ts : 0;
+}
+
 export function gmAuth(req: Request, res: Response, next: NextFunction): void {
-  if (!verifyGmToken(parseCookies(req.headers.cookie)[GM_COOKIE])) {
+  const token = parseCookies(req.headers.cookie)[GM_COOKIE];
+  if (!verifyGmToken(token)) {
     res.status(401).json({ error: 'GM login required' });
     return;
   }
+  // Once a day at most, by a read (the console reads on every load and reconnect), a fresh login for another month.
+  // Not on every request: a reply still on its way after a Log out would sign the browser straight back in.
+  if (req.method === 'GET' && Date.now() - gmTokenTime(token!) > RENEW_AFTER_MS) res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), GM_LOGIN_SECONDS));
   next();
 }
 

@@ -281,7 +281,7 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
               {state.hack.ai.guesses.join(', ') || 'none'}
               {state.hack.ai.thinking ? ' (computing)' : ''}
               {state.hack.ai.plan ? ` · script ${state.hack.ai.guesses.length}/${state.hack.ai.plan.length} (${state.hack.ai.planSource})` : ''} · races lost {state.hack.rounds} · words left{' '}
-              {Math.max(0, config.hack.wordBank.length - state.hack.used.length)}/{config.hack.wordBank.length}
+              {config.hack.wordBank.filter((w) => !state.hack.used.includes(w)).length}/{config.hack.wordBank.length}
               {state.hack.roundResult === 'ai' ? <span className="red"> · ADVERSARY WON</span> : state.hack.roundResult === 'exhausted' ? <span className="red"> · OUT OF ATTEMPTS</span> : ''}
             </>
           ) : (
@@ -555,6 +555,7 @@ export function ArchivePanel({ archive, state }: { archive: ArchiveMessage[]; st
                 {m.role === 'user' ? 'Detective' : m.role === 'assistant' ? 'ARCHIVE' : 'LINK'} {fmt(m.ts)}
                 {m.meta?.tools ? ` · tools: ${(m.meta.tools as string[]).join(', ')}` : ''}
                 {typeof m.meta?.costUsd === 'number' ? ` · $${(m.meta.costUsd as number).toFixed(3)}` : ''}
+                {m.meta?.source === 'fallback' ? ' · local index: the AI failed' : ''}
               </span>
               <span className="text">{m.text}</span>
             </div>
@@ -578,7 +579,10 @@ export function ReportPanel({ state }: { state: GameState }) {
           className="btn small"
           disabled={busy}
           onClick={() => {
-            void run(() => api('/api/gm/report/generate', { method: 'POST', timeoutMs: 240_000 }), 'Report generated');
+            void run(async () => {
+              const r = await api<{ source: string; error?: string }>('/api/gm/report/generate', { method: 'POST', timeoutMs: 240_000 });
+              if (r.source === 'fallback') throw new Error(`The AI failed (${r.error ?? 'no reason given'}), so this is the template report. Regenerate when the AI is back.`);
+            }, 'Report generated');
           }}
         >
           {state.report.markdown ? 'Regenerate' : 'Generate'} with AI

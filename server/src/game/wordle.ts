@@ -27,6 +27,7 @@ export function scoreGuess(guess: string, secret: string): LetterScore[] {
   return result;
 }
 
-export function isSolved(scores: LetterScore[]): boolean {
-  return scores.length > 0 && scores.every((s) => s.state === 'hit');
+/** Every letter placed, and as many letters as the key: a prefix of the key is all hits too, but not the key. */
+export function isSolved(scores: LetterScore[], length = scores.length): boolean {
+  return scores.length > 0 && scores.length === length && scores.every((s) => s.state === 'hit');
 }

@@ -164,6 +164,8 @@ export interface PlayerView {
   /** Server revision; a view older than one already shown is ignored. */
   rev: number;
   title: string;
+  /** Rises with every saved configuration; the Ledger re-reads its files when it does. */
+  configVersion: number;
   stage: StageId;
   geoMode: 'puzzle' | 'reveal' | 'off';
   intro: { headline: string; body: string; buttonLabel: string };

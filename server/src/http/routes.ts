@@ -8,7 +8,7 @@ import { ClaudeLogin, LoginError, envCredentialShadowsLogin, readAccount } from 
 import { CREDENTIAL_LABEL, detectCredential, env } from '../env.js';
 import { HttpError, type GameService } from '../service.js';
 import { STAGE_ORDER, type StageId } from '../types.js';
-import { GM_COOKIE, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
+import { GM_COOKIE, GM_LOGIN_SECONDS, checkGmPassword, cookieHeader, gmAuth, makeGmToken, playerAuth } from './auth.js';
 
 const IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -23,7 +23,8 @@ function str(v: unknown, max = 500): string {
 }
 
 function num(v: unknown): number {
-  const n = typeof v === 'number' ? v : Number(v);
+  // Number(null), Number('') and Number([]) are all 0: only a real number or a numeric string counts.
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
   if (!Number.isFinite(n)) throw new HttpError(400, 'Expected a number');
   return n;
 }
@@ -54,7 +55,11 @@ export function playerRouter(service: GameService): Router {
   });
   r.get('/ledger', (_req, res) => res.json(service.ledgerFiles()));
   r.get('/archive', (_req, res) => res.json({ messages: service.archiveTranscript() }));
-  r.post('/archive', async (req, res) => res.json({ message: await service.archiveSend(str(req.body?.text, 4000)) }));
+  r.post('/archive', async (req, res) => {
+    const { question, reply } = await service.archiveSend(str(req.body?.text, 4000));
+    // The question too, so the transcript shows it even when the live link is down.
+    res.json({ message: reply, question });
+  });
   return r;
 }
 
@@ -64,7 +69,7 @@ export function gmRouter(service: GameService): Router {
   r.post('/login', (req, res) => {
     if (!env.gmPassword) throw new HttpError(503, 'GM_PASSWORD is not set on the server');
     if (!checkGmPassword(str(req.body?.password, 200))) throw new HttpError(401, 'Wrong password');
-    res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), 60 * 60 * 24 * 3));
+    res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), GM_LOGIN_SECONDS));
     res.json({ ok: true });
   });
   r.post('/logout', (_req, res) => {
@@ -190,13 +195,14 @@ export function gmRouter(service: GameService): Router {
     const id = `photo-${crypto.randomBytes(6).toString('hex')}.${ext}`;
     fs.writeFileSync(path.join(env.uploadsDir, id), file.buffer);
     service.attachUpload('photo', id);
-    res.json({ id, url: `/uploads/${id}` });
+    // The version this upload became, so an editor with unsaved changes knows it was not another GM's save.
+    res.json({ id, url: `/uploads/${id}`, version: service.config.version });
   });
   r.delete('/upload/:id', (req, res) => {
     const id = path.basename(String(req.params.id));
     // The file stays on disk: older configuration versions may still use it.
     service.detachUpload(id);
-    res.json({ ok: true });
+    res.json({ ok: true, version: service.config.version });
   });
 
   return r;
@@ -212,8 +218,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return;
   }
   const e = err as { status?: number; type?: string; message?: string };
-  if (e?.type === 'entity.parse.failed' || e?.status === 400) {
-    res.status(400).json({ error: 'Bad request' });
+  // The body parser's own refusals (malformed JSON, too large, wrong charset) are the client's to fix, not a server fault.
+  if (e?.type === 'entity.parse.failed' || (typeof e?.status === 'number' && e.status >= 400 && e.status < 500)) {
+    res.status(e.status && e.status !== 400 ? e.status : 400).json({ error: e.status === 413 ? 'Request too large' : 'Bad request' });
     return;
   }
   console.error('unhandled error', err);
