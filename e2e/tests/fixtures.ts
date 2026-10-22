@@ -199,6 +199,19 @@ export async function finishTyping(page: Page) {
   }
 }
 
+/**
+ * Clicks a button the typewriter gates. The screen may still be on its way (a view fetched after the page
+ * loaded, a stage pushed over the link), so finish the typing until the button is live, then press it.
+ */
+export async function clickAfterTyping(page: Page, button: Locator) {
+  await button.waitFor();
+  await expect(async () => {
+    await finishTyping(page);
+    await expect(button).toBeEnabled({ timeout: 500 });
+  }).toPass({ timeout: 15_000 });
+  await button.click();
+}
+
 export async function startGame(page: Page, base: string) {
   await page.goto(base);
   const start = page.getByRole('button', { name: /initiate recovery protocol/i });

@@ -1,4 +1,4 @@
-import { acceptDialogs, configSection, expect, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
+import { acceptDialogs, clickAfterTyping, configSection, expect, finishTyping, noHorizontalScroll, startGame, test, typeWord } from './fixtures';
 
 const overview = async (app: { gmApi: (p: string) => Promise<Response> }) => (await (await app.gmApi('/api/gm/overview')).json()) as { state: Record<string, any>; config: Record<string, any> };
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
@@ -107,8 +107,7 @@ test.describe('the phone, tapped the way people tap', () => {
     const other = await browser.newPage();
     await player.goto(app.base);
     await other.goto(app.base);
-    await finishTyping(player);
-    await player.getByRole('button', { name: /initiate recovery protocol/i }).click();
+    await clickAfterTyping(player, player.getByRole('button', { name: /initiate recovery protocol/i }));
     await expect(other.getByRole('button', { name: /tap to unlock map/i })).toBeVisible();
     await app.gmApi('/api/gm/hint', { json: { text: 'For both screens.' } });
     for (const p of [player, other]) await expect(p.getByRole('dialog', { name: /incoming transmission/i })).toContainText('For both screens.');
@@ -163,9 +162,10 @@ test.describe('screens and settings people really have', () => {
     });
     await app.setStage('reveal');
     await player.goto(app.base);
+    await expect(player.locator('h1', { hasText: 'LEDGER DECRYPTED' })).toBeVisible();
     await finishTyping(player);
     await noHorizontalScroll(player);
-    await player.getByRole('button', { name: /return to headquarters/i }).click();
+    await clickAfterTyping(player, player.getByRole('button', { name: /return to headquarters/i }));
     await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
     await noHorizontalScroll(player);
     await app.gmApi('/api/gm/hint', { json: { text: `https://example.com/${long}/${long}` } });

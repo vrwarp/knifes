@@ -61,7 +61,8 @@ jobs:
     name: E2E (${{ matrix.browser }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # About 15 minutes per browser on two workers; the rest is headroom for retries on a slow runner.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

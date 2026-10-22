@@ -1,4 +1,4 @@
-import { acceptDialogs, clearWord, expect, finishTyping, noHorizontalScroll, test, typeWord } from './fixtures';
+import { acceptDialogs, clearWord, clickAfterTyping, expect, noHorizontalScroll, test, typeWord } from './fixtures';
 
 // The evening as it will run: the race (not solo), a pin on a real target, Phil's code, a lost race and a
 // won one, the reveal, the interrogation with the ARCHIVE, Matt's call and the release, a hint, the report.
@@ -17,8 +17,7 @@ test('the whole evening in race mode, phone and console side by side', async ({ 
 
   // QR landing.
   await player.goto(app.base);
-  await finishTyping(player);
-  await player.getByRole('button', { name: /initiate recovery protocol/i }).click();
+  await clickAfterTyping(player, player.getByRole('button', { name: /initiate recovery protocol/i }));
   await expect(gm.locator('.chip.now', { hasText: /field transmission/i })).toBeVisible();
 
   // The drop near Lake Elizabeth: one miss, then the pin on the spot.
@@ -57,8 +56,7 @@ test('the whole evening in race mode, phone and console side by side', async ({ 
 
   // The Ledger is decrypted; back to headquarters.
   await expect(player.locator('h1', { hasText: 'LEDGER DECRYPTED' })).toBeVisible();
-  await finishTyping(player);
-  await player.getByRole('button', { name: /return to headquarters/i }).click();
+  await clickAfterTyping(player, player.getByRole('button', { name: /return to headquarters/i }));
   await expect(player.getByRole('tab', { name: 'ledger' })).toBeVisible();
   await expect(player.locator('.agent header', { hasText: 'Nina Calder' })).toBeVisible();
   await expect(player.getByText(/SURVEILLANCE/)).toHaveCount(0);
