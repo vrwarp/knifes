@@ -22,7 +22,19 @@ export type Server = {
   resetGame: () => Promise<void>;
   restoreDefaults: () => Promise<void>;
   log: string[];
+  dataDir: string;
+  /** Kills the server (SIGKILL by default: a crash, a power cut) and starts it again on the same data and port. */
+  restart: (signal?: NodeJS.Signals) => Promise<void>;
+  /** What the stand-in Claude CLI does from its next call on; only matters on a live-AI server. */
+  scenario: (s: Json) => void;
 };
+
+/** The stand-in for the Claude Code binary: speaks the Agent SDK's protocol, answers from a scenario file. */
+export const FAKE_CLAUDE = path.join(root, 'server', 'test', 'fake-claude.mjs');
+/** serverEnv for a server whose AI is live, answered by the stand-in Claude CLI instead of Claude. */
+export const LIVE_AI: Record<string, string> = { AI_MODE: 'auto', ANTHROPIC_API_KEY: 'sk-ant-e2e-not-a-key', CLAUDE_CODE_OAUTH_TOKEN: '', ANTHROPIC_AUTH_TOKEN: '', CLAUDE_BINARY: FAKE_CLAUDE };
+/** Adversary scripts come back valid; everything else gets a short in-world answer. */
+export const DEFAULT_SCENARIO: Json = { rules: [{ when: { prompt: 'Key: ' }, do: { text: '', structured: 'planner' } }], default: { text: 'ARCHIVE: records retrieved.' } };
 
 const freePort = () =>
   new Promise<number>((resolve) => {
@@ -33,28 +45,32 @@ const freePort = () =>
     });
   });
 
-async function startServer(extraEnv: Record<string, string>): Promise<{ server: Server; proc: ChildProcess; dataDir: string }> {
+async function startServer(extraEnv: Record<string, string>): Promise<{ server: Server; stop: () => void; dataDir: string }> {
   const dist = path.join(root, 'server', 'dist', 'index.js');
   if (!fs.existsSync(dist) || !fs.existsSync(path.join(root, 'client', 'dist', 'index.html'))) {
     throw new Error('Build first: npm run build in server/ and client/');
   }
   const port = await freePort();
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 's30-e2e-'));
-  const proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', dist], {
-    cwd: path.join(root, 'server'),
-    env: { ...process.env, PORT: String(port), DATA_DIR: dataDir, GM_PASSWORD, AI_MODE: 'mock', CLIENT_DIST: path.join(root, 'client', 'dist'), ...extraEnv },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const scenarioFile = path.join(dataDir, 'fake-claude-scenario.json');
+  fs.writeFileSync(scenarioFile, JSON.stringify(DEFAULT_SCENARIO));
+  const env = { ...process.env, PORT: String(port), DATA_DIR: dataDir, GM_PASSWORD, AI_MODE: 'mock', CLIENT_DIST: path.join(root, 'client', 'dist'), FAKE_CLAUDE_SCENARIO_FILE: scenarioFile, AI_TIMEOUT_MS: '8000', ...extraEnv };
   const log: string[] = [];
-  proc.stdout!.on('data', (d) => log.push(String(d)));
-  proc.stderr!.on('data', (d) => log.push(String(d)));
   const baseUrl = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 120; i++) {
-    try {
-      if ((await fetch(`${baseUrl}/healthz`)).ok) break;
-    } catch {}
-    await new Promise((r) => setTimeout(r, 100));
-  }
+  let proc: ChildProcess;
+  const launch = async () => {
+    proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', dist], { cwd: path.join(root, 'server'), env, stdio: ['ignore', 'pipe', 'pipe'] });
+    proc.stdout!.on('data', (d) => log.push(String(d)));
+    proc.stderr!.on('data', (d) => log.push(String(d)));
+    for (let i = 0; i < 150; i++) {
+      try {
+        if ((await fetch(`${baseUrl}/healthz`, { signal: AbortSignal.timeout(1000) })).ok) return;
+      } catch {}
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error(`server did not come up\n${log.join('')}`);
+  };
+  await launch();
   const login = await fetch(`${baseUrl}/api/gm/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: GM_PASSWORD }) });
   if (!login.ok) throw new Error(`GM login failed: ${login.status}\n${log.join('')}`);
   const gmCookie = login.headers.get('set-cookie')!.split(';')[0];
@@ -76,6 +92,7 @@ async function startServer(extraEnv: Record<string, string>): Promise<{ server: 
     gmApi,
     config,
     log,
+    dataDir,
     patch: async (fn) => {
       const c = await config();
       fn(c);
@@ -92,9 +109,21 @@ async function startServer(extraEnv: Record<string, string>): Promise<{ server: 
       const view = (await (await gmApi('/api/gm/assistant')).json()) as { proposals?: { id: number; status: string }[] };
       for (const p of view.proposals ?? []) if (p.status === 'pending') await gmApi(`/api/gm/assistant/proposals/${p.id}/dismiss`, { method: 'POST' });
     },
-    restoreDefaults: async () => put(structuredClone(defaults)),
+    restoreDefaults: async () => {
+      server.scenario(DEFAULT_SCENARIO);
+      const live = await config();
+      // Restoring the same values would add no version; only put when something differs.
+      if (JSON.stringify({ ...live, version: 0 }) !== JSON.stringify({ ...defaults, version: 0 })) await put(structuredClone(defaults));
+    },
+    restart: async (signal = 'SIGKILL') => {
+      const exited = new Promise((r) => proc.once('exit', r));
+      proc.kill(signal);
+      await exited;
+      await launch();
+    },
+    scenario: (sc) => fs.writeFileSync(scenarioFile, JSON.stringify(sc)),
   };
-  return { server, proc, dataDir };
+  return { server, stop: () => proc.kill('SIGTERM'), dataDir };
 }
 
 type WorkerFixtures = { serverEnv: Record<string, string>; server: Server };
@@ -123,9 +152,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   serverEnv: [{}, { scope: 'worker', option: true }],
   server: [
     async ({ serverEnv }, use) => {
-      const { server, proc, dataDir } = await startServer(serverEnv);
+      const { server, stop, dataDir } = await startServer(serverEnv);
       await use(server);
-      proc.kill('SIGTERM');
+      stop();
       fs.rmSync(dataDir, { recursive: true, force: true });
     },
     { scope: 'worker' },

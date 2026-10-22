@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'ws';
 import { Db } from '../src/db.js';
-import { env } from '../src/env.js';
+import { ensureDirs, env } from '../src/env.js';
 import { createApp } from '../src/http/app.js';
 import { Hub } from '../src/http/ws.js';
 import { GameService } from '../src/service.js';
@@ -15,6 +15,8 @@ export type TestServer = Awaited<ReturnType<typeof startServer>>;
 
 export async function startServer(opts: { heartbeatMs?: number; dir?: string } = {}) {
   const dir = opts.dir ?? fs.mkdtempSync(path.join(os.tmpdir(), 's30-http-'));
+  // What index.ts does at boot: the uploads, agent and Claude folders under DATA_DIR.
+  ensureDirs();
   const db = new Db(path.join(dir, 't.sqlite'));
   const service = new GameService(db);
   const server = http.createServer(createApp(service));

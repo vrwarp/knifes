@@ -45,6 +45,9 @@ export function Keyboard({ value, onChange, onEnter, maxLength, digits = false, 
     if (!hardware) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || paused) return;
+      // A dialog over the screen (a transmission, the list of them) owns the keys: Enter there presses its
+      // button, and nothing typed lands in the field hidden behind it.
+      if (document.querySelector('[aria-modal="true"]')) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (e.key === 'Enter') press('ENTER');
