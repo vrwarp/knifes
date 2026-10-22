@@ -121,7 +121,9 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   // Whole words for alphabetic terms so "log" never matches "catalogue"; plain substring for tokens with digits or punctuation.
   const has = (...words: string[]) =>
     words.some((w) => (/^[a-z ]+$/.test(w) ? new RegExp(`\\b${w.replace(/ /g, '\\s+')}\\b`).test(q) : q.includes(w)));
-  const agent = [...LAYER_01].find((e) => q.includes(e.name.split(' ')[0].toLowerCase()) || q.includes(e.name.split(' ')[1].toLowerCase()) || q.includes(e.id.toLowerCase()));
+  // Any part of the name: the GMs may give an agent one name, or three, or a stray double space.
+  const nameParts = (name: string) => name.toLowerCase().split(/\s+/).filter(Boolean);
+  const agent = LAYER_01.find((e) => nameParts(e.name).some((p) => q.includes(p)) || q.includes(e.id.toLowerCase()));
   const wantsL2 = has('classified', 'evidence', 'belongings', 'pockets', 'surveillance', 'cctv', 'camera', 'cameras', 'verified', 'recovered', 'layer 02', 'layer 2', 'confiscated', 'actually', 'really');
   // A window ("between 2:00 and 2:30", "at 2:14", "after 1 am") and any place or object words become a search.
   const times = [...q.replace(/layer 0?2|layer 0?1/g, '').matchAll(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/g)].map((m) => `${m[1]}:${m[2] ?? '00'}${m[3] ? ' ' + m[3] : ''}`);

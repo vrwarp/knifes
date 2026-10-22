@@ -54,7 +54,8 @@ test.describe('Claude link', () => {
     await expect(panel.getByRole('link', { name: /open claude sign-in/i })).toBeVisible();
     await panel.getByRole('button', { name: /^cancel$/i }).click();
     await expect(panel.getByRole('button', { name: /sign in with claude/i })).toBeVisible();
-    expect((await (await app.gmApi('/api/gm/claude')).json()).inProgress).toBeNull();
+    // The panel clears before the cancel request lands on the server.
+    await expect.poll(async () => (await (await app.gmApi('/api/gm/claude')).json()).inProgress).toBeNull();
   });
 
   test('the sign-in endpoints need the GM password', async ({ app, request }) => {

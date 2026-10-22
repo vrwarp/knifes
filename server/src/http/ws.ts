@@ -9,42 +9,66 @@ type Role = 'player' | 'gm';
 export class Hub {
   private readonly wss = new WebSocketServer({ noServer: true });
   private readonly sockets = new Map<WebSocket, Role>();
+  /** Whether each socket answered the last ping; one that did not is gone (a phone that slept without closing). */
+  private readonly alive = new WeakMap<WebSocket, boolean>();
 
-  constructor(private readonly service: GameService) {
+  constructor(
+    private readonly service: GameService,
+    heartbeatMs = 30_000,
+  ) {
     service.subscribe((m) => this.route(m));
     const timer = setInterval(() => {
       for (const ws of this.sockets.keys()) {
-        if (ws.readyState === WebSocket.OPEN) ws.ping();
+        if (ws.readyState !== WebSocket.OPEN) continue;
+        if (this.alive.get(ws) === false) {
+          // No pong since the last ping: drop it, so the console stops counting a phone that is not there.
+          ws.terminate();
+          continue;
+        }
+        this.alive.set(ws, false);
+        ws.ping();
       }
-    }, 30_000);
+    }, heartbeatMs);
     timer.unref();
   }
 
   attach(server: Server): void {
     server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
-      if (!req.url || !req.url.startsWith('/ws')) {
+      // Anything thrown here would be an uncaught exception, and one odd request must never take the game down.
+      try {
+        this.upgrade(req, socket, head);
+      } catch (err) {
+        console.error('[section30] websocket upgrade failed', err);
         socket.destroy();
-        return;
       }
-      const url = new URL(req.url, 'http://localhost');
-      const role: Role = url.searchParams.get('role') === 'gm' ? 'gm' : 'player';
-      const cookies = parseCookies(req.headers.cookie);
-      const ok = role === 'gm' ? verifyGmToken(cookies[GM_COOKIE]) : verifyPlayerToken(cookies[PLAYER_COOKIE]);
-      if (!ok) {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-      this.wss.handleUpgrade(req, socket, head, (ws) => {
-        this.sockets.set(ws, role);
-        const gone = () => {
-          if (this.sockets.delete(ws) && role === 'player') this.route(this.service.snapshotMessage());
-        };
-        ws.on('close', gone);
-        ws.on('error', gone);
-        this.send(ws, role, this.service.snapshotMessage());
-        if (role === 'player') this.route(this.service.snapshotMessage());
-      });
+    });
+  }
+
+  private upgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
+    if (!req.url || !req.url.startsWith('/ws')) {
+      socket.destroy();
+      return;
+    }
+    const url = new URL(req.url, 'http://localhost');
+    const role: Role = url.searchParams.get('role') === 'gm' ? 'gm' : 'player';
+    const cookies = parseCookies(req.headers.cookie);
+    const ok = role === 'gm' ? verifyGmToken(cookies[GM_COOKIE]) : verifyPlayerToken(cookies[PLAYER_COOKIE]);
+    if (!ok) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    this.wss.handleUpgrade(req, socket, head, (ws) => {
+      this.sockets.set(ws, role);
+      this.alive.set(ws, true);
+      ws.on('pong', () => this.alive.set(ws, true));
+      const gone = () => {
+        if (this.sockets.delete(ws) && role === 'player') this.route(this.service.snapshotMessage());
+      };
+      ws.on('close', gone);
+      ws.on('error', gone);
+      this.send(ws, role, this.service.snapshotMessage());
+      if (role === 'player') this.route(this.service.snapshotMessage());
     });
   }
 
@@ -59,7 +83,14 @@ export class Hub {
   }
 
   private route(m: ServerMessage): void {
-    for (const [ws, role] of this.sockets) this.send(ws, role, m);
+    for (const [ws, role] of this.sockets) {
+      // One socket failing must not keep the message from the others.
+      try {
+        this.send(ws, role, m);
+      } catch (err) {
+        console.error('[section30] websocket send failed', err);
+      }
+    }
   }
 
   private send(ws: WebSocket, role: Role, m: ServerMessage): void {

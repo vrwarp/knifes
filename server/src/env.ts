@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -37,6 +38,42 @@ export const env = {
 export function ensureDirs(): void {
   for (const d of [env.dataDir, env.uploadsDir, env.agentCwd, env.claudeConfigDir]) {
     fs.mkdirSync(d, { recursive: true });
+  }
+}
+
+/** Where the key that signs GM logins and the player's link cookie came from. */
+export type SecretSource = 'env' | 'data' | 'memory';
+let secretCache: { value: string; source: SecretSource } | null = null;
+
+/**
+ * SESSION_SECRET when it is set. Otherwise a key made once and kept in the data directory, so a
+ * container restart in the middle of the evening logs nobody out and, with a PLAYER_KEY, never
+ * turns the phone away. Only when the data directory cannot be written does it live for one boot.
+ */
+export function sessionSecret(): { value: string; source: SecretSource } {
+  if (secretCache) return secretCache;
+  if (env.sessionSecret) return (secretCache = { value: env.sessionSecret, source: 'env' });
+  const file = path.join(env.dataDir, 'session-secret');
+  const read = () => {
+    try {
+      const v = fs.readFileSync(file, 'utf8').trim();
+      return v.length >= 32 ? v : null;
+    } catch {
+      return null;
+    }
+  };
+  const saved = read();
+  if (saved) return (secretCache = { value: saved, source: 'data' });
+  const fresh = crypto.randomBytes(32).toString('hex');
+  try {
+    fs.mkdirSync(env.dataDir, { recursive: true });
+    fs.writeFileSync(file, fresh, { mode: 0o600, flag: 'wx' });
+    return (secretCache = { value: fresh, source: 'data' });
+  } catch (err) {
+    const other = (err as NodeJS.ErrnoException).code === 'EEXIST' ? read() : null;
+    if (other) return (secretCache = { value: other, source: 'data' });
+    console.warn('[section30] could not keep the session secret in the data directory; logins end at the next restart', err);
+    return (secretCache = { value: fresh, source: 'memory' });
   }
 }
 

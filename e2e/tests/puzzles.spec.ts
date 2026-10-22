@@ -73,23 +73,43 @@ test.describe('key race', () => {
   });
 
   test('shows the adversary guessing on the clock, with its letters, and the player can still win', async ({ player, app }) => {
+    // Rounds long enough that a slow browser's typing never races the script's last line, and no
+    // free pass to end the stage if one round is lost anyway; a fresh round picks the new script up.
+    await app.patch((c) => {
+      c.hack.wordBank = ['CRANE', 'SLATE', 'PLANT'];
+      c.hack.aiPlanGuesses = 12;
+      c.hack.freePass = { enabled: false, text: '' };
+    });
+    await app.gmApi('/api/gm/reset', { json: { scope: 'hack' } });
     await player.goto(app.base);
-    await expect(player.getByText(/Adversary · 0/)).toBeVisible();
-    const { state } = await (await app.gmApi('/api/gm/overview')).json();
-    const key = state.hack.secret as string;
-    expect(['CRANE', 'SLATE']).toContain(key);
-    const other = key === 'CRANE' ? 'SLATE' : 'CRANE';
-    // Jimmy misses once on the on-screen keyboard; his row keeps its letters.
-    await typeWord(player, other);
-    await player.getByRole('button', { name: /attempt key/i }).click();
-    await expect(player.getByRole('img', { name: new RegExp(`^Attempt 1: ${other[0]} `) })).toBeVisible();
     // The adversary's first attempt lands within its interval, letters included.
     const advRow = player.getByRole('img', { name: /^Adversary attempt 1:/ });
     await expect(advRow).toBeVisible({ timeout: 8000 });
     await expect(advRow).toHaveAttribute('aria-label', /[A-Z] (placed|misplaced|absent)/);
-    // Jimmy types the key before the script reaches it.
-    await typeWord(player, key);
+    // Jimmy misses once on the on-screen keyboard (BRICK is in no round's bank); his row keeps its letters.
+    await typeWord(player, 'BRICK');
     await player.getByRole('button', { name: /attempt key/i }).click();
+    await expect(player.getByRole('img', { name: /^Attempt 1: B / })).toBeVisible();
+    // Jimmy types the key in play. Should a round still turn over mid-word, the next try reads the new key.
+    for (let i = 0; i < 4; i++) {
+      const { state } = await (await app.gmApi('/api/gm/overview')).json();
+      if (state.stage !== 'hack') break;
+      const before = { round: state.hack.round as number, guesses: (state.hack.guesses as string[]).length };
+      await typeWord(player, state.hack.secret as string);
+      const attempt = player.getByRole('button', { name: /attempt key/i });
+      // A new key clears the half-typed word on the phone, which leaves ENTER disabled.
+      if (!(await attempt.isEnabled())) {
+        await clearWord(player);
+        continue;
+      }
+      await attempt.click();
+      await expect
+        .poll(async () => {
+          const s = (await (await app.gmApi('/api/gm/overview')).json()).state;
+          return s.stage !== 'hack' || s.hack.round !== before.round || s.hack.guesses.length > before.guesses;
+        })
+        .toBe(true);
+    }
     await expect(player.getByText('KEY ACCEPTED')).toBeVisible();
     await expect(player.getByText(/beaten at/i)).toBeVisible();
   });

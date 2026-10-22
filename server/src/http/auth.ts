@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { env } from '../env.js';
+import { env, sessionSecret } from '../env.js';
 
-const secret = env.sessionSecret || crypto.randomBytes(32).toString('hex');
+const secret = sessionSecret().value;
 
 export const GM_COOKIE = 's30gm';
 export const PLAYER_COOKIE = 's30p';
@@ -25,9 +25,18 @@ export function parseCookies(header: string | undefined): Record<string, string>
     if (i < 0) continue;
     const k = part.slice(0, i).trim();
     const v = part.slice(i + 1).trim();
-    if (k) out[k] = decodeURIComponent(v);
+    if (k) out[k] = safeDecode(v);
   }
   return out;
+}
+
+/** Another app on the same host may set a cookie such as `progress=100%`; that must not break this one. */
+function safeDecode(v: string): string {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
 }
 
 export function cookieHeader(name: string, value: string, maxAgeSec: number): string {

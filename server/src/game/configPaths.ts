@@ -24,11 +24,14 @@ export function getPath(obj: unknown, path: string): unknown {
   let cur: unknown = obj;
   for (const key of path.split('.')) {
     if (Array.isArray(cur)) cur = cur[Number(key)];
-    else if (isObj(cur)) cur = cur[key];
+    else if (isObj(cur)) cur = Object.hasOwn(cur, key) ? cur[key] : undefined;
     else return undefined;
   }
   return cur;
 }
+
+/** Keys that lead out of the configuration into the object machinery. */
+const FORBIDDEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 /** Return a copy with one path replaced. Only existing paths can be set, so typos fail loudly. */
 export function setPath<T>(obj: T, path: string, value: unknown): T {
@@ -40,13 +43,16 @@ export function setPath<T>(obj: T, path: string, value: unknown): T {
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
     const last = i === keys.length - 1;
+    if (FORBIDDEN.has(key)) throw new Error(`No such setting: ${path}`);
     if (Array.isArray(cur)) {
+      if (!/^\d+$/.test(key)) throw new Error(`No such setting: ${path}`);
       const idx = Number(key);
       if (!Number.isInteger(idx) || idx < 0 || idx >= cur.length) throw new Error(`No such setting: ${path}`);
       if (last) cur[idx] = value;
       else cur = cur[idx];
     } else if (isObj(cur)) {
-      if (!(key in cur)) throw new Error(`No such setting: ${path}`);
+      // Own keys only: `in` would follow the prototype chain to toString, valueOf and friends.
+      if (!Object.hasOwn(cur, key)) throw new Error(`No such setting: ${path}`);
       if (last) cur[key] = value;
       else cur = cur[key];
     } else {

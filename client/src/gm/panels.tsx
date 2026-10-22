@@ -281,7 +281,7 @@ export function PlayerStatus({ state, config, events }: { state: GameState; conf
               {state.hack.ai.guesses.join(', ') || 'none'}
               {state.hack.ai.thinking ? ' (computing)' : ''}
               {state.hack.ai.plan ? ` · script ${state.hack.ai.guesses.length}/${state.hack.ai.plan.length} (${state.hack.ai.planSource})` : ''} · races lost {state.hack.rounds} · words left{' '}
-              {Math.max(0, config.hack.wordBank.length - state.hack.used.length)}/{config.hack.wordBank.length}
+              {config.hack.wordBank.filter((w) => !state.hack.used.includes(w)).length}/{config.hack.wordBank.length}
               {state.hack.roundResult === 'ai' ? <span className="red"> · ADVERSARY WON</span> : state.hack.roundResult === 'exhausted' ? <span className="red"> · OUT OF ATTEMPTS</span> : ''}
             </>
           ) : (

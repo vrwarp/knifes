@@ -44,6 +44,8 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
       if (!add.length) return m;
       const fresh = add.filter((a) => a.role === 'assistant' && !(loadedIds.current?.has(a.id) ?? false));
       if (fresh.length) setTypingId(fresh[fresh.length - 1].id);
+      // An answer that arrives over the live link after the request itself gave up clears that error.
+      if (add.some((a) => a.role !== 'user')) setErr(null);
       return [...m, ...add].sort((a, b) => a.id - b.id);
     });
   };
@@ -62,8 +64,9 @@ export function Archive({ view, feed, busy, active = true }: { view: PlayerView;
     setSending(true);
     setErr(null);
     try {
-      const r = await api<{ message: ArchiveMessage }>('/api/player/archive', { json: { text: t }, timeoutMs: 150_000 });
-      absorb([r.message]);
+      const r = await api<{ message: ArchiveMessage; question?: ArchiveMessage }>('/api/player/archive', { json: { text: t }, timeoutMs: 150_000 });
+      // The question as well: with the live link down, it would otherwise never appear above the answer.
+      absorb(r.question ? [r.question, r.message] : [r.message]);
       setText('');
     } catch (e2) {
       setErr(errorText(e2));

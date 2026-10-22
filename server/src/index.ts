@@ -6,6 +6,16 @@ import { Hub } from './http/ws.js';
 import { GameService } from './service.js';
 import { aiLive, findClaudeBinary, probeAuth } from './ai/agent.js';
 
+// The game runs once. After boot, an error nobody caught is logged and the evening goes on: a crash would
+// drop every connection, and a crash on each reconnect would end the game. Until the server is up, a
+// failure exits so the container restarts instead of idling half-started.
+let listening = false;
+process.on('unhandledRejection', (err) => console.error('[section30] unhandled rejection', err));
+process.on('uncaughtException', (err) => {
+  console.error('[section30] uncaught exception', err);
+  if (!listening) process.exit(1);
+});
+
 ensureDirs();
 const db = new Db(env.dbPath);
 const service = new GameService(db);
@@ -13,8 +23,13 @@ const app = createApp(service);
 const server = http.createServer(app);
 const hub = new Hub(service);
 hub.attach(server);
+server.on('error', (err) => {
+  console.error('[section30] server error', err);
+  if (!listening) process.exit(1);
+});
 
 server.listen(env.port, () => {
+  listening = true;
   console.log(`[section30] listening on :${env.port}`);
   console.log(`[section30] data dir ${env.dataDir}`);
   const credential = detectCredential();

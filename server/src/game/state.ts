@@ -165,7 +165,7 @@ function hackView(config: GameConfig, state: GameState) {
     lastWord: race && h.roundResult && h.roundResult !== 'player' ? h.lastWord : null,
     lastRound: race ? h.lastRound : null,
     freePass: h.freePass ? config.hack.freePass.text : null,
-    wordsLeft: race ? Math.max(0, config.hack.wordBank.length - h.used.length) : null,
+    wordsLeft: race ? config.hack.wordBank.filter((w) => !h.used.includes(w)).length : null,
     ai: race
       ? {
           rows: blank(h.ai.guesses.map((g) => scoreGuess(g, secret))),
@@ -196,6 +196,8 @@ export function streetViewForPlayer(config: GameConfig, state: GameState, apiKey
 export function playerView(config: GameConfig, state: GameState, googleMapsApiKey = '') {
   return {
     title: config.title,
+    /** Rises with every saved configuration, so the phone re-reads what it fetched separately (the Ledger). */
+    configVersion: config.version,
     stage: state.stage,
     geoMode: config.geo.mode,
     intro: config.intro,

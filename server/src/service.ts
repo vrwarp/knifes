@@ -11,7 +11,7 @@ import { diffPaths, getPath, preview, setPath } from './game/configPaths.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
-import { CREDENTIAL_LABEL, detectCredential, env } from './env.js';
+import { CREDENTIAL_LABEL, detectCredential, env, sessionSecret } from './env.js';
 import { haversineMeters } from './game/geo.js';
 import { drawWord, generatedPlan, opponentDelayMs, opponentPace, planLength, solverGuess, type OpponentHistoryRow } from './game/opponent.js';
 import { advanceTo, applyInvestigationUnlocks, currentSecret, forceStage, freshRound, initialLedger, initialState, isAtLeast, nextStage, normalizeHack, playerView, resetStage, type PlayerView } from './game/state.js';
@@ -160,8 +160,44 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/** Saved config over defaults, so fields added in later versions pick up their defaults. */
-export function mergeConfig(saved: unknown): GameConfig {
+type Key = string | number;
+const valueAt = (root: unknown, path: Key[]): unknown => path.reduce<unknown>((cur, k) => (cur !== null && typeof cur === 'object' ? (cur as Record<Key, unknown>)[k] : undefined), root);
+
+/**
+ * Puts the defaults back wherever a saved configuration no longer validates (a later build may check
+ * more than the one that saved it), keeping every other setting: a value goes back to its default, a
+ * list item that cannot be repaired is dropped, and a value already reset climbs to its parent.
+ * Returns false when nothing more can be repaired.
+ */
+function repairConfig(merged: unknown, issues: readonly { path: readonly PropertyKey[] }[], tried: Set<string>, repaired: string[]): boolean {
+  let changed = false;
+  for (const issue of issues) {
+    let path = issue.path.filter((k): k is Key => typeof k === 'string' || typeof k === 'number');
+    const item = path.map((k) => typeof k === 'number' || /^\d+$/.test(String(k))).lastIndexOf(true);
+    if (item >= 0 && Array.isArray(valueAt(merged, path.slice(0, item)))) {
+      const list = valueAt(merged, path.slice(0, item)) as unknown[];
+      const index = Number(path[item]);
+      if (index < list.length) {
+        list.splice(index, 1);
+        repaired.push(`${path.slice(0, item + 1).join('.')} (removed)`);
+        changed = true;
+      }
+      continue;
+    }
+    while (path.length && (tried.has(path.join('.')) || valueAt(DEFAULT_CONFIG, path) === undefined)) path = path.slice(0, -1);
+    if (!path.length) return false;
+    const parent = valueAt(merged, path.slice(0, -1));
+    if (parent === null || typeof parent !== 'object') return false;
+    (parent as Record<Key, unknown>)[path[path.length - 1]] = structuredClone(valueAt(DEFAULT_CONFIG, path));
+    tried.add(path.join('.'));
+    repaired.push(path.join('.'));
+    changed = true;
+  }
+  return changed;
+}
+
+/** Saved config over defaults, so fields added in later versions pick up their defaults. `repaired` collects any reset paths. */
+export function mergeConfig(saved: unknown, repaired: string[] = []): GameConfig {
   const merge = (base: unknown, over: unknown): unknown => {
     if (isPlainObject(base) && isPlainObject(over)) {
       const out: Record<string, unknown> = { ...base };
@@ -171,11 +207,25 @@ export function mergeConfig(saved: unknown): GameConfig {
     return over === undefined ? base : over;
   };
   const merged = merge(structuredClone(DEFAULT_CONFIG), saved ?? {});
-  const parsed = ConfigSchema.safeParse(merged);
-  return parsed.success ? (parsed.data as GameConfig) : structuredClone(DEFAULT_CONFIG);
+  const tried = new Set<string>();
+  for (let pass = 0; pass < 50; pass++) {
+    const parsed = ConfigSchema.safeParse(merged);
+    if (parsed.success) return parsed.data as GameConfig;
+    if (!repairConfig(merged, parsed.error.issues, tried, repaired)) break;
+  }
+  repaired.push('(everything)');
+  return structuredClone(DEFAULT_CONFIG);
 }
 
 const normCode = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+/** The phone's code keyboard has A to Z and 0 to 9, and takes 16 of them. */
+export const GATE_CODE_MAX = 16;
+/** Checked when a configuration is saved, not when one is loaded: a stricter rule must never rewrite what the GMs already set. */
+function saveProblem(c: GameConfig): string | null {
+  const typed = normCode(c.gate.code).length;
+  if (typed < 1 || typed > GATE_CODE_MAX) return `Invalid config at gate.code: the phone keyboard types letters and digits only, 1 to ${GATE_CODE_MAX} of them (this code has ${typed})`;
+  return null;
+}
 
 export class GameService {
   config: GameConfig;
@@ -183,16 +233,21 @@ export class GameService {
   private readonly listeners = new Set<Listener>();
 
   constructor(private readonly db: Db) {
+    // Kept in the database so the phone never sees the revision go backwards across a restart, whatever the clock does.
+    this.rev = Math.max(Date.now(), (db.getJson<number>('rev') ?? 0) + 1);
     // The configuration lives in an append-only version table. Older installs kept a single
     // copy in kv; import it once as the first version.
     const latest = db.latestConfig<GameConfig>();
     const legacy = latest ? null : db.getJson<GameConfig>('config');
-    this.config = mergeConfig(latest ?? legacy);
+    const repaired: string[] = [];
+    this.config = mergeConfig(latest ?? legacy, repaired);
+    if (repaired.length) console.warn(`[section30] saved configuration had settings this build does not accept; back to their defaults: ${repaired.join(', ')}`);
     if (!latest) {
       this.config.version = db.appendConfig(this.config, 'system', legacy ? 'Imported the configuration saved before version history' : 'Initial configuration', []);
     } else {
       const added = diffPaths(latest, this.config);
-      this.config.version = added.length ? db.appendConfig(this.config, 'system', 'Filled in settings added by an update', added) : latest.version;
+      const note = repaired.length ? `Reset settings this build does not accept: ${repaired.slice(0, 6).join(', ')}` : 'Filled in settings added by an update';
+      this.config.version = added.length ? db.appendConfig(this.config, 'system', note, added) : latest.version;
     }
     this.state = { ...initialState(), ...(db.getJson<GameState>('state') ?? {}) };
     // A save from before the Ledger carries an evidence block instead; the stage it was at decides whether the personnel files are open.
@@ -214,13 +269,24 @@ export class GameService {
     this.state.hackScripts = { key: savedScripts?.key ?? '', byWord: savedScripts?.byWord ?? {}, busy: false };
     this.syncOpponent();
     this.save();
-    void this.prepareScripts();
+    this.background(this.prepareScripts(), 'hack_scripts');
   }
 
-  /** Stops the opponent timer, for tests and shutdown. */
+  /** Stops the opponent timer, for tests and shutdown. An AI call still in flight finishes without writing anything. */
   close(): void {
+    this.closed = true;
     if (this.opponentTimer) clearTimeout(this.opponentTimer);
     this.opponentTimer = null;
+  }
+
+  private closed = false;
+
+  /** Runs a fire-and-forget task; a failure is logged for the GMs instead of taking the server down. */
+  private background(task: Promise<unknown>, where: string): void {
+    task.catch((err) => {
+      console.error(`[section30] ${where} failed`, err);
+      if (!this.closed) this.event('ai_error', { where, error: err instanceof Error ? err.message : String(err) });
+    });
   }
 
   subscribe(fn: Listener): () => void {
@@ -239,12 +305,15 @@ export class GameService {
   }
 
   private save(): void {
+    if (this.closed) return;
     // The configuration is saved only through commitConfig, as a new version.
     this.db.setJson('state', this.state);
+    this.db.setJson('rev', this.rev);
   }
 
   /** Persist and push the new state to every connected client. */
   private touch(): void {
+    if (this.closed) return;
     this.syncOpponent();
     this.rev = Math.max(Date.now(), this.rev + 1);
     this.save();
@@ -256,13 +325,14 @@ export class GameService {
   }
 
   event(type: EventType, payload: Record<string, unknown> = {}): GameEvent {
+    if (this.closed) return { id: 0, ts: Date.now(), type, payload };
     const e = this.db.addEvent(type, payload);
     this.emit({ type: 'event', event: e });
     return e;
   }
 
-  /** Monotonic revision (time-based so it keeps rising across restarts); lets the phone drop stale views. */
-  private rev = Date.now();
+  /** Monotonic revision (time-based, and stored, so it keeps rising across restarts); lets the phone drop stale views. */
+  private rev: number;
 
   view(): PlayerView & { rev: number } {
     return { ...playerView(this.config, this.state, env.googleMapsApiKey), rev: this.rev };
@@ -401,14 +471,16 @@ export class GameService {
     h.ai.nextAt = Date.now() + delay;
     this.opponentTimer = setTimeout(() => {
       this.opponentTimer = null;
-      void this.opponentTurn();
+      this.background(this.opponentTurn(), 'opponent');
     }, delay);
   }
 
   private startRound(): void {
     const h = freshRound(this.state.hack);
     const bank = this.config.hack.wordBank;
-    if (bank.length && h.used.length >= bank.length && this.config.hack.freePass.enabled && h.rounds > 0) {
+    // Keys of this bank not yet drawn; counting words drawn would also count keys from a bank edited since.
+    const left = bank.filter((w) => !h.used.includes(w));
+    if (bank.length && !left.length && this.config.hack.freePass.enabled && h.rounds > 0) {
       // Every key has been taken by the adversary: the failsafe lets Jimmy through.
       h.freePass = true;
       h.solved = true;
@@ -581,50 +653,55 @@ export class GameService {
     return this.db.listArchive();
   }
 
-  async archiveSend(text: string): Promise<ArchiveMessage> {
+  /** The query the ARCHIVE is answering. A new session or a game reset abandons it: its answer is dropped, and a new query may start. */
+  private archiveRun: object | null = null;
+
+  async archiveSend(text: string): Promise<{ question: ArchiveMessage; reply: ArchiveMessage }> {
     this.requireStage('investigation', 'ARCHIVE');
     if (!this.config.archive.enabled) throw new HttpError(403, this.config.text.server.archiveOffline);
     if (this.state.archive.locked) throw new HttpError(423, this.config.text.server.archiveSealed);
-    if (this.state.archive.busy) throw new HttpError(429, this.config.text.server.archiveBusy);
+    if (this.state.archive.busy || this.archiveRun) throw new HttpError(429, this.config.text.server.archiveBusy);
     const clean = text.replace(/\s+/g, ' ').trim().slice(0, this.config.archive.maxMessageChars);
     if (!clean) throw new HttpError(400, 'Empty query');
 
-    const userMsg = this.db.addArchive('user', clean);
-    this.emit({ type: 'archive', message: userMsg });
+    const run = {};
+    this.archiveRun = run;
+    const question = this.db.addArchive('user', clean);
+    this.emit({ type: 'archive', message: question });
     this.event('archive_user', { text: clean });
     this.state.archive.busy = true;
     this.state.archive.messageCount++;
     this.touch();
     this.emit({ type: 'archive_status', busy: true });
+    let outcome: { role: 'assistant' | 'system'; text: string; meta: Record<string, unknown> };
     try {
-      let reply: string;
-      let meta: Record<string, unknown>;
       if (!aiLive()) {
-        reply = mockArchiveReply(clean, { config: this.config, state: this.state });
-        meta = { source: 'mock' };
+        outcome = { role: 'assistant', text: mockArchiveReply(clean, { config: this.config, state: this.state }), meta: { source: 'mock' } };
       } else {
-        const run = await this.runArchive(clean);
-        reply = run.text.trim() || this.config.text.server.archiveEmptyReply;
-        meta = { source: 'ai', costUsd: run.costUsd, tools: run.toolCalls.map((t) => t.name) };
+        const r = await this.runArchive(clean, run);
+        outcome = { role: 'assistant', text: r.text.trim() || this.config.text.server.archiveEmptyReply, meta: { source: 'ai', costUsd: r.costUsd, tools: r.toolCalls.map((t) => t.name) } };
       }
-      const msg = this.db.addArchive('assistant', reply, meta);
-      this.emit({ type: 'archive', message: msg });
-      this.event('archive_assistant', { text: reply.slice(0, 500), ...meta });
-      return msg;
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       this.event('ai_error', { where: 'archive', error });
-      const msg = this.db.addArchive('system', this.config.text.server.archiveDegraded, { error });
-      this.emit({ type: 'archive', message: msg });
-      return msg;
+      outcome = { role: 'system', text: this.config.text.server.archiveDegraded, meta: { error } };
+    }
+    // The GMs started a new session (or reset the game) while this one was answered: it belongs to a conversation that is gone.
+    if (this.archiveRun !== run) throw new HttpError(409, 'The ARCHIVE was reset while that query was answered.');
+    try {
+      const reply = this.db.addArchive(outcome.role, outcome.text, outcome.meta);
+      this.emit({ type: 'archive', message: reply });
+      if (outcome.role === 'assistant') this.event('archive_assistant', { text: outcome.text.slice(0, 500), ...outcome.meta });
+      return { question, reply };
     } finally {
+      this.archiveRun = null;
       this.state.archive.busy = false;
       this.touch();
       this.emit({ type: 'archive_status', busy: false });
     }
   }
 
-  private async runArchive(text: string) {
+  private async runArchive(text: string, run: object) {
     const attempt = (resume: string | null) =>
       runAgent({
         prompt: text,
@@ -638,18 +715,19 @@ export class GameService {
         onToolUse: (call) => this.event('archive_tool', { name: call.name, input: call.input }),
       });
     const sessionId = this.state.archive.sessionId;
+    // Only the query still in charge may name the session the next one resumes.
+    const keep = <R extends { sessionId: string | null }>(r: R): R => {
+      if (r.sessionId && this.archiveRun === run) this.state.archive.sessionId = r.sessionId;
+      return r;
+    };
     try {
-      const run = await attempt(sessionId);
-      if (run.sessionId) this.state.archive.sessionId = run.sessionId;
-      return run;
+      return keep(await attempt(sessionId));
     } catch (err) {
-      if (!sessionId || (err instanceof AgentError && err.subtype === 'error_max_turns')) throw err;
+      if (!sessionId || this.archiveRun !== run || (err instanceof AgentError && err.subtype === 'error_max_turns')) throw err;
       // The saved session may be gone (container rebuilt). Start a fresh one once.
       this.event('ai_error', { where: 'archive_resume', error: err instanceof Error ? err.message : String(err) });
       this.state.archive.sessionId = null;
-      const run = await attempt(null);
-      if (run.sessionId) this.state.archive.sessionId = run.sessionId;
-      return run;
+      return keep(await attempt(null));
     }
   }
 
@@ -660,7 +738,7 @@ export class GameService {
     return {
       config: this.config,
       state: this.state,
-      events: this.db.listEvents(400),
+      events: this.db.recentEvents(400),
       archive: this.db.listArchive(),
       ai: {
         mode: aiLive() ? 'live' : 'mock',
@@ -685,6 +763,8 @@ export class GameService {
       throw new HttpError(400, `Invalid config at ${issue?.path.join('.') || '?'}: ${issue?.message ?? 'unknown'}`);
     }
     const next = parsed.data as GameConfig;
+    const problem = saveProblem(next);
+    if (problem) throw new HttpError(400, problem);
     next.hack.secret = next.hack.secret.toUpperCase();
     next.hack.wordBank = [...new Set(next.hack.wordBank.map((w) => w.toUpperCase()))];
     const changes = diffPaths(this.config, next);
@@ -696,7 +776,7 @@ export class GameService {
     this.config = next;
     this.event('gm_action', { action: 'config_update', version: next.version, source, note, changes: changes.slice(0, 12) });
     this.touch();
-    void this.prepareScripts();
+    this.background(this.prepareScripts(), 'hack_scripts');
     return this.config;
   }
 
@@ -709,6 +789,8 @@ export class GameService {
   }
 
   private preparing = false;
+  /** A pass was asked for while one was running (true: a forced rewrite); it runs as soon as that one ends. */
+  private prepareAgain: boolean | null = null;
 
   /**
    * Writes one script per bank word ahead of the party, so a round never waits on the model.
@@ -717,8 +799,11 @@ export class GameService {
    */
   async prepareScripts(force = false): Promise<void> {
     const c = this.config.hack;
-    if (c.mode !== 'race' || c.aiStyle !== 'scripted') return;
-    if (this.preparing) return;
+    if (this.closed || c.mode !== 'race' || c.aiStyle !== 'scripted') return;
+    if (this.preparing) {
+      this.prepareAgain = (this.prepareAgain ?? false) || force;
+      return;
+    }
     this.preparing = true;
     try {
       const key = this.scriptsKey();
@@ -732,7 +817,7 @@ export class GameService {
       store.busy = true;
       this.touch();
       for (const word of missing) {
-        if (this.scriptsKey() !== key) break; // settings changed under us; the next pass starts over
+        if (this.closed || this.scriptsKey() !== key) break; // settings changed under us; the next pass starts over
         const n = planLength(c.aiPlanGuesses, c.aiPlanJitter);
         let script: HackScript | null = null;
         if (opponentLive()) {
@@ -754,13 +839,16 @@ export class GameService {
       this.preparing = false;
       this.state.hackScripts.busy = false;
       this.touch();
+      const again = this.prepareAgain;
+      this.prepareAgain = null;
+      if (again !== null) this.background(this.prepareScripts(again), 'hack_scripts');
     }
   }
 
   /** GM asked for fresh scripts (new ideas, or a credential arrived after the generated ones). */
   regenerateScripts(): void {
     this.event('gm_action', { action: 'regenerate_scripts' });
-    void this.prepareScripts(true);
+    this.background(this.prepareScripts(true), 'hack_scripts');
   }
 
   updateConfig(input: unknown, note = 'Saved from the config editor'): GameConfig {
@@ -803,6 +891,8 @@ export class GameService {
       add(c.geo.mode === 'puzzle' ? 'blocker' : 'warn', 'Location puzzle', 'No field photos are uploaded. Upload two or three photos taken at the drop point.');
     for (const id of c.geo.photos) if (!fs.existsSync(path.join(env.uploadsDir, id))) add('blocker', 'Location puzzle', `Photo ${id} is listed but its file is missing.`);
     if (c.gate.code === DEFAULT_CONFIG.gate.code) add('info', 'Code gate', `The code is still the default ${c.gate.code}. Fine if that is what Phil will read out.`);
+    const typed = normCode(c.gate.code).length;
+    if (typed < 1 || typed > GATE_CODE_MAX) add('blocker', 'Code gate', `The code ${c.gate.code} has ${typed} letters and digits; the phone keyboard takes 1 to ${GATE_CODE_MAX}. Jimmy cannot type it in full.`);
     add('info', 'Ledger', `The ${c.ledger.layer2Label} stay hidden until a GM presses Release records in the console. Time it with ${c.phil.secondCaller}'s call.`);
     for (const st of ['geo', 'gate', 'hack', 'investigation'] as StageId[]) {
       if (st === 'geo' && c.geo.mode === 'off') continue;
@@ -811,7 +901,7 @@ export class GameService {
     if (!env.gmPassword || ['change-me', 'test', 'password'].includes(env.gmPassword) || env.gmPassword.length < 8)
       add('warn', 'Security', 'The GM password is short or a default. Set a longer GM_PASSWORD.');
     if (!env.playerKey) add('info', 'Security', 'No PLAYER_KEY: anyone with the link can open the game. Put the key in the QR code to lock it.');
-    if (!env.sessionSecret) add('info', 'Security', 'No SESSION_SECRET: GM logins end when the container restarts.');
+    if (sessionSecret().source === 'memory') add('warn', 'Security', 'The login key could not be kept in the data directory, so GM logins and the player link end when the container restarts. Set SESSION_SECRET.');
     if (!env.cookieSecure) add('info', 'Security', 'COOKIE_SECURE is off. Set it to 1 when the site is served over HTTPS.');
     const order = { blocker: 0, warn: 1, info: 2 };
     return items.sort((a, b) => order[a.level] - order[b.level]);
@@ -833,6 +923,8 @@ export class GameService {
       const issue = parsed.error.issues[0];
       throw new HttpError(400, `Invalid value at ${issue?.path.join('.') || '?'}: ${issue?.message ?? 'unknown'}`);
     }
+    const problem = saveProblem(parsed.data as GameConfig);
+    if (problem) throw new HttpError(400, problem);
     return parsed.data as GameConfig;
   }
 
@@ -962,13 +1054,22 @@ export class GameService {
     this.touch();
   }
 
+  /** Bumped by a whole-game reset, so a slow AI answer for the old game never lands in the new one. */
+  private game = 0;
+
   reset(scope: 'game' | StageId): void {
     if (scope === 'game') {
       const scripts = this.state.hackScripts;
+      // A new epoch, not 0 again: a phone still open from the dry run drops the old ARCHIVE lines it holds.
+      const epoch = (this.state.archive.epoch ?? 0) + 1;
       this.state = { ...initialState(), hackScripts: scripts };
+      this.state.archive.epoch = epoch;
+      this.archiveRun = null;
+      this.game++;
       this.db.clearEvents();
       this.db.clearArchive();
       this.event('gm_action', { action: 'reset_game' });
+      this.emit({ type: 'archive_status', busy: false });
     } else {
       if (!STAGE_ORDER.includes(scope)) throw new HttpError(400, 'Unknown stage');
       resetStage(this.config, this.state, scope);
@@ -980,7 +1081,10 @@ export class GameService {
   pushHint(text: string): HintPush {
     const clean = text.trim();
     if (!clean) throw new HttpError(400, 'Empty hint');
-    const hint: HintPush = { id: Date.now(), ts: Date.now(), text: clean };
+    // Ids only ever rise, even two in one millisecond or with the clock stepped back: the phone shows the ones above the last it saw.
+    const now = Date.now();
+    const last = this.state.hints.reduce((m, h) => Math.max(m, h.id), 0);
+    const hint: HintPush = { id: Math.max(now, last + 1), ts: now, text: clean };
     this.state.hints.push(hint);
     this.event('hint_pushed', { text: clean });
     this.touch();
@@ -990,7 +1094,7 @@ export class GameService {
 
   async draftHint(strength: HintStrength) {
     try {
-      return await draftHint(this.config, this.state, this.db.listEvents(40), strength);
+      return await draftHint(this.config, this.state, this.db.recentEvents(40), strength);
     } catch (err) {
       this.event('ai_error', { where: 'copilot', error: err instanceof Error ? err.message : String(err) });
       throw new HttpError(502, `Copilot failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -1003,24 +1107,31 @@ export class GameService {
     this.touch();
   }
 
+  /** A fresh conversation. A query still being answered is abandoned, so this also frees an ARCHIVE stuck on a slow answer. */
   archiveNewSession(): void {
     this.db.clearArchive();
+    this.archiveRun = null;
+    this.state.archive.busy = false;
     this.state.archive.sessionId = null;
     this.state.archive.messageCount = 0;
     this.state.archive.epoch = (this.state.archive.epoch ?? 0) + 1;
     this.event('gm_action', { action: 'archive_reset' });
     this.touch();
+    this.emit({ type: 'archive_status', busy: false });
   }
 
   async generateReport() {
+    const game = this.game;
     try {
-      const r = await generateReport(this.config, this.state, this.db.listEvents(1000), this.db.listArchive());
+      const r = await generateReport(this.config, this.state, this.db.recentEvents(1000), this.db.listArchive());
+      if (game !== this.game) throw new HttpError(409, 'The game was reset while the report was being written.');
       this.state.report.markdown = r.markdown;
       this.state.report.generatedAt = Date.now();
       this.event('report', { source: r.source, chars: r.markdown.length });
       this.touch();
       return { markdown: r.markdown, source: r.source };
     } catch (err) {
+      if (err instanceof HttpError) throw err;
       this.event('ai_error', { where: 'report', error: err instanceof Error ? err.message : String(err) });
       throw new HttpError(502, `Report failed: ${err instanceof Error ? err.message : String(err)}`);
     }

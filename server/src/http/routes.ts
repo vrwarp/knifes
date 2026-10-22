@@ -23,7 +23,8 @@ function str(v: unknown, max = 500): string {
 }
 
 function num(v: unknown): number {
-  const n = typeof v === 'number' ? v : Number(v);
+  // Number(null), Number('') and Number([]) are all 0: only a real number or a numeric string counts.
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
   if (!Number.isFinite(n)) throw new HttpError(400, 'Expected a number');
   return n;
 }
@@ -54,7 +55,11 @@ export function playerRouter(service: GameService): Router {
   });
   r.get('/ledger', (_req, res) => res.json(service.ledgerFiles()));
   r.get('/archive', (_req, res) => res.json({ messages: service.archiveTranscript() }));
-  r.post('/archive', async (req, res) => res.json({ message: await service.archiveSend(str(req.body?.text, 4000)) }));
+  r.post('/archive', async (req, res) => {
+    const { question, reply } = await service.archiveSend(str(req.body?.text, 4000));
+    // The question too, so the transcript shows it even when the live link is down.
+    res.json({ message: reply, question });
+  });
   return r;
 }
 
@@ -190,13 +195,14 @@ export function gmRouter(service: GameService): Router {
     const id = `photo-${crypto.randomBytes(6).toString('hex')}.${ext}`;
     fs.writeFileSync(path.join(env.uploadsDir, id), file.buffer);
     service.attachUpload('photo', id);
-    res.json({ id, url: `/uploads/${id}` });
+    // The version this upload became, so an editor with unsaved changes knows it was not another GM's save.
+    res.json({ id, url: `/uploads/${id}`, version: service.config.version });
   });
   r.delete('/upload/:id', (req, res) => {
     const id = path.basename(String(req.params.id));
     // The file stays on disk: older configuration versions may still use it.
     service.detachUpload(id);
-    res.json({ ok: true });
+    res.json({ ok: true, version: service.config.version });
   });
 
   return r;
