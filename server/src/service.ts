@@ -3,7 +3,7 @@ import { AgentError, aiLive, probeAuth, runAgent } from './ai/agent.js';
 import { ARCHIVE_ALLOWED_TOOLS, createArchiveServer, mockArchiveReply } from './ai/archive.js';
 import { draftHint, type HintStrength } from './ai/copilot.js';
 import { SETUP_ALLOWED_TOOLS, SETUP_SYSTEM_PROMPT, createSetupServer, mockSetupReply, type SetupContext } from './ai/setup.js';
-import { generateReport } from './ai/report.js';
+import { generateReport, mockReport } from './ai/report.js';
 import { LEDGER_TITLE, ledgerMinutes, personnelEntries, surveillanceEntries } from './content/ledger.js';
 import { fill, type UiText } from './content/text.js';
 import type { AssistantMessage, ConfigSource, Db, Proposal, ProposalChange } from './db.js';
@@ -701,7 +701,7 @@ export class GameService {
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
       this.event('ai_error', { where: 'archive', error });
-      outcome = { role: 'system', text: this.config.text.server.archiveDegraded, meta: { error } };
+      outcome = this.archiveFallback(clean, error);
     }
     // The GMs started a new session (or reset the game) while this one was answered: it belongs to a conversation that is gone.
     if (this.archiveRun !== run) throw new HttpError(409, 'The ARCHIVE was reset while that query was answered.');
@@ -716,6 +716,21 @@ export class GameService {
       this.touch();
       this.emit({ type: 'archive_status', busy: false });
     }
+  }
+
+  /**
+   * The model could not answer: an outage, a rate limit, a lapsed login, spent credit. Those last the rest of the
+   * night, so the question is answered from the local index (the mock engine, which keeps the same rules about what
+   * is on file) instead of a dead end on every question. The GMs still see the AI error.
+   */
+  private archiveFallback(text: string, error: string): { role: 'assistant' | 'system'; text: string; meta: Record<string, unknown> } {
+    try {
+      const reply = mockArchiveReply(text, { config: this.config, state: this.state }).trim();
+      if (reply) return { role: 'assistant', text: reply, meta: { source: 'fallback', error } };
+    } catch (err) {
+      console.error('[section30] ARCHIVE fallback failed', err);
+    }
+    return { role: 'system', text: this.config.text.server.archiveDegraded, meta: { error } };
   }
 
   private async runArchive(text: string, run: object) {
@@ -1150,8 +1165,16 @@ export class GameService {
       return { markdown: r.markdown, source: r.source };
     } catch (err) {
       if (err instanceof HttpError) throw err;
-      this.event('ai_error', { where: 'report', error: err instanceof Error ? err.message : String(err) });
-      throw new HttpError(502, `Report failed: ${err instanceof Error ? err.message : String(err)}`);
+      const error = err instanceof Error ? err.message : String(err);
+      this.event('ai_error', { where: 'report', error });
+      // With no report yet, the template is something to print for the table; one the GMs already have is never replaced by it.
+      if (this.state.report.markdown || game !== this.game) throw new HttpError(502, `Report failed: ${error}`);
+      const markdown = mockReport(this.config, this.state, this.db.recentEvents(1000), this.db.listArchive());
+      this.state.report.markdown = markdown;
+      this.state.report.generatedAt = Date.now();
+      this.event('report', { source: 'fallback', chars: markdown.length });
+      this.touch();
+      return { markdown, source: 'fallback' as const, error };
     }
   }
 

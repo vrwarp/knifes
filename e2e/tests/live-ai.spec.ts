@@ -27,12 +27,14 @@ test.describe('ARCHIVE on a live link', () => {
     await expect(gm.locator('.log .ev', { hasText: /archive tool/ }).first()).toBeVisible();
   });
 
-  test('a broken link degrades one answer, shows the console why, and the next question works', async ({ player, gm, app }) => {
+  test('a broken link: the records still answer, the console sees why, and the next question is the AI again', async ({ player, gm, app }) => {
     app.scenario({ default: { exitCode: 1, stderr: 'API Error: 529 overloaded_error' } });
-    await player.getByLabel('Query').fill('who was at the office');
+    await player.getByLabel('Query').fill('tell me about nina');
     await player.getByRole('button', { name: /send/i }).click();
-    await expect(player.locator('.msg.system').filter({ hasText: '[LINK DEGRADED]' })).toBeVisible({ timeout: 15_000 });
+    await expect(player.locator('.msg.assistant').last()).toContainText('Nina Calder', { timeout: 15_000 });
+    await expect(player.locator('.msg.system')).toHaveCount(0);
     await expect(gm.locator('.now .warn', { hasText: /AI error .* archive/ })).toBeVisible();
+    await expect(gm.locator('.panel', { has: gm.locator('h2', { hasText: 'ARCHIVE transcript' }) })).toContainText('local index: the AI failed');
     app.scenario(DEFAULT_SCENARIO);
     await player.getByLabel('Query').fill('try again');
     await player.getByRole('button', { name: /send/i }).click();
@@ -114,6 +116,16 @@ test.describe('the console on a live link', () => {
     await expect(screen.locator('strong', { hasText: 'recovered' })).toBeVisible();
     await expect(gm.locator('.print-only h2', { hasText: 'CASE FILE 30-0214' })).toBeHidden();
     await expect(player.getByText('CASE FILE 30-0214')).toHaveCount(0);
+  });
+
+  test('a failed AI report leaves the GMs the template to print, and says so', async ({ gm, app }) => {
+    await app.setStage('investigation');
+    app.scenario({ default: { exitCode: 1, stderr: 'API Error: 400 Your credit balance is too low' } });
+    await gm.getByRole('button', { name: /generate with ai/i }).click();
+    await expect(gm.getByText(/The AI failed .*template report/)).toBeVisible({ timeout: 15_000 });
+    await gm.getByRole('button', { name: /^preview$/i }).click();
+    await expect(gm.locator('.no-print .md h1, .no-print .md h2').first()).toBeVisible();
+    await expect(gm.getByRole('button', { name: /^print$/i })).toBeEnabled();
   });
 
   test('shows the AI live on the key and proves the link with one tiny request', async ({ gm, app }) => {

@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mockArchiveReply } from './ai/archive.js';
+import { mockReport } from './ai/report.js';
 import { Db } from './db.js';
 import { DEFAULT_CONFIG } from './defaultConfig.js';
 import { GameService, HttpError, type ServerMessage } from './service.js';
@@ -141,14 +143,15 @@ describe('ARCHIVE, live', () => {
     expect(db.recentEvents(20).find((e) => e.type === 'ai_error')?.payload).toMatchObject({ where: 'archive_resume' });
   });
 
-  it('does not retry a question that ran out of turns, and says the link degraded', async () => {
+  it('does not retry a question that ran out of turns, and answers it from the local index instead', async () => {
     const s = boot();
     s.setStage('investigation');
     s.state.archive.sessionId = 'S-OLD';
     const log = callLog();
     scenario({ default: { resultSubtype: 'error_max_turns', errors: ['Reached maximum number of turns (8)'] } });
     const { reply } = await s.archiveSend('a hard one');
-    expect(reply).toMatchObject({ role: 'system', text: s.config.text.server.archiveDegraded });
+    expect(reply).toMatchObject({ role: 'assistant', text: mockArchiveReply('a hard one', { config: s.config, state: s.state }), meta: { source: 'fallback' } });
+    expect(String(reply.meta?.error)).toMatch(/maximum number of turns/);
     expect(log()).toHaveLength(1);
     expect(db.recentEvents(20).find((e) => e.type === 'ai_error')?.payload).toMatchObject({ where: 'archive' });
     expect(s.state.archive.busy).toBe(false);
@@ -162,12 +165,13 @@ describe('ARCHIVE, live', () => {
     expect(reply).toMatchObject({ role: 'assistant', text: s.config.text.server.archiveEmptyReply });
   });
 
-  it('a crashed CLI costs one answer, not the ARCHIVE', async () => {
+  it('a crashed CLI costs the AI one answer, not the ARCHIVE: the local index answers it', async () => {
     const s = boot();
     s.setStage('investigation');
     scenario({ default: { exitCode: 1, stderr: 'API Error: 429 rate_limit_error · usage limit reached' } });
-    const first = await s.archiveSend('one');
-    expect(first.reply).toMatchObject({ role: 'system', text: s.config.text.server.archiveDegraded });
+    const first = await s.archiveSend('tell me about nina');
+    expect(first.reply).toMatchObject({ role: 'assistant', meta: { source: 'fallback' } });
+    expect(first.reply.text).toContain('Nina Calder');
     expect(String(db.recentEvents(20).find((e) => e.type === 'ai_error')?.payload.error)).toMatch(/exited with code 1|429/);
     scenario({ default: { text: 'back again' } });
     const second = await s.archiveSend('two');
@@ -181,7 +185,7 @@ describe('ARCHIVE, live', () => {
     const started = Date.now();
     const { reply } = await s.archiveSend('hello?');
     expect(Date.now() - started).toBeLessThan(15_000);
-    expect(reply.role).toBe('system');
+    expect(reply).toMatchObject({ role: 'assistant', meta: { source: 'fallback' } });
     expect(s.state.archive.busy).toBe(false);
   }, 30_000);
 
@@ -339,6 +343,40 @@ describe('case report, live', () => {
     expect(turn.prompt).toContain('who was in the office at 2:14?');
     expect(turn.prompt).toContain('hint 29');
     expect(JSON.stringify(s.view())).not.toContain('CASE FILE 30-0214');
+  });
+
+  it('a spent credit for the whole night: every question still gets an answer from the records, and the GMs see why', async () => {
+    const s = boot();
+    s.setStage('investigation');
+    scenario({ default: { exitCode: 1, stderr: 'API Error: 400 Your credit balance is too low to access the Anthropic API.' } });
+    for (const q of ['where was everyone at 2:14', 'tell me about theo', 'who killed him']) {
+      const { reply } = await s.archiveSend(q);
+      expect(reply, q).toMatchObject({ role: 'assistant', text: mockArchiveReply(q, { config: s.config, state: s.state }), meta: { source: 'fallback' } });
+    }
+    // Before the release the index has no record of the night either, the same rule the AI keeps.
+    expect((await s.archiveSend('where was nina at 2:14')).reply.text).toContain(s.config.archive.notOnFile);
+    const errors = db.recentEvents(50).filter((e) => e.type === 'ai_error');
+    expect(errors.length).toBeGreaterThanOrEqual(4);
+    expect(String(errors.at(-1)?.payload.error)).toMatch(/credit balance|exited with code 1/);
+    expect(s.state.archive.busy).toBe(false);
+  });
+
+  it('with no report yet, a failed AI report falls back to the template, marked as such', async () => {
+    const s = boot();
+    s.setStage('investigation');
+    scenario({ default: { exitCode: 1, stderr: 'API Error: 529 overloaded' } });
+    const r = await s.generateReport();
+    expect(r).toMatchObject({ source: 'fallback' });
+    // The template, as mock mode writes it (the log it reads has grown by the failure since).
+    expect(r.markdown.split('\n')[0]).toBe(mockReport(s.config, s.state, [], []).split('\n')[0]);
+    expect(s.state.report.markdown).toBe(r.markdown);
+    expect(s.state.report.generatedAt).toBeGreaterThan(0);
+    expect(db.recentEvents(20).filter((e) => e.type === 'report').at(-1)?.payload).toMatchObject({ source: 'fallback' });
+    expect(db.recentEvents(20).find((e) => e.type === 'ai_error')?.payload).toMatchObject({ where: 'report' });
+    // Once there is a report, a failure keeps it rather than writing the template over it.
+    s.state.report = { markdown: '# the AI one', generatedAt: 1 };
+    await expect(s.generateReport()).rejects.toMatchObject({ status: 502 });
+    expect(s.state.report.markdown).toBe('# the AI one');
   });
 
   it('an empty report fails cleanly and keeps the previous one', async () => {
