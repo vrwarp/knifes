@@ -109,20 +109,23 @@ test('the reverse proxy’s own error page while the container restarts reads as
   await expect(player.getByRole('alert')).toHaveCount(0);
 });
 
-test('a console whose login is gone goes back to the password form, says why, and picks up where it was', async ({ gmContext, player, app }) => {
-  const gm = await gmContext.newPage();
-  const links = await tapLinks(gm, 'gm');
-  await gm.goto(`${app.base}/gm`);
-  await expect(gm.getByText('GM console').first()).toBeVisible();
-  await expect.poll(() => links.length).toBeGreaterThan(0);
-  // The browser drops the login (a cleared site, a privacy setting), then the link blinks.
+test('a console whose login is gone goes back to the password form at its next request, says why, and picks up again', async ({ gm, gmContext, player, app }) => {
+  // The browser drops the login (a cleared site, a privacy setting) while the live link stays up.
   await gmContext.clearCookies();
-  await links.at(-1)!.route.close({ code: 1011, reason: 'blink' });
-  await expect(gm.getByText('Your login is no longer valid. Enter the password again.')).toBeVisible({ timeout: 20_000 });
+  await gm.getByLabel('Transmission text').fill('Check the badge log.');
+  await gm.getByRole('button', { name: /push to his screen/i }).click();
+  await expect(gm.getByText('Your login is no longer valid. Enter the password again.')).toBeVisible();
+  expect((await overview(app)).state.hints, 'nothing went out without a login').toHaveLength(0);
   await gm.getByLabel('Password').fill(GM_PASSWORD);
   await gm.getByRole('button', { name: /enter/i }).click();
   await expect(gm.getByText('GM console').first()).toBeVisible();
   // Live again: the console follows the phone without a reload.
   await startGame(player, app.base);
   await expect(gm.locator('.chip.now', { hasText: /field transmission/i })).toBeVisible({ timeout: 15_000 });
+});
+
+test('a console whose login is gone finds out by itself when its link drops, with nobody pressing anything', async ({ gm, gmContext, app }) => {
+  await gmContext.clearCookies();
+  await app.restart();
+  await expect(gm.getByText('Your login is no longer valid. Enter the password again.')).toBeVisible({ timeout: 25_000 });
 });

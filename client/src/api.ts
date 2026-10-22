@@ -9,6 +9,8 @@ export class ApiError extends Error {
 }
 
 const NO_ANSWER = 'No answer from the server. Check the link and retry.';
+/** Fired when a console request is refused for want of a login, so the console goes back to its password form whichever panel asked. */
+export const GM_LOGGED_OUT = 's30:gm-logged-out';
 
 export async function api<T>(path: string, init: { method?: string; json?: unknown; body?: BodyInit; timeoutMs?: number } = {}): Promise<T> {
   const headers: Record<string, string> = {};
@@ -40,6 +42,7 @@ export async function api<T>(path: string, init: { method?: string; json?: unkno
   if (!res.ok) {
     // No JSON error from the game: the reverse proxy's own page while the container restarts (502, 503, 504).
     const msg = (data as { error?: string } | null)?.error ?? (res.status >= 500 ? NO_ANSWER : res.statusText || 'Request failed');
+    if (res.status === 401 && path.startsWith('/api/gm/') && path !== '/api/gm/login') window.dispatchEvent(new Event(GM_LOGGED_OUT));
     throw new ApiError(res.status, msg);
   }
   return data as T;

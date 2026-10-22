@@ -3,9 +3,13 @@ import { GM_PASSWORD, acceptDialogs, configSection, expect, newGmPage, noHorizon
 test.describe('GM console', () => {
   test('rejects a wrong password and admits the right one', async ({ page, app }) => {
     await page.goto(`${app.base}/gm`);
+    await expect(page.getByLabel('Password')).toBeVisible();
+    // A browser that was never signed in is not told its login ran out.
+    await expect(page.getByText(/no longer valid/i)).toHaveCount(0);
     await page.getByLabel('Password').fill('nope');
     await page.getByRole('button', { name: /enter/i }).click();
     await expect(page.getByText(/wrong password/i)).toBeVisible();
+    await expect(page.getByText(/no longer valid/i)).toHaveCount(0);
     await page.getByLabel('Password').fill(GM_PASSWORD);
     await page.getByRole('button', { name: /enter/i }).click();
     await expect(page.getByText('GM console').first()).toBeVisible();

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, api, errorText } from '../api';
+import { ApiError, GM_LOGGED_OUT, api, errorText } from '../api';
 import { Markdown } from '../md';
 import type { ArchiveMessage, GameConfig, GameEvent, GameState, Overview } from '../types';
 import { useSocket } from '../ws';
@@ -127,6 +127,20 @@ export function GmApp() {
   useEffect(() => {
     if (authed) void load();
   }, [authed, load]);
+
+  // Any panel's request can find the login gone (the live link may still be up): back to the password form, with the reason.
+  const authedNow = useRef(authed);
+  authedNow.current = authed;
+  useEffect(() => {
+    const out = () => {
+      if (authedNow.current !== true) return;
+      setAuthed(false);
+      setData(null);
+      setLoginErr('Your login is no longer valid. Enter the password again.');
+    };
+    window.addEventListener(GM_LOGGED_OUT, out);
+    return () => window.removeEventListener(GM_LOGGED_OUT, out);
+  }, []);
 
   // Assistant updates go to the assistant panel through this bus instead of console state.
   const assistantBus = useRef(new EventTarget());
