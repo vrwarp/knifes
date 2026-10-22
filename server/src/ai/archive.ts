@@ -109,6 +109,14 @@ function nearestLine(log: { time: string; text: string }[], at: string): string 
   return best ? `${best.time} ${best.text}` : '';
 }
 
+/** Minutes after 6 PM (the Ledger's clock) back to a clock time, e.g. 494 to 2:14 AM. */
+function clockOf(m: number): string {
+  const day = (((m + 18 * 60) % (24 * 60)) + 24 * 60) % (24 * 60);
+  return `${Math.floor(day / 60) % 12 || 12}:${String(day % 60).padStart(2, '0')} ${day >= 12 * 60 ? 'PM' : 'AM'}`;
+}
+
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+
 export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   const q = text.toLowerCase();
   const l = ctx.state.ledger;
@@ -133,10 +141,14 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   if (has('who did', 'killer', 'murderer', 'who killed', 'guilty', 'who stabbed', 'who lied', 'lying')) {
     return `ARCHIVE holds records, not conclusions.\n${l.layer2 ? `The ${layer2Name} hold what the systems recorded.\nAsk for an agent, a place or a time.` : 'The personnel files hold who each agent is.\nWhere they were tonight is theirs to tell you.'}`;
   }
+  // Before the release only what the reveal already told him, when and where he was found, in the reveal's own
+  // 24-hour style (04:15); never who found him, and no time in the records' style.
+  const found = /(\d{1,2}):(\d{2})\s*(AM|PM)?/i.exec(INCIDENT.found);
+  const foundAt = found ? `${String((Number(found[1]) % 12) + (found[3]?.toUpperCase() === 'PM' ? 12 : 0)).padStart(2, '0')}:${found[2]}` : null;
   if (has('time of death', 'when did he die', 'died', 'death')) {
     return l.layer2
       ? `Incident: ${INCIDENT.incident}.\nConfirmed time of death ${INCIDENT.timeOfDeath}.\nLocation: ${INCIDENT.location}.`
-      : 'Director found 04:15, Director’s Office.\nNo confirmed time of death on file.';
+      : `Director found${foundAt ? ` ${foundAt}` : ''}, ${INCIDENT.location}.\nNo confirmed time of death on file.`;
   }
   if (agent && wantsL2) {
     if (!l.layer2) return NOT_ON_FILE;
@@ -159,9 +171,8 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
       from = to = times[0];
       if (t !== null) {
         // "at 2:14" reads as the ten minutes around it.
-        const f = (m: number) => `${Math.floor(((m + 18 * 60) % (24 * 60)) / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')} ${((m + 18 * 60) % (24 * 60)) / 60 >= 12 ? 'PM' : 'AM'}`;
-        from = f(Math.max(0, t - 5));
-        to = f(t + 5);
+        from = clockOf(Math.max(0, t - 5));
+        to = clockOf(t + 5);
       }
     }
     if (times.length === 1 && has('after')) to = undefined;
@@ -175,11 +186,14 @@ export function mockArchiveReply(text: string, ctx: ArchiveContext): string {
   }
   if (has('log', 'logs', 'activity', 'where was', 'where were', 'office', 'who was', 'alibi', 'alibis', 'timeline', 'movements')) {
     if (!l.layer2) return NOT_ON_FILE;
-    return `${formatHits(searchLedger(c, { from: '1:30 AM', to: '2:45 AM', layers: { 1: false, 2: true } }), 24)}\n[SEGMENT INTACT] Narrow by agent, place or window.`;
+    // The stretch around the configured time of death; the whole night when it does not read as a time.
+    const tod = ledgerMinutes(INCIDENT.timeOfDeath);
+    const around = tod === null ? {} : { from: clockOf(Math.max(0, tod - 45)), to: clockOf(tod + 30) };
+    return `${formatHits(searchLedger(c, { ...around, layers: { 1: false, 2: true } }), 24)}\n[SEGMENT INTACT] Narrow by agent, place or window.`;
   }
   if (has('agents', 'everyone', 'personnel', 'suspects', 'dossier', 'dossiers', 'who is held', 'list')) {
     if (!l.layer1) return NOT_ON_FILE;
-    return `Personnel files, five agents held at headquarters:\n${LAYER_01.map((e) => `${e.id} ${e.name} :: ${e.position}`).join('\n')}`;
+    return `Personnel files, ${NUMBER_WORDS[LAYER_01.length] ?? LAYER_01.length} agents held at headquarters:\n${LAYER_01.map((e) => `${e.id} ${e.name} :: ${e.position}`).join('\n')}`;
   }
   for (const f of c.fragments) {
     if (q.includes(f.key.toLowerCase())) return `[${f.key.toUpperCase()}] ${f.text}`;

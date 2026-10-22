@@ -84,6 +84,8 @@ test.describe('the phone, tapped the way people tap', () => {
 
     await app.patch((c) => Object.assign(c.hack, { mode: 'race', aiIntervalSeconds: 600, aiJitterSeconds: 0 }));
     await app.setStage('hack');
+    // The gate's keyboard is still up until the race screen arrives with its briefing.
+    await expect(player.getByRole('dialog').getByRole('button', { name: /engage/i })).toBeVisible();
     await typeWord(player, 'PLANTER');
     await player.getByRole('button', { name: /attempt key/i }).dblclick();
     await expect(player.getByRole('img', { name: /^Attempt 1: P / })).toBeVisible();

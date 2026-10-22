@@ -70,8 +70,15 @@ export function verifyPlayerToken(token: string | undefined): boolean {
   return safeEqual(token, playerToken());
 }
 
-/** A month, renewed by every console request: a laptop signed in during setup is still signed in on the night. */
+/** A month, renewed while the console is in use: a laptop signed in during setup is still signed in on the night. */
 export const GM_LOGIN_SECONDS = 60 * 60 * 24 * 30;
+const RENEW_AFTER_MS = 24 * 60 * 60 * 1000;
+
+/** When a GM token was issued, or 0 when it does not say. */
+function gmTokenTime(token: string): number {
+  const ts = parseInt(token.slice(0, token.lastIndexOf('.')), 36);
+  return Number.isFinite(ts) ? ts : 0;
+}
 
 export function gmAuth(req: Request, res: Response, next: NextFunction): void {
   const token = parseCookies(req.headers.cookie)[GM_COOKIE];
@@ -79,7 +86,9 @@ export function gmAuth(req: Request, res: Response, next: NextFunction): void {
     res.status(401).json({ error: 'GM login required' });
     return;
   }
-  res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, token!, GM_LOGIN_SECONDS));
+  // Once a day at most, by a read (the console reads on every load and reconnect), a fresh login for another month.
+  // Not on every request: a reply still on its way after a Log out would sign the browser straight back in.
+  if (req.method === 'GET' && Date.now() - gmTokenTime(token!) > RENEW_AFTER_MS) res.setHeader('Set-Cookie', cookieHeader(GM_COOKIE, makeGmToken(), GM_LOGIN_SECONDS));
   next();
 }
 

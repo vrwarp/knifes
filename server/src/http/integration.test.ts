@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { startServer, until, type TestServer } from '../../test/server.js';
 import { env } from '../env.js';
+import { sign } from './auth.js';
 import { gmRouter, playerRouter } from './routes.js';
 
 // The real HTTP and WebSocket surface: every route behind its guard, odd input refused politely,
@@ -53,16 +54,30 @@ describe('who may call what', () => {
     expect(out.headers.get('set-cookie')).toMatch(/^s30gm=; .*Max-Age=0/);
   });
 
-  it('keeps a console signed in for a month from its last request, so a login from setup day holds on the night', async () => {
+  it('keeps a console signed in a month past its use, so a login from setup day holds on the night', async () => {
     const login = await s.request('/api/gm/login', { json: { password: env.gmPassword } });
-    const cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const fresh = login.headers.get('set-cookie')!.split(';')[0];
+    // A login less than a day old is not reissued: no Set-Cookie on every request for a reply to race a Log out with.
+    expect((await s.request('/api/gm/me', { cookie: fresh })).headers.get('set-cookie')).toBeNull();
+    // One two days old (signed in during setup) is reissued by the console's next read, for another month.
+    const ts = (Date.now() - 2 * 24 * 3600_000).toString(36);
+    const old = `s30gm=${ts}.${sign(`gm:${ts}`)}`;
     for (const p of ['/api/gm/me', '/api/gm/overview']) {
-      const renewed = (await s.request(p, { cookie })).headers.get('set-cookie');
-      expect(renewed, p).toBe(`${cookie}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`);
+      const renewed = (await s.request(p, { cookie: old })).headers.get('set-cookie');
+      expect(renewed, p).toMatch(/^s30gm=[^;]+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=2592000$/);
+      const next = renewed!.split(';')[0];
+      expect(next, 'a new login, not the old one stretched').not.toBe(old);
+      expect((await s.request('/api/gm/me', { cookie: next })).status).toBe(200);
     }
-    // A request that is refused renews nothing, and logging out still wins over the renewal.
+    // Nor does a POST reissue it, even an old one: a report or an assistant answer can take minutes.
+    for (const [p, json] of [['/api/gm/hint', { text: 'x' }], ['/api/gm/report/generate', {}], ['/api/gm/assistant', { text: 'hello' }]] as const) {
+      const r = await s.request(p, { cookie: old, json });
+      expect(r.status, p).toBe(200);
+      expect(r.headers.get('set-cookie'), p).toBeNull();
+    }
+    // A refused request renews nothing, and logging out still clears the cookie.
     expect((await s.request('/api/gm/me', { cookie: 's30gm=forged.token' })).headers.get('set-cookie')).toBeNull();
-    expect((await s.request('/api/gm/logout', { method: 'POST', cookie })).headers.get('set-cookie')).toMatch(/^s30gm=; .*Max-Age=0/);
+    expect((await s.request('/api/gm/logout', { method: 'POST', cookie: old })).headers.get('set-cookie')).toMatch(/^s30gm=; .*Max-Age=0/);
   });
 });
 

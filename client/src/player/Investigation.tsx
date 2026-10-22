@@ -6,7 +6,7 @@ import type { StageProps } from './PlayerApp';
 
 type Tab = 'ledger' | 'archive';
 
-export function Investigation({ view, feed, busy }: StageProps & { feed: ArchiveMessage[]; busy: boolean }) {
+export function Investigation({ view, feed, busy, resync }: StageProps & { feed: ArchiveMessage[]; busy: boolean; resync: number }) {
   const [tab, setTab] = useState<Tab>('ledger');
   // A dot on the Ledger tab from the moment the surveillance records are released until he looks at them.
   const [seenLayer2, setSeenLayer2] = useState(view.ledger.layer2);
@@ -30,7 +30,7 @@ export function Investigation({ view, feed, busy }: StageProps & { feed: Archive
         <Ledger view={view} active={tab === 'ledger'} onSeenLayer2={() => setSeenLayer2(true)} />
       </div>
       <div hidden={tab !== 'archive'}>
-        <Archive key={view.archive.epoch} view={view} feed={feed} busy={busy} active={tab === 'archive'} />
+        <Archive key={view.archive.epoch} view={view} feed={feed} busy={busy} active={tab === 'archive'} resync={resync} />
       </div>
     </>
   );

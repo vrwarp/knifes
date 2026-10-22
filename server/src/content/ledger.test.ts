@@ -108,6 +108,21 @@ describe('mock ARCHIVE', () => {
   it('still refuses to conclude', () => {
     expect(mockArchiveReply('who is the killer', ctx(true))).toContain('records, not conclusions');
   });
+  it('tells the story the GMs configured, not the default one, now that it answers whenever the live AI fails', () => {
+    const config = structuredClone(DEFAULT_CONFIG);
+    config.ledger.content.incident = { incident: 'Murder of Arthur Pendelton', timeOfDeath: '11:50 PM', location: 'Motor pool', found: '5:40 AM, by the night mechanic' };
+    config.ledger.content.agents = config.ledger.content.agents.slice(0, 4);
+    const at = (layer2: boolean) => ({ ...ctx(layer2), config });
+    const before = mockArchiveReply('when did he die?', at(false));
+    expect(before).toBe('Director found 05:40, Motor pool.\nNo confirmed time of death on file.');
+    expect(before).not.toContain('mechanic');
+    expect(mockArchiveReply('when did he die?', at(true))).toContain('Confirmed time of death 11:50 PM');
+    expect(mockArchiveReply('list the agents', at(false))).toContain('four agents held at headquarters');
+    // "Where was everyone" reads the stretch around this story's time of death, 11:05 PM to 12:20 AM.
+    const night = mockArchiveReply('where was everyone', at(true));
+    expect(night).toContain('11:18 PM');
+    expect(night).not.toMatch(/\b(1|2):\d\d AM/);
+  });
   it('reads a time without AM or PM as that night, the way the detective types it', () => {
     // "at 11:18" is 11:18 PM, when Nina badged into the office; "12" is midnight, not noon.
     expect(mockArchiveReply('where was nina at 11:18', ctx(true))).toContain("L2 11:18 PM      Nina Calder: Badge: Director's Office, in.");

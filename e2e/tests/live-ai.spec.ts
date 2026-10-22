@@ -27,6 +27,20 @@ test.describe('ARCHIVE on a live link', () => {
     await expect(gm.locator('.log .ev', { hasText: /archive tool/ }).first()).toBeVisible();
   });
 
+  test('what he types while an answer is on its way is still in the box when the answer lands', async ({ player, app }) => {
+    app.scenario({ rules: [{ when: { prompt: 'first question' }, do: { delayMs: 2500, text: 'FIRST ANSWER' } }], default: { text: 'SECOND ANSWER' } });
+    await player.getByLabel('Query').fill('first question');
+    await player.getByRole('button', { name: /send/i }).click();
+    await expect(player.getByRole('button', { name: /send/i })).toBeDisabled();
+    await player.getByLabel('Query').fill('second question');
+    await expect(player.locator('.msg.assistant').last()).toContainText('FIRST ANSWER', { timeout: 15_000 });
+    await player.waitForTimeout(500);
+    await expect(player.getByLabel('Query')).toHaveValue('second question');
+    await player.getByRole('button', { name: /send/i }).click();
+    await expect(player.locator('.msg.assistant').last()).toContainText('SECOND ANSWER');
+    await expect(player.getByLabel('Query')).toHaveValue('');
+  });
+
   test('a broken link: the records still answer, the console sees why, and the next question is the AI again', async ({ player, gm, app }) => {
     app.scenario({ default: { exitCode: 1, stderr: 'API Error: 529 overloaded_error' } });
     await player.getByLabel('Query').fill('tell me about nina');

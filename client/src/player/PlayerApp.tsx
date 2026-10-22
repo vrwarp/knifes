@@ -118,9 +118,12 @@ export function PlayerApp() {
     !denied,
   );
 
+  /** Counts the times the live link came back or the screen woke, for parts that hold more than the view (the ARCHIVE transcript). */
+  const [resync, setResync] = useState(0);
   useEffect(() => {
     if (connected) {
       setEverConnected(true);
+      setResync((n) => n + 1);
       void refresh();
     }
   }, [connected, refresh]);
@@ -155,7 +158,9 @@ export function PlayerApp() {
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
+      if (document.visibilityState !== 'visible') return;
+      setResync((n) => n + 1);
+      void refresh();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -232,7 +237,7 @@ export function PlayerApp() {
       screen = <Reveal {...props} />;
       break;
     case 'investigation':
-      screen = <Investigation {...props} feed={archiveFeed} busy={archiveBusy} />;
+      screen = <Investigation {...props} feed={archiveFeed} busy={archiveBusy} resync={resync} />;
       break;
   }
 

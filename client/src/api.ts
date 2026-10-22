@@ -12,7 +12,7 @@ const NO_ANSWER = 'No answer from the server. Check the link and retry.';
 /** Fired when a console request is refused for want of a login, so the console goes back to its password form whichever panel asked. */
 export const GM_LOGGED_OUT = 's30:gm-logged-out';
 
-export async function api<T>(path: string, init: { method?: string; json?: unknown; body?: BodyInit; timeoutMs?: number } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; json?: unknown; body?: BodyInit; timeoutMs?: number; signal?: AbortSignal } = {}): Promise<T> {
   const headers: Record<string, string> = {};
   let body: BodyInit | undefined = init.body;
   if (init.json !== undefined) {
@@ -21,6 +21,7 @@ export async function api<T>(path: string, init: { method?: string; json?: unkno
   }
   const abort = new AbortController();
   const timer = window.setTimeout(() => abort.abort(), init.timeoutMs ?? 30_000);
+  init.signal?.addEventListener('abort', () => abort.abort(), { once: true });
   let res: Response;
   let text: string;
   try {

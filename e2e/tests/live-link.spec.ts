@@ -111,6 +111,7 @@ test('the reverse proxy’s own error page while the container restarts reads as
 
 test('a console whose login is gone goes back to the password form at its next request, says why, and picks up again', async ({ gm, gmContext, player, app }) => {
   // The browser drops the login (a cleared site, a privacy setting) while the live link stays up.
+  await gm.waitForLoadState('networkidle');
   await gmContext.clearCookies();
   await gm.getByLabel('Transmission text').fill('Check the badge log.');
   await gm.getByRole('button', { name: /push to his screen/i }).click();
@@ -125,7 +126,35 @@ test('a console whose login is gone goes back to the password form at its next r
 });
 
 test('a console whose login is gone finds out by itself when its link drops, with nobody pressing anything', async ({ gm, gmContext, app }) => {
+  await gm.waitForLoadState('networkidle');
   await gmContext.clearCookies();
   await app.restart();
   await expect(gm.getByText('Your login is no longer valid. Enter the password again.')).toBeVisible({ timeout: 25_000 });
+});
+
+test('an ARCHIVE answer that never made it back, its link silent too, is on the phone once the link is back', async ({ player, app }) => {
+  const links = await tapLinks(player, 'player');
+  await app.setStage('investigation');
+  await player.goto(app.base);
+  await player.getByRole('tab', { name: 'archive' }).click();
+  await player.waitForLoadState('networkidle');
+  await silence(links);
+  // The question reaches the server and is answered there, but the reply never reaches the phone: the request just hangs.
+  let reached = false;
+  await player.route('**/api/player/archive', async (r) => {
+    if (r.request().method() !== 'POST') return r.continue();
+    await r.fetch();
+    reached = true;
+  });
+  await player.getByLabel('Query').fill('list the agents');
+  await player.getByRole('button', { name: /send/i }).click();
+  await expect.poll(() => reached).toBe(true);
+  // The silent link is redialed, and the transcript comes back with it: question and answer, once each.
+  await expect(player.locator('.msg.assistant').last()).toContainText('Personnel files', { timeout: 15_000 });
+  await expect(player.getByText('list the agents', { exact: true })).toHaveCount(1);
+  // Nor is the phone left waiting on a reply that will never come.
+  await expect(player.locator('.msg.system.cursor')).toHaveCount(0);
+  await expect(player.getByRole('alert')).toHaveCount(0);
+  await player.getByLabel('Query').fill('tell me about nina');
+  await expect(player.getByRole('button', { name: /send/i })).toBeEnabled();
 });

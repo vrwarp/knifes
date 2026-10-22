@@ -156,7 +156,7 @@ crash, hang or fail on cue.
 | `CLAUDE_CONFIG_DIR` | `/data/claude` in the container | Where a `claude auth login` is stored and SDK sessions live. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | Model for all AI features. |
 | `PLAYER_KEY` | (unset = open link) | When set, the player link must be opened once with `?k=KEY`. |
-| `SESSION_SECRET` | random, kept in `DATA_DIR/session-secret` | Signs GM logins and the phone's key cookie. Without it the server makes one on first boot and keeps it, so logins and the QR link survive restarts. A GM login lasts a month and renews itself on every console request. |
+| `SESSION_SECRET` | random, kept in `DATA_DIR/session-secret` | Signs GM logins and the phone's key cookie. Without it the server makes one on first boot and keeps it, so logins and the QR link survive restarts. A GM login lasts a month and is renewed, at most once a day, whenever the console is open. |
 | `COOKIE_SECURE` | `0` | Set `1` behind https. |
 | `AI_MODE` | `auto` | `mock` forces mock AI; otherwise live whenever a credential is found. |
 | `PORT` | `8080` | Listen port. |
