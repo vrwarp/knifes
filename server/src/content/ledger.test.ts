@@ -108,4 +108,14 @@ describe('mock ARCHIVE', () => {
   it('still refuses to conclude', () => {
     expect(mockArchiveReply('who is the killer', ctx(true))).toContain('records, not conclusions');
   });
+  it('reads a time without AM or PM as that night, the way the detective types it', () => {
+    // "at 11:18" is 11:18 PM, when Nina badged into the office; "12" is midnight, not noon.
+    expect(mockArchiveReply('where was nina at 11:18', ctx(true))).toContain("L2 11:18 PM      Nina Calder: Badge: Director's Office, in.");
+    const midnight = mockArchiveReply('what happened between 12 and 1', ctx(true));
+    expect(midnight).toContain('12:02 AM');
+    expect(midnight).toContain('12:51 AM');
+    expect(midnight).not.toContain('No records match');
+    expect(mockArchiveReply('who was moving between 11 and 12', ctx(true))).toMatch(/11:\d\d PM/);
+    expect(mockArchiveReply('where was everyone at 2:14', ctx(true))).toContain('2:14 AM');
+  });
 });

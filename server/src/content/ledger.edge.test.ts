@@ -31,19 +31,32 @@ describe('ledger times', () => {
     expect(ledgerRange('2:14 AM')).toEqual([494, 494]);
     expect(ledgerRange('soon')).toBeNull();
   });
+  // Minutes after 6 PM. A bare time is the night of the murder: "at 11" is 11 PM, "at 12" midnight, "at 2" 2 AM.
   it.each([
     ['2', 480],
     ['2 am', 480],
     ['2 PM', -240],
     ['14', -240],
     ['0', 360],
-    ['12', -360],
+    ['12', 360],
+    ['12:15', 375],
     ['12 AM', 360],
+    ['12 PM', -360],
+    ['11', 300],
+    ['11:30', 330],
+    ['10', 240],
+    ['9:45', 225],
+    ['6', 0],
+    ['5', 660],
+    ['4:59', 659],
+    ['1', 420],
+    ['13', -300],
     ['23', 300],
+    ['22:30', 270],
     ['2:14pm', ledgerMinutes('2:14 PM')],
     ['  2:14  ', 494],
   ])('the ARCHIVE window "%s" is %i', (s, m) => expect(parseWindow(s)).toBe(m));
-  it.each([undefined, '', '24', '99', 'noon', 'two', '2::14'])('the ARCHIVE window "%s" is not a time', (s) => expect(parseWindow(s)).toBeNull());
+  it.each([undefined, '', '24', '99', 'noon', 'two', '2::14', '2:60', '11:99'])('the ARCHIVE window "%s" is not a time', (s) => expect(parseWindow(s)).toBeNull());
 });
 
 describe('searching the Ledger', () => {

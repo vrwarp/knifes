@@ -137,6 +137,15 @@ cd server && npm run typecheck && npm test
 cd client && npm run build
 ```
 
+The server suite (vitest, about 40 s) runs hermetically: mock AI, a temporary data directory, no
+credential. Besides unit tests it holds property tests over the game logic; a random-operation fuzzer
+that checks the game's invariants and what the phone may never see after every step, and restarts the
+service at every step (`FUZZ_SEEDS`, `FUZZ_STEPS`, `FUZZ_FIRST_SEED` scale it up); race-condition and
+soak tests; HTTP and WebSocket integration tests; process tests that kill -9, SIGTERM and port-clash the
+real server; and live-AI tests. The live-AI tests run the real Agent SDK against `server/test/fake-claude.mjs`,
+a stand-in Claude Code CLI that speaks the SDK's protocol, calls the app's MCP tools and can be slow,
+crash, hang or fail on cue.
+
 ## Environment variables
 
 | Variable | Default | Meaning |
@@ -147,11 +156,14 @@ cd client && npm run build
 | `CLAUDE_CONFIG_DIR` | `/data/claude` in the container | Where a `claude auth login` is stored and SDK sessions live. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | Model for all AI features. |
 | `PLAYER_KEY` | (unset = open link) | When set, the player link must be opened once with `?k=KEY`. |
-| `SESSION_SECRET` | random per boot | Keeps GM logins valid across restarts. |
+| `SESSION_SECRET` | random, kept in `DATA_DIR/session-secret` | Signs GM logins and the phone's key cookie. Without it the server makes one on first boot and keeps it, so logins and the QR link survive restarts. A GM login lasts a month and renews itself on every console request. |
 | `COOKIE_SECURE` | `0` | Set `1` behind https. |
 | `AI_MODE` | `auto` | `mock` forces mock AI; otherwise live whenever a credential is found. |
 | `PORT` | `8080` | Listen port. |
 | `DATA_DIR` | `../data` (container: `/data`) | SQLite file, uploads, Agent SDK session files. |
+| `GOOGLE_MAPS_API_KEY` | (unset) | Maps JavaScript API browser key; the location puzzle embeds Street View with it. |
+| `AI_TIMEOUT_MS` | `120000` | How long one ARCHIVE or copilot call may take before it is given up on. |
+| `WS_HEARTBEAT_MS` | `30000` | How often the live link is checked. A page that hears nothing for 2.5 beats redials; a phone that stops answering is dropped from the console's count. Keep it under the reverse proxy's idle timeout (nginx and Synology: 60 s). |
 
 ## The night of
 
@@ -159,8 +171,16 @@ cd client && npm run build
   seal the ARCHIVE, push hints (drafted by AI or typed), and generate and print the case file
   (for the GMs only; it never goes to the phone).
 - "Reset whole game" wipes progress and logs but keeps configuration. Use it after the dry run.
-- If the AI is unreachable, the ARCHIVE says the link is degraded and hints fall back to the quick-hint lists.
-  Nothing blocks the game.
+- If the AI fails (an outage, a rate limit, a lapsed login, spent credit), the ARCHIVE answers from the
+  local index, with the same rules about what is on file; the console shows the AI error and marks those
+  answers "local index" in the transcript. A failed case file falls back to the template when there is
+  no report yet, and hints fall back to the quick-hint lists. Nothing blocks the game.
+- Transmissions queue: several sent in a row come up one at a time, oldest first, including ones sent
+  while his screen was off.
+- If the ARCHIVE ever sits on "answering", **New ARCHIVE session** frees it.
+- The gate code is at most 16 characters (the phone's field holds 16).
+- A crash or restart of the container loses nothing: the phone, the consoles and their live links come
+  back on their own, at the same stage with the same key and guesses.
 - Costs: the ARCHIVE and copilot calls are short. A full evening is expected to cost a few dollars at Opus 5.5 rates.
 
 ### Continuous integration and Docker Hub
@@ -188,7 +208,8 @@ On the NAS, point Container Manager at that image and pull `latest` after each m
 
 The Playwright suite in `e2e/tests` runs every test on four projects: Chromium and WebKit, each at
 phone and desktop size. Each worker starts its own server with a private data directory and mock AI,
-and map tiles are stubbed, so the suite needs no network or Claude login.
+and map tiles are stubbed, so the suite needs no network or Claude login. The live-AI specs run the
+server with a fake credential and the stand-in CLI instead, scripted per test.
 
 ```
 cd server && npm run build && cd ../client && npm run build
@@ -209,7 +230,16 @@ persistence and sealing; hints
 alarms with a mocked clock, skips and jumps with confirmations, stage and whole-game resets, log
 filters, the GM-only case report, config editing, validation, concurrent-edit warning); the player
 key; API authorization; secret leakage; connection-loss banners and polling; and layout checks for
-sideways scroll, 16px inputs and 44px touch targets.
+sideways scroll, 16px inputs and 44px touch targets. Also:
+- The whole evening in race mode with the phone and the console side by side.
+- The live AI through the stand-in CLI: slow answers, failures and the local-index fallback, a session
+  reset mid-answer, records released mid-answer, copilot, report and setup assistant.
+- Container crashes and restarts mid-race, mid-answer and at every stage, with the player key on.
+- Live links that drop or go silent, a reverse proxy's 502 page, and a console whose login is gone.
+- The transmission queue, and keys pressed under a transmission.
+- GM edits reaching an open phone, and an upload in the middle of an edit.
+- Double taps, two phones on one game, 320px and landscape screens, and overlong text.
+- Blocked storage, reduced motion, and the fault screens healing.
 
 ### Visual walkthrough
 

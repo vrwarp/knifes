@@ -59,10 +59,10 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 | Feature | Mechanics | Guardrails |
 | - | - | - |
-| ARCHIVE terminal | One `query()` per player message, resumed by `session_id`. In-process MCP tools: `read_personnel` (personnel files), `read_classified` (surveillance records; a plain [NO RECORD] until released, never a hint that they exist), `search_activity` (surveillance records by agent, time window, place and keyword; personnel fields by keyword), `ledger_lookup` (index fragments). | Persona prompt forbids naming the culprit, ranking suspects, saying a record contradicts another, inventing facts or leaving the fiction. Max 8 turns, low effort, one query at a time, 400-char input cap, GM seal switch. |
+| ARCHIVE terminal | One `query()` per player message, resumed by `session_id`. In-process MCP tools: `read_personnel` (personnel files), `read_classified` (surveillance records; a plain [NO RECORD] until released, never a hint that they exist), `search_activity` (surveillance records by agent, time window, place and keyword; personnel fields by keyword), `ledger_lookup` (index fragments). | Persona prompt forbids naming the culprit, ranking suspects, saying a record contradicts another, inventing facts or leaving the fiction. Max 8 turns, low effort, one query at a time, 400-char input cap, GM seal switch. A failed answer (outage, rate limit, lapsed login, spent credit) comes from the deterministic index instead, which keeps the same rules; the GMs see the AI error. |
 | GM copilot | `query()` with structured output `{hint, rationale}` from stage, attempts, recent log and the configured solution, at a chosen strength. Told whether the surveillance records are released so a hint never leaks that they exist. | GM edits and approves before anything reaches the player. |
 | Setup assistant | `query()` over the live config, the case files (both layers), the readiness list and uploaded photos; proposes edits a GM applies. | Never edits on its own; proposals are versions only once applied. |
-| Case report | `query()` over the full event log and transcript, Markdown out, headings CASE FILE 30-0214 and following. | GMs only: preview and print. It never reaches the phone. |
+| Case report | `query()` over the full event log and transcript, Markdown out, headings CASE FILE 30-0214 and following. | GMs only: preview and print. It never reaches the phone. A failure with no report yet writes the template report; an existing report is never replaced by it. |
 | Word-race opponent | Scripted by default: one `query()` per round writes the whole guess list for a bank word; scripts are prepared for every bank word when the configuration is saved and kept across game resets. Live style makes one `query()` per guess. | Low effort, 2 turns, no tools. A bad or late answer is replaced by a deterministic solver so the race never stalls. |
 
 ## 6. Content and solution logic
@@ -76,7 +76,7 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 - `server/`: Express 5 API, `ws` WebSocket hub, `node:sqlite` store (config versions, state, events, transcript), Agent SDK. Player view is redacted server-side: no codes, secret word or canonical answers ever reach the phone, and Layer 02 content is not served until released.
 - `client/`: React SPA, terminal styling, Leaflet map, no external fonts or CDNs besides OpenStreetMap tiles and, with a key, Google Street View.
-- Auth: GM cookie signed with HMAC; optional player key in the QR link; GM password compared in constant time.
+- Auth: GM cookie signed with HMAC; optional player key in the QR link; GM password compared in constant time. Without `SESSION_SECRET` the signing key is made once and kept in the data volume, so logins and the QR link survive restarts. A GM login lasts a month from its last request.
 - Deployment: multi-stage Dockerfile on `node:22-bookworm-slim`, non-root user, `/data` volume for SQLite, uploads and SDK session files. Health check on `/healthz`.
 - Upgrades: a configuration saved before this revision loses its evidence-vault block and picks up the `ledger` and `phil` defaults; a saved game state gains the personnel files if it was already investigating.
 - Every word of the story is in the configuration and editable in the console: the Ledger itself (`ledger.content`: the agents' personnel facts, profiles, recorded activity, belongings and findings; the incident; the duty log; the index fragments), the section names and the header line, the ARCHIVE's persona and its not-on-file answer, the case-file brief (`report.prompt`), and every other line the phone prints (`text`, grouped by screen, with `{placeholders}` filled at render time). The server validates surveillance times as clock times so the ARCHIVE's window search keeps working. A configuration saved before this revision picks up all of it from the defaults.
@@ -85,7 +85,7 @@ All run through one wrapper (`server/src/ai/agent.ts`) with every built-in tool 
 
 Player (`/api/player/*`): `state`, `start`, `geo/guess`, `geo/proceed`, `gate`, `hack/guess`, `hack/retry`, `reveal/continue`, `ledger`, `archive` (GET, POST).
 GM (`/api/gm/*`): `login`, `logout`, `me`, `overview`, `config` (PUT), `config/history`, `config/restore`, `stage`, `reset`, `hint`, `hint/draft`, `ledger/release`, `archive/lock`, `archive/reset`, `hack/scripts`, `report/generate`, `assistant/*`, `claude/*`, `upload` (photos), `upload/:id` (DELETE).
-WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIVE messages, ARCHIVE busy flag, assistant messages (GM only).
+WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIVE messages, ARCHIVE busy flag, assistant messages (GM only), and a heartbeat on connect and every `WS_HEARTBEAT_MS` (30 s). A page that hears nothing for 2.5 beats redials, and the server drops a socket that misses a ping.
 
 ## 8. What the GMs still supply
 
@@ -98,6 +98,9 @@ WebSocket `/ws?role=player|gm`: state snapshots, events (GM only), hints, ARCHIV
 ## 9. Test plan
 
 - Unit: word scoring, geo distance, state machine including the personnel and surveillance releases and hiding again, config and state migration (including a save from the removed solved stage), player-view redaction, bank solver, race loop with fake timers (`server`, vitest).
+- Property, fuzz and race tests: seeded random operation sequences check the invariants and the phone's view for leaks after every step, with a restart at every step; concurrent requests, late AI answers, resets mid-answer and soak runs of a whole evening.
+- Integration and process: every route behind its guard, odd input, WebSocket pushes per role and heartbeats; the real server killed with -9 mid-race, stopped with SIGTERM, and started on a taken port.
+- Live AI without a credential: the real Agent SDK against `server/test/fake-claude.mjs`, a stand-in Claude Code CLI that answers the SDK's protocol, calls the app's MCP tools, and can be slow, crash, hang or fail on cue (server tests and the `live-ai`, `restart` e2e specs).
 - End to end in mock mode: full run from intro to the investigation through the real HTTP and WebSocket paths, records release from the GM console, ARCHIVE having no record of the night until released, GM login, jump, reset, hint push (`e2e/`, Playwright).
 - Live AI: with a credential set, exercise the ARCHIVE with the canonical questions (where was everyone at 2:14, tell me about Nina Calder, read the surveillance records before and after release, who did it), one hint draft before and after the release, one case report.
 - Dry run on real phones before the 23rd, over cellular, through the reverse proxy, including Matt's call and the release.
